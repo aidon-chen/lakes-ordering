@@ -346,6 +346,12 @@
 				"selectedIconPath": "static/assets/tabbar/SelectedIcon/blue/index.png"
 			},
 			{
+				"pagePath": "pages/internal/mall/index/index",
+				"text": "商城",
+				"iconPath": "static/assets/tabbar/Icon/store.png",
+				"selectedIconPath": "static/assets/tabbar/SelectedIcon/blue/store.png"
+			},
+			{
 				"pagePath": "pages/menu/index/index",
 				"text": "点餐",
 				"iconPath": "static/assets/tabbar/Icon/order.png",
@@ -356,12 +362,6 @@
 				"text": "订单中心",
 				"iconPath": "static/assets/tabbar/Icon/order-center.png",
 				"selectedIconPath": "static/assets/tabbar/SelectedIcon/blue/order-center.png"
-			},
-			{
-				"pagePath": "pages/internal/mall/index/index",
-				"text": "商城",
-				"iconPath": "static/assets/tabbar/Icon/store.png",
-				"selectedIconPath": "static/assets/tabbar/SelectedIcon/blue/store.png"
 			},
 			{
 				"pagePath": "pages/mine/index/index",
