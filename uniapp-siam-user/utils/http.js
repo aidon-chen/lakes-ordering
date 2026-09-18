@@ -87,19 +87,12 @@ const handleError = function (err) {
             });
             break;
         default:
-            if (errorCode) {
-                uni.showToast({
-                    title: err.message,
-                    icon: 'none',
-                    duration: 3000
-                });
-            } else {
-                uni.showToast({
-                    title: '内部服务器错误！',
-                    icon: 'none',
-                    duration: 3000
-                });
-            }
+            // message 兜底为字符串，避免 showToast title=undefined 报错
+            uni.showToast({
+                title: (err && err.message) || '网络异常，请稍后重试',
+                icon: 'none',
+                duration: 3000
+            });
             break;
     }
 };
@@ -142,8 +135,11 @@ export default class WXHttp {
                 const onFail = (err) => {
                     console.log(err);
                     errObj.code = err.statusCode ? err.statusCode : 101;
-                    errObj.message = err.errMsg && err.errMsg.split ? err.errMsg.split(' ')[1] : (err.errMsg || '网络异常');
-                    handleError(err);
+                    // errMsg 形如 "request:fail xxx"；无 statusCode 即网络层失败，给可读提示
+                    const rawMsg = err.errMsg || '';
+                    const detail = rawMsg.split(' ')[1] || '';
+                    errObj.message = err.statusCode ? (detail || rawMsg) : '网络异常，请稍后重试';
+                    handleError(errObj);
                     reject(errObj);
                 };
                 //云托管通道：微信小程序且已配置云环境时走 wx.cloud.callContainer（免备案）
