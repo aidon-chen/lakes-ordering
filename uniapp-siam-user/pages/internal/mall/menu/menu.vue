@@ -199,7 +199,7 @@
 					name: ''
 				},
 				themeVars:{
-					primaryColor: '#004ca0'
+					primaryColor: '#5f7d22'
 				}
 			};
 		},
@@ -916,7 +916,7 @@
 	/* shopcart 样式 */
 	.content-fullReductionRuleName {
 		width: 100%;
-		background: #fffadc;
+		background: #edf3df;
 		font-size: 24rpx;
 		text-align: center;
 		position: sticky;
@@ -1020,7 +1020,7 @@
 	.content-manjian {
 		position: relative;
 		top: 0;
-		background: #fffadc;
+		background: #edf3df;
 		font-size: 24rpx;
 		font-weight: bold;
 		text-align: center;
@@ -1408,7 +1408,7 @@
 	}
 
 	.contact-bussiness-text {
-		color: #2e87cd;
+		color: #516b1d;
 	}
 
 	.carousel-swiper-item {
@@ -1638,11 +1638,11 @@
 	}
 
 	.main-active-class {
-		background-color: var(--sidebar-selected-border-color, #004ca0);
-		background-color: var(--van-tree-select-nav-background, #004ca0);
+		background-color: var(--sidebar-selected-border-color, #5f7d22);
+		background-color: var(--van-tree-select-nav-background, #5f7d22);
 	}
 
 	.van-sidebar-item--selected {
-		background-color: var(--sidebar-selected-border-color, #004ca0);
+		background-color: var(--sidebar-selected-border-color, #5f7d22);
 	}
 </style>

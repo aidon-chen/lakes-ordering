@@ -88,12 +88,12 @@
 						style="height: 78px">
 						<swiper-item class="swiper-items">
 							<view class="mine-blocking">
-								<navigator class="order-navigator"
-									:url="'../../order/index/index?currentTab=' + currentTab + '&modeType=' + item.modeType + '&currentOrderTab=' + item.modeId"
-									v-for="(item, index) in shopOrderTabList" :key="index">
+								<view class="order-navigator" hover-class="hover-click-class"
+									@tap="goOrderCenter(item, 0)" v-for="(item, index) in shopOrderTabList"
+									:key="index">
 									<van-icon :name="item.icon" size="50rpx" />
 									<view class="text-tip">{{ item.modeName }}</view>
-								</navigator>
+								</view>
 							</view>
 						</swiper-item>
 						<swiper-item class="swiper-items">
@@ -162,13 +162,15 @@
 				couponsNum: 0,
 				tabList: [{
 						modeId: 0,
-						modeName: '外卖订单'
+						modeName: '点单订单'
 					},
 					{
 						modeId: 1,
 						modeName: '商城订单'
 					}
 				],
+				// 金刚区四态：本项目纯堂食 + 到店自提，无配送 → 去掉「待收货」（外卖口径）
+				// modeId 与订单中心子Tab 索引一一对应；跳转统一走 goOrderCenter（tabBar 页不能带参 navigateTo）
 				shopOrderTabList: [{
 						modeId: 1,
 						modeType: 'waitPayment',
@@ -177,21 +179,21 @@
 					},
 					{
 						modeId: 2,
-						modeType: 'waitReceived',
-						modeName: '待收货',
-						icon: 'send-gift-o'
-					},
-					{
-						modeId: 3,
 						modeType: 'waitPickedUp',
 						modeName: '待自提',
 						icon: 'bag-o'
 					},
 					{
-						modeId: 4,
+						modeId: 3,
 						modeType: 'afterSales',
 						modeName: '退款/售后',
 						icon: 'balance-list-o'
+					},
+					{
+						modeId: 0,
+						modeType: 'all',
+						modeName: '全部订单',
+						icon: 'orders-o'
 					}
 				],
 				pointsOrderTabList: [{

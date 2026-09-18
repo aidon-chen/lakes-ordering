@@ -269,11 +269,14 @@
 					inviterId: inviterId ? inviterId : ''
 				}).then((result) => {
 					if (result.success) {
-						authService.setToken(result.token);
+						//接口返回结构为 {success, code, message, data:{token, openId, isNewPeople}}，
+						//业务字段一律取 result.data.*（Vuex 相同口径见下方 getMemberInfo）
+						const loginData = result.data || {};
+						authService.setToken(loginData.token);
 						authService.setOpenId(openId);
 						authService.setPhoneNumber(phoneNumber);
-						toastService.showSuccess(result.message);
-						this.isNewPeople = result.isNewPeople;
+						toastService.showSuccess(result.message || '登录成功');
+						this.isNewPeople = loginData.isNewPeople;
 						this.getUserInfo();
 						let timeout = setTimeout(() => {
 							//如果是邀请链接直接跳转到首页，如果是进入用户后退一页
@@ -467,14 +470,15 @@
 									totalNum = totalNum + items[i].number;
 								}
 								if (totalNum) {
+									// 购物车角标归属「商城」tab（tabBar 5 项：首页0/商城1/点餐2/订单中心3/我的4）
 									uni.setTabBarBadge({
-										index: 3,
+										index: 1,
 										text: String(totalNum)
 									});
 									return;
 								}
 								uni.removeTabBarBadge({
-									index: 3
+									index: 1
 								});
 							}
 						});
@@ -485,13 +489,13 @@
 			setTabBarBadge(num) {
 				if (num) {
 					uni.setTabBarBadge({
-						index: 3,
+						index: 1,
 						text: String(num)
 					});
 					return;
 				}
 				uni.removeTabBarBadge({
-					index: 3
+					index: 1
 				});
 			},
 			deliveryAndSelfTaking: {
@@ -682,13 +686,13 @@
 
 	/* 主题颜色 */
 	.active {
-		color: #004ca0;
-		border-bottom: 4rpx solid #004ca0;
+		color: #5f7d22;
+		border-bottom: 4rpx solid #5f7d22;
 		/* transition: 0.5s; */
 	}
 
 	.active_ {
-		color: #004ca0;
+		color: #5f7d22;
 		border-bottom: 4rpx solid white;
 		/* transition: 0.5s; */
 	}
@@ -698,35 +702,35 @@
 	}
 
 	.theme-bg {
-		background: #004ca0;
+		background: #5f7d22;
 		color: white;
 		border: none;
 	}
 
 	.theme-color {
-		color: #004ca0;
+		color: #5f7d22;
 	}
 
 	.theme-border {
-		border: 0.5rpx solid #004ca0;
+		border: 0.5rpx solid #5f7d22;
 	}
 
 	/* 是字体颜色加边框的宽度和实心颜色 */
 	.theme-color-border {
-		color: #004ca0;
-		border: 0.5rpx solid #004ca0;
+		color: #5f7d22;
+		border: 0.5rpx solid #5f7d22;
 	}
 
 	/* 只是边框颜色 */
 	.theme-border-color {
-		border-color: #004ca0;
+		border-color: #5f7d22;
 	}
 
 	/* 选择地址radio公共样式 */
 	.radio-active {
-		background: #004ca0;
+		background: #5f7d22;
 		background: white;
-		color: #004ca0;
+		color: #5f7d22;
 		transition: 0.5s;
 	}
 
@@ -743,9 +747,9 @@
 
 	/*radio选中后样式  */
 	radio-group .wx-radio-input.wx-radio-input-checked {
-		border-color: 1rpx solid #004ca0;
+		border-color: 1rpx solid #5f7d22;
 		border-radius: 50%;
-		background: #004ca0 !important;
+		background: #5f7d22 !important;
 	}
 
 	/* checkBox复选框公共样式 */
@@ -758,15 +762,15 @@
 	checkbox .wx-checkbox-input.wx-checkbox-input-checked {
 		border-radius: 50%;
 		color: #ffffff;
-		border-color: 1rpx solid #004ca0;
-		background-color: #004ca0;
+		border-color: 1rpx solid #5f7d22;
+		background-color: #5f7d22;
 	}
 
 	checkbox .wx-checkbox-input.wx-checkbox-input-checked::before {
 		border-radius: 50%;
 		color: #ffffff;
-		border-color: 1rpx solid #004ca0;
-		background-color: #004ca0;
+		border-color: 1rpx solid #5f7d22;
+		background-color: #5f7d22;
 	}
 
 	radio .wx-radio-input {
@@ -777,15 +781,15 @@
 	radio .wx-radio-input.wx-radio-input-checked {
 		color: #ffffff;
 		border-radius: 50%;
-		border: 1rpx solid #004ca0 !important;
-		background: #004ca0 !important;
+		border: 1rpx solid #5f7d22 !important;
+		background: #5f7d22 !important;
 	}
 
 	radio .wx-radio-input.wx-radio-input-checked::before {
 		color: #ffffff;
 		border-radius: 50%;
-		border: 1rpx solid #004ca0 !important;
-		background: #004ca0 !important;
+		border: 1rpx solid #5f7d22 !important;
+		background: #5f7d22 !important;
 	}
 
 	radio {
@@ -804,25 +808,25 @@
 	}
 
 	.add-reduce-input {
-		color: #004ca0;
+		color: #5f7d22;
 	}
 
 	.reduce-class {
-		border: 1rpx solid #004ca0;
+		border: 1rpx solid #5f7d22;
 	}
 
 	/*加号和减号*/
 	.stepper text {
 		text-align: center;
-		border: 1rpx solid #004ca0;
+		border: 1rpx solid #5f7d22;
 		border-radius: 50%;
 	}
 
 	/* 加号样式 */
 	.add-class {
-		background: #004ca0;
+		background: #5f7d22;
 		color: white;
-		border: 1rpx solid #004ca0;
+		border: 1rpx solid #5f7d22;
 	}
 
 	.car_reduce_add {
@@ -837,7 +841,7 @@
 
 	/* 减号样式 */
 	.reduce-class {
-		color: #004ca0;
+		color: #5f7d22;
 	}
 
 	/*数值*/
@@ -896,7 +900,7 @@
 	}
 
 	.password_dialog_row.theme-border {
-		border: 1rpx solid #004ca0;
+		border: 1rpx solid #5f7d22;
 	}
 
 	.password_dialog_row .password_dialog_item_input {
@@ -939,7 +943,7 @@
 
 	.top_tips {
 		width: 100%;
-		background: #fffadc;
+		background: #edf3df;
 		font-size: 24rpx;
 		text-align: center;
 		position: sticky;
@@ -1029,7 +1033,7 @@
 	}
 
 	.loading_box_class {
-		color: #004ca0;
+		color: #5f7d22;
 	}
 
 	.more_box {
@@ -1049,16 +1053,16 @@
 	}
 
 	uni-checkbox .uni-checkbox-input.uni-checkbox-input-checked {
-		border: 2rpx solid #004ca0 !important;
-		background: #004ca0;
-		border-color: #004ca0;
+		border: 2rpx solid #5f7d22 !important;
+		background: #5f7d22;
+		border-color: #5f7d22;
 	}
 
 	uni-checkbox .uni-checkbox-input svg {
-		background: #004ca0;
+		background: #5f7d22;
 		border-radius: 50%;
 		height: 100%;
-		border: 5px solid #004ca0;
+		border: 5px solid #5f7d22;
 		color: #ffffff !important;
 	}
 

@@ -978,7 +978,7 @@
 	.content-manjian {
 		position: relative;
 		top: 0;
-		background: #fffadc;
+		background: #edf3df;
 		font-size: 24rpx;
 		font-weight: bold;
 		text-align: center;

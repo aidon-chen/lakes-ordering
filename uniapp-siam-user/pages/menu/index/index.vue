@@ -344,7 +344,7 @@
 
 					}
 				},
-				titleActiveColor: '#004ca0',
+				titleActiveColor: '#5f7d22',
 				staticImg: '',
 				currentActiveIndex: 0,
 				menuList: [],
@@ -2195,7 +2195,7 @@
 	/* shopcart 样式 */
 	.content-fullReductionRuleName {
 		width: 100%;
-		background: #fffadc;
+		background: #edf3df;
 		font-size: 24rpx;
 		text-align: center;
 		position: sticky;
@@ -2299,7 +2299,7 @@
 	.content-manjian {
 		position: relative;
 		top: 0;
-		background: #fffadc;
+		background: #edf3df;
 		font-size: 24rpx;
 		font-weight: bold;
 		text-align: center;
@@ -2682,7 +2682,7 @@
 	}
 
 	.contact-bussiness-text {
-		color: #2e87cd;
+		color: #516b1d;
 	}
 
 	.carousel-swiper-item {
@@ -3127,8 +3127,8 @@
 
 	.dine-table-tag {
 		flex-shrink: 0;
-		background: #e8eef7;
-		color: #004ca0;
+		background: #edf3df;
+		color: #5f7d22;
 		font-size: 22rpx;
 		line-height: 1;
 		padding: 6rpx 16rpx;

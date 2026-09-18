@@ -287,7 +287,7 @@
 	.member-center {
 		overflow: hidden;
 		color: #f0e0be;
-		background: #11110f;
+		background: #171c0f;
 		padding: 20rpx 20rpx 0 20rpx;
 		border-radius: 0 0 50% 50%/0 0 10% 10%;
 	}
@@ -392,7 +392,7 @@
 		display: flex;
 		align-items: center;
 		flex-direction: column;
-		color: #11110f;
+		color: #171c0f;
 		font-size: 30rpx;
 	}
 

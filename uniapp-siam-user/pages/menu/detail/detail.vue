@@ -1039,7 +1039,7 @@
 	/* shopcart 样式 */
 	.content-fullReductionRuleName {
 		width: 100%;
-		background: #fffadc;
+		background: #edf3df;
 		font-size: 24rpx;
 		text-align: center;
 		position: sticky;
@@ -1146,7 +1146,7 @@
 	.content-manjian {
 		position: relative;
 		top: 0;
-		background: #fffadc;
+		background: #edf3df;
 		font-size: 24rpx;
 		font-weight: bold;
 		text-align: center;
@@ -1659,7 +1659,7 @@
 	}
 
 	.contact-bussiness-text {
-		color: #2e87cd;
+		color: #516b1d;
 	}
 
 	.carousel-swiper-item {

@@ -192,7 +192,7 @@
 	}
 
 	.log_content .log_content_box .log_content_box_add .spot.default {
-		background: #004ca0;
+		background: #5f7d22;
 		color: white;
 	}
 

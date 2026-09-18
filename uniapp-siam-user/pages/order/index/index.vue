@@ -52,7 +52,7 @@
 		<!-- 空状态 -->
 		<van-empty v-if="!isLoading && activeList.length <= 0"
 			:description="'暂无' + activeSubTabs[currentOrderTab].modeName + '订单'">
-			<van-button type="primary" size="small" color="#004ca0" round @tap="goDrink">
+			<van-button type="primary" size="small" color="#5f7d22" round @tap="goDrink">
 				{{ currentTab == 0 ? '去喝一杯' : '去逛逛' }}
 			</van-button>
 		</van-empty>
@@ -84,6 +84,8 @@
 						modeName: '商城订单'
 					}
 				],
+				// 点单订单状态子Tab：本项目纯堂食 + 到店自提，无配送 → 已去掉「待收货」（外卖口径）
+				// 后端 tabType 取值见 OrderMapper：waitPayment=status1、waitPickedUp=status2/3、afterSales=7/8/9/11
 				shopOrderTabList: [{
 						modeId: 0,
 						modeType: 'all',
@@ -96,16 +98,11 @@
 					},
 					{
 						modeId: 2,
-						modeType: 'waitReceived',
-						modeName: '待收货'
-					},
-					{
-						modeId: 3,
 						modeType: 'waitPickedUp',
 						modeName: '待自提'
 					},
 					{
-						modeId: 4,
+						modeId: 3,
 						modeType: 'afterSales',
 						modeName: '退款/售后'
 					}
@@ -424,7 +421,7 @@
 	}
 
 	.main-tab-text.active {
-		color: #004ca0;
+		color: #5f7d22;
 		font-weight: 500;
 	}
 
@@ -432,7 +429,7 @@
 		width: 48rpx;
 		height: 6rpx;
 		border-radius: 4rpx;
-		background: #004ca0;
+		background: #5f7d22;
 		margin-top: 8rpx;
 	}
 
@@ -472,7 +469,7 @@
 	}
 
 	.sub-tab-text.active {
-		color: #004ca0;
+		color: #5f7d22;
 		font-weight: 500;
 	}
 
@@ -484,7 +481,7 @@
 		width: 32rpx;
 		height: 4rpx;
 		border-radius: 2rpx;
-		background: #004ca0;
+		background: #5f7d22;
 	}
 
 	.badge {
@@ -542,11 +539,11 @@
 	}
 
 	.status-text.blue {
-		color: #004ca0;
+		color: #5f7d22;
 	}
 
 	.status-text.gray {
-		color: #999999;
+		color: #666666;
 	}
 
 	.goods-summary {
@@ -611,7 +608,7 @@
 	}
 
 	.btn-primary {
-		background: #004ca0;
+		background: #5f7d22;
 		color: #ffffff;
 	}
 

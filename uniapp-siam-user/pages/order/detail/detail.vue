@@ -12,10 +12,10 @@
 			<text class="shop-row-contact">联系门店</text>
 		</view>
 
-		<!-- 取餐码卡（163:112） -->
-		<view class="queue-card" v-if="showQueueCard">
+		<!-- 取餐码卡（163:112）：仅外带自提单展示；堂食单扫码已带桌号，出品按桌送 -->
+		<view class="queue-card" v-if="showPickupCode">
 			<text class="queue-label">取餐码</text>
-			<text class="queue-code">{{ order.queueNo }}</text>
+			<text class="queue-code">{{ pickupCode }}</text>
 			<text class="queue-tip">向店员出示此码，核销后取货</text>
 		</view>
 
@@ -24,7 +24,7 @@
 			<text class="refund-label">退款进度</text>
 			<view class="refund-right">
 				<text class="refund-status">{{ order.refundStatusText }}</text>
-				<van-icon name="arrow" color="#004ca0" size="14px" />
+				<van-icon name="arrow" color="#5f7d22" size="14px" />
 			</view>
 		</view>
 
@@ -67,6 +67,7 @@
 			<text class="info-row">订单编号  {{ order.orderNo }}</text>
 			<text class="info-row">下单时间  {{ order.createTime }}</text>
 			<text class="info-row" v-if="order.tableName">台位  {{ order.tableName }}</text>
+			<text class="info-row" v-if="Number(order.diningNum) > 0">就餐人数  {{ order.diningNum }} 人</text>
 			<text class="info-row" v-if="order.paymentModeText && Number(order.status) != 1">支付方式  {{ order.paymentModeText }}</text>
 			<text class="info-row"
 				v-if="order.shoppingWay == 2 && order.contactRealname">收货信息  {{ order.contactProvince }}{{ order.contactCity }}{{ order.contactArea }}{{ order.contactStreet }} {{ order.contactRealname }} {{ order.contactPhone }}</text>
@@ -273,22 +274,33 @@
 			},
 			statusDesc() {
 				const s = Number(this.order.status);
-				const dine = this.order.shoppingWay == 1;
 				if (s === 1) return '订单已提交，请在5分钟内完成支付';
-				if (s === 2) return dine ? '支付成功，商家正在备餐' : '支付成功，商家正在安排配送';
-				if (s === 3) return '下单成功，到店出示取餐码即可';
-				if (s === 4) return '商家已接单，骑手正在赶来的路上';
-				if (s === 5) return '订单配送中，请保持手机畅通';
-				if (s === 6) return '订单已完成，感谢惠顾';
+				if (s === 2) return '支付成功，商家正在备餐';
+				if (s === 3) return this.isDineIn ? '下单成功，餐品将送至您的桌位' :
+					'下单成功，到店出示取餐码即可';
+				if (s === 4) return '商家正在处理您的订单，请留意商家通知';
+				if (s === 5 || s === 6) return '订单已完成，感谢惠顾';
 				if (s === 7) return '售后处理中，请耐心等待';
 				if (s === 8) return '退款已原路退回，请注意查收';
 				if (s === 9) return '售后处理完成，期待您再次光临';
 				if (s === 10 || s === 11) return '订单已取消，期待您再次光临';
 				return '';
 			},
-			// 待自取（shoppingWay==1）且已支付未完成时展示取餐码
-			showQueueCard() {
-				return this.order.shoppingWay == 1 && this.order.queueNo &&
+			// 堂食单判定：扫码进桌的订单带桌号快照（tableName），出品按桌送、不出取餐码
+			// TODO 后端 Order 实体补 orderScene 映射后，可改用 orderScene === 2 精确判定自提单
+			isDineIn() {
+				return !!this.order.tableName;
+			},
+			// 自提单取餐码：整数流水号格式化为设计稿的「A-038」形态
+			pickupCode() {
+				const no = Number(this.order.queueNo);
+				if (!no) return '';
+				const digit = no < 10 ? '00' + no : (no < 100 ? '0' + no : String(no));
+				return 'A-' + digit;
+			},
+			// 取餐码卡：仅自提单、且已支付未完成期间展示
+			showPickupCode() {
+				return !this.isDineIn && !!this.order.queueNo &&
 					[2, 3].indexOf(Number(this.order.status)) != -1;
 			},
 			// 底部按钮栏（C-11 163:133）
@@ -692,7 +704,7 @@
 
 	/* ===== 状态头（C-11 163:106） ===== */
 	.status-header {
-		background: #004ca0;
+		background: #5f7d22;
 		padding: 32rpx 32rpx 40rpx;
 		display: flex;
 		flex-direction: column;
@@ -707,7 +719,6 @@
 	.status-desc {
 		font-size: 24rpx;
 		color: #ffffff;
-		opacity: 0.92;
 		margin-top: 8rpx;
 	}
 
@@ -740,7 +751,7 @@
 
 	.shop-row-contact {
 		font-size: 24rpx;
-		color: #004ca0;
+		color: #5f7d22;
 		flex-shrink: 0;
 	}
 
@@ -798,7 +809,7 @@
 
 	.refund-status {
 		font-size: 24rpx;
-		color: #004ca0;
+		color: #5f7d22;
 		margin-right: 8rpx;
 	}
 
@@ -845,7 +856,7 @@
 
 	.goods-num {
 		font-size: 26rpx;
-		color: #999999;
+		color: #333333;
 		margin-left: 8rpx;
 	}
 
@@ -920,13 +931,16 @@
 		z-index: 20;
 		background: #ffffff;
 		display: flex;
+		justify-content: flex-end;
 		padding: 20rpx 24rpx;
 		padding-bottom: calc(20rpx + constant(safe-area-inset-bottom));
 		padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
 	}
 
 	.bar-btn {
-		flex: 1;
+		/* 设计 163:133/163:134：按钮固定 110px（=220rpx），整排右对齐 */
+		flex: none;
+		width: 220rpx;
 		height: 80rpx;
 		border-radius: 40rpx;
 		display: flex;
@@ -950,7 +964,7 @@
 	}
 
 	.btn-primary {
-		background: #004ca0;
+		background: #5f7d22;
 		color: #ffffff;
 		font-weight: 500;
 	}

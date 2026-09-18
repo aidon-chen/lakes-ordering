@@ -97,7 +97,7 @@
 		width: 144rpx;
 		height: 144rpx;
 		border-radius: 72rpx;
-		background: #004ca0;
+		background: #5f7d22;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -157,7 +157,7 @@
 		width: 300rpx;
 		height: 88rpx;
 		border-radius: 44rpx;
-		background: #004ca0;
+		background: #5f7d22;
 		color: #ffffff;
 		font-size: 28rpx;
 		font-weight: 500;

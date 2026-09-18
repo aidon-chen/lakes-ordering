@@ -7,10 +7,11 @@ const statusText = (status) => {
             return '待处理';
         case 3:
             return '待自提';
+        // 4/5 为基座配送态：本项目（纯堂食 + 到店自提）不会产生，改中性文案以免误导
         case 4:
-            return '待配送';
+            return '待交付';
         case 5:
-            return '已配送';
+            return '已交付';
         case 6:
             return '已完成';
         case 7:

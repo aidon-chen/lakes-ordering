@@ -18,7 +18,7 @@
 				@tap="parseEventDynamicCode($event, disabled ? '' : 'loginTap')" hover-class="hover-class-public">
 				确定
 			</button> -->
-			<van-button type="primary" :disabled="disabled" class="confirm-btn theme-bg" color="#004ca0"
+			<van-button type="primary" :disabled="disabled" class="confirm-btn theme-bg" color="#5f7d22"
 			@tap="parseEventDynamicCode($event, disabled ? '' : 'loginTap')" hover-class="hover-class-public" block>确定</van-button>
 		</view>
 	</view>
@@ -102,7 +102,10 @@
 		/**
 		 * 生命周期函数--监听页面卸载
 		 */
-		onUnload: function() {},
+		onUnload: function() {
+			//离开页面时清掉倒计时，避免定时器泄漏
+			clearInterval(interval);
+		},
 		/**
 		 * 页面相关事件处理函数--监听用户下拉动作
 		 */
@@ -119,49 +122,37 @@
 			getTimestamp() {
 				var timestamp = dateHelper.getTimestamp();
 				console.log(timestamp);
-				this.setData({
-					timestamp: timestamp
-				});
+				this.timestamp = timestamp;
 			},
 
 			phoneKey(e) {
 				//判断电话号码的el表达式
 				let phone = e.detail.value;
 				let isMobile = utilHelper.verifyPhone(phone);
-				var data = this;
-				data.disabledCode = true; //设置“获取验证码”按钮为disable
+				this.phone = phone;
+				this.disabledCode = true; //设置“获取验证码”按钮为disable
 				//如果通过电话号码的el表达式并且停顿时间等于60秒设置可以重新获取
 				if (isMobile && this.currentTime == 60) {
-					data.disabledCode = false;
+					this.disabledCode = false;
 				}
 				//判断如果验证码输入框不为空并且验证码的长度等于6并且“验证码”按钮不为真则设置可以登录，否则不能登录
-				data.disabled = data.code && data.code.length == 6 && !data.disabledCode ? false : true;
-				this.setData({
-					phone: phone,
-					disabled: data.disabled,
-					disabledCode: data.disabledCode
-				});
+				this.disabled = this.code && this.code.length == 6 && !this.disabledCode ? false : true;
 			},
 
 			codeKey(e) {
 				let key = e.detail.value;
-				var data = this;
-				data.disabled = true;
+				this.code = key;
+				this.disabled = true;
 				//判断验证码输入框的长度等于6则设置登录按钮可以点击
 				if (key.length == 6) {
-					data.disabled = false;
+					this.disabled = false;
 				}
-				this.setData({
-					code: key,
-					disabled: data.disabled
-				});
 			},
 
 			send(e) {
 				console.log(e);
-				if (!e.detail.userInfo) {
-					return;
-				}
+				//不再用 e.detail.userInfo 做拦截：按钮上的 getUserInfo 授权弹窗已不再返回真实头像昵称，
+				//用户点「拒绝」时原来会直接 return，导致验证码永远发不出去（T3 会把按钮改成纯 @tap 胶囊）
 				//this.onLoad({options:{inviterId:this.data.inviterId}});
 				let phone = this.phone;
 				let isMobile = utilHelper.verifyPhone(phone);
@@ -179,9 +170,7 @@
 					if (result.success) {
 						toastService.showToast(result.message);
 						//设置验证码按钮为不可点击状态，因为要等60秒之后才能进行点击
-						this.setData({
-							disabledCode: true
-						});
+						this.disabledCode = true;
 						this.getCode();
 					}
 				});
@@ -192,29 +181,20 @@
 				var currentTime = this.currentTime;
 				//设置定时器计算发送验证码之后60秒可以重新发送，一秒请求一次
 				interval = setInterval(function() {
-					// if (currentTime == 60) {
-					//   toastService.hideLoading();
-					// }
 					currentTime--;
-					that.setData({
-						time: currentTime + 's',
-						currentTime: currentTime
-					});
+					that.time = currentTime + 's';
+					that.currentTime = currentTime;
 					if (currentTime <= 0) {
 						clearInterval(interval); //当60秒过去之后，清除定时器
-						that.setData({
-							time: '重新获取',
-							currentTime: 60,
-							disabledCode: false
-						});
+						that.time = '重新获取';
+						that.currentTime = 60;
+						that.disabledCode = false;
 					}
 				}, 1000);
 			},
 
 			loginTap() {
 				console.log(this.phone, this.code);
-				// 发送 res.code 到后台换取 openId, sessionKey, unionId
-				toastService.showLoading('正在登录...', true);
 				let phone = this.phone;
 				var mobile = /^[1][3,4,5,7,8][0-9]{9}$/;
 				var isMobile = mobile.exec(phone);
@@ -223,56 +203,49 @@
 					toastService.showToast('请输入正确的电话号码');
 					return;
 				}
+				toastService.showLoading('正在登录...', true);
 				var _this = this;
+				// 不再依赖 getUserInfo 的返回值：uni.getUserInfo / uni.getUserProfile 自 2022-10 起只返回匿名头像与「微信用户」昵称，
+				// 旧流程里这个回调成功后再 setData 会抛错，导致 verificationLogin 永远不被调用（登录点了没反应）
 				// #ifdef APP-PLUS||H5
-				this.verificationLogin(this.code);
+				this.verificationLogin('');
 				// #endif
 				// #ifdef MP-WEIXIN||MP-ALIPAY
 				uni.login({
 					success: (res) => {
-						if (!this.userInfo) {
-							uni.getUserInfo({
-								success: (userRes) => {
-									_this.setData({
-										userInfo: userRes.userInfo
-									});
-									_this.verificationLogin(res.code);
-								}
-							});
-						} else {
-							this.verificationLogin(res.code);
-						}
+						_this.verificationLogin(res.code);
 					}
 				});
 				// #endif
 
 			},
 
-			verificationLogin(code, userInfo) {
+			verificationLogin(code) {
+				const info = this.userInfo || {};
 				https.request('/rest/member/verification/login', {
 					mobile: this.phone,
 					mobileCode: this.code,
-					headImg: this.userInfo.avatarUrl,
-					username: this.userInfo.nickName,
-					sex: this.userInfo.gender,
+					headImg: info.avatarUrl,
+					username: info.nickName,
+					sex: info.gender,
 					code: code,
 					inviterId: this.inviterId ? this.inviterId : ''
 				}).then((result) => {
+					//无论成功失败都要收起 loading，否则失败时页面会一直卡在遮罩上
+					toastService.hideLoading();
 					if (result.success) {
 						authService.setToken(result.data.token);
 						authService.setOpenId(result.data.openId);
 						authService.setPhoneNumber(this.phone);
 						app.globalData.getUserInfo();
-						this.setData({
-							disabled: true
-						});
-						toastService.hideLoading();
+						this.disabled = true;
 						toastService.showSuccess('登录成功');
 						let timeout = setTimeout(() => {
 							//如果是邀请链接直接跳转到首页，如果是进入用户后退一页
 							if (this.inviterId) {
+								//switchTab 必须用「/」开头的绝对路径，原来的相对路径会调用失败
 								uni.switchTab({
-									url: '../../../mine/index/index'
+									url: '/pages/mine/index/index'
 								});
 							} else {
 								uni.navigateBack(2);

@@ -150,7 +150,7 @@
 		width: 112rpx;
 		height: 112rpx;
 		border-radius: 56rpx;
-		background: #004ca0;
+		background: #5f7d22;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -255,7 +255,7 @@
 
 	.main-btn {
 		height: 88rpx;
-		background: #004ca0;
+		background: #5f7d22;
 		color: #ffffff;
 		font-size: 30rpx;
 		font-weight: 500;

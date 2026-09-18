@@ -64,7 +64,7 @@
 			"path": "pages/mine/integral/integral",
 			"style": {
 				"navigationBarTitleText": "我的积分",
-				"navigationBarBackgroundColor": "#004ca0",
+				"navigationBarBackgroundColor": "#5f7d22",
 				"navigationBarTextStyle": "white"
 			}
 		},
@@ -72,7 +72,7 @@
 			"path": "pages/mine/balance/index/index",
 			"style": {
 				"navigationBarTitleText": "我的余额",
-				"navigationBarBackgroundColor": "#004ca0",
+				"navigationBarBackgroundColor": "#5f7d22",
 				"navigationBarTextStyle": "white"
 			}
 		},
@@ -81,7 +81,7 @@
 			"style": {
 				"usingComponents": {},
 				"navigationBarTitleText": "会员中心",
-				"navigationBarBackgroundColor": "#11110f",
+				"navigationBarBackgroundColor": "#171c0f",
 				"navigationBarTextStyle": "white"
 			}
 		},
@@ -108,14 +108,14 @@
 			"path": "pages/mine/share/index/index",
 			"style": {
 				"navigationBarTitleText": "全民参与 · 邀请好友",
-				"navigationBarBackgroundColor": "#feefd0"
+				"navigationBarBackgroundColor": "#edf3df"
 			}
 		},
 		{
 			"path": "pages/mine/share/reward/reward",
 			"style": {
 				"navigationBarTitleText": "我的奖励",
-				"navigationBarBackgroundColor": "#004ca0",
+				"navigationBarBackgroundColor": "#5f7d22",
 				"navigationBarTextStyle": "white"
 			}
 		},
@@ -153,7 +153,8 @@
 		{
 			"path": "pages/menu/search/search",
 			"style": {
-				"navigationBarBackgroundColor": "#004ca0",
+				"navigationBarTitleText": "搜索",
+				"navigationBarBackgroundColor": "#5f7d22",
 				"navigationBarTextStyle": "white"
 			}
 		},
@@ -214,19 +215,22 @@
 		{
 			"path": "pages/internal/login/authorization/authorization",
 			"style": {
-				"usingComponents": {}
+				"usingComponents": {},
+				"navigationBarTitleText": ""
 			}
 		},
 		{
 			"path": "pages/internal/login/choose/choose",
 			"style": {
-				"usingComponents": {}
+				"usingComponents": {},
+				"navigationBarTitleText": ""
 			}
 		},
 		{
 			"path": "pages/internal/login/code/code",
 			"style": {
-				"usingComponents": {}
+				"usingComponents": {},
+				"navigationBarTitleText": ""
 			}
 		},
 		{
@@ -271,7 +275,9 @@
 		},
 		{
 			"path": "pages/internal/mall/menu/menu",
-			"style": {}
+			"style": {
+				"navigationBarTitleText": "商品分类"
+			}
 		},
 		{
 			"path": "pages/internal/mall/car/car",
@@ -326,7 +332,9 @@
 		},
 		{
 			"path": "pages/mine/collect/index/index",
-			"style": {}
+			"style": {
+				"navigationBarTitleText": "我的收藏"
+			}
 		},
 		{
 			"path": "pages/mine/unreceived/reward/list/list",
@@ -337,7 +345,7 @@
 	],
 	"tabBar": {
 		"color": "#bebebe",
-		"selectedColor": "#004ca0",
+		"selectedColor": "#5f7d22",
 		"borderStyle": "white",
 		"list": [{
 				"pagePath": "pages/index/index",

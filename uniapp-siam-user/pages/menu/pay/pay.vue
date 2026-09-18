@@ -1916,8 +1916,8 @@
 
 	.dine-table-tag {
 		flex-shrink: 0;
-		background: #e8eef7;
-		color: #004ca0;
+		background: #edf3df;
+		color: #5f7d22;
 		font-size: 22rpx;
 		line-height: 1;
 		padding: 6rpx 16rpx;

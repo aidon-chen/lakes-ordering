@@ -179,7 +179,7 @@
 
 		/* C-03 当前门店：蓝色描边高亮 */
 		&.is-current {
-			border-color: #004CA0;
+			border-color: #5f7d22;
 		}
 
 		.shop-logo {
@@ -215,7 +215,7 @@
 					margin-left: 12rpx;
 					font-size: 20rpx;
 					color: #FFFFFF;
-					background-color: #004CA0;
+					background-color: #5f7d22;
 					padding: 4rpx 14rpx;
 					border-radius: 6rpx;
 				}
@@ -264,7 +264,7 @@
 
 				.shop-distance {
 					font-size: 24rpx;
-					color: #004CA0;
+					color: #5f7d22;
 					font-weight: 500;
 					margin-right: 20rpx;
 				}
@@ -309,7 +309,7 @@
 				width: 96rpx;
 				font-size: 26rpx;
 				font-weight: 600;
-				color: #004CA0;
+				color: #5f7d22;
 			}
 
 			.tt-desc {

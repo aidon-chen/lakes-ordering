@@ -194,7 +194,7 @@
 					flex-shrink: 0;
 
 					&.open {
-						color: #004CA0;
+						color: #5f7d22;
 						background-color: rgba(0, 76, 160, 0.08);
 					}
 
@@ -236,7 +236,7 @@
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			color: #004CA0;
+			color: #5f7d22;
 
 			.action-text {
 				margin-left: 10rpx;
@@ -318,7 +318,7 @@
 				.type-min-consume {
 					font-size: 26rpx;
 					color: #6F4E20;
-					background-color: #FFFADC;
+					background-color: #edf3df;
 					padding: 4rpx 16rpx;
 					border-radius: 8rpx;
 				}
@@ -346,7 +346,7 @@
 			height: 88rpx;
 			line-height: 88rpx;
 			text-align: center;
-			background-color: #004CA0;
+			background-color: #5f7d22;
 			color: #FFFFFF;
 			font-size: 30rpx;
 			border-radius: 44rpx;

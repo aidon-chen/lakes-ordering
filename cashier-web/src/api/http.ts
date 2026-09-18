@@ -1,11 +1,17 @@
 import axios from 'axios'
 
 /**
- * siam-server 接口层（/rest 经 vite proxy 转发到 localhost:9200）
+ * siam-server 接口层
+ * - 本地开发（vite dev）：/rest 经 vite proxy 转发到 localhost:9200
+ * - 生产构建（vite build）：直连云托管后端 bar-mvp 公网域名（静态托管无 proxy）
  * 响应信封：{ code: 0, msg, data }（BasicResult）
  */
+const API_BASE = import.meta.env.PROD
+  ? 'https://bar-mvp-315579-12-1488393615.sh.run.tcloudbase.com/siam-server'
+  : '/'
+
 export const http = axios.create({
-  baseURL: '/',
+  baseURL: API_BASE,
   timeout: 15000
 })
 
