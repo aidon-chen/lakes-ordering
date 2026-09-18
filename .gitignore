@@ -33,12 +33,8 @@ unpackage/
 *.ipr
 /out/
 
-### Maven    Ŀ¼ ###
+### Maven 目录 ###
 target
-logs/debug.log
-logs/error.log
-logs/warn.log
-logs/info.log
 
 logs
 log.path_IS_UNDEFINED
@@ -49,3 +45,4 @@ application-prod.yml
 application-siamcloud-test.yml
 application-siamcloud-show.yml
 application-siamcloud-prod.yml
+.DS_Store
