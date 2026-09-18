@@ -1,0 +1,19 @@
+import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+import tailwindcss from '@tailwindcss/vite'
+import { fileURLToPath, URL } from 'node:url'
+
+// 收银端前端：Vue3 + Vite + Pinia + Tailwind
+// 后端代理：本地 siam-server system-provider 端口 9200（application-local.yml）
+export default defineConfig({
+  plugins: [vue(), tailwindcss()],
+  resolve: {
+    alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) }
+  },
+  server: {
+    port: 5270,
+    proxy: {
+      '/rest': { target: 'http://localhost:9200', changeOrigin: true }
+    }
+  }
+})

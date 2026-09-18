@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+/* ===== 橄榄绿主题（对齐 Ardot 商家端 v1.2 设计令牌） ===== */
+:root {
+  --p: #5f7d22;          /* web-primary */
+  --pd: #516b1d;         /* web-primary-hover */
+  --pl: #edf3df;         /* web-primary-soft */
+  --dark: #171c0f;       /* web-sidebar-bg */
+  --dark2: #252d16;      /* web-sidebar-active */
+  --gold: #f0dcab;
+  --goldl: #fffadc;
+  --bg: #f4f5f0;
+  --panel: #ffffff;
+  --line: #e3e6da;
+  --txt: #26301b;
+  --sub: #5a614e;
+  --muted: #8a917f;
+  --warn: #e25a2b;
+
+  /* ===== W-07 桌卡四态令牌（Ardot 商家端 file/726208852398101 · 2:608） ===== */
+  --tc-line: #dbdee6;      /* 卡片默认边框 */
+  --tc-gray: #61666b;      /* 空闲卡台号 */
+  --tc-sub: #8f94a0;       /* 次级文字 */
+  --tc-hold: #bfc4cc;      /* 占位灰 */
+  --tc-title: #404a21;     /* 占用卡台号深绿 */
+  --rsv: #e6a33d;          /* 预定橙 */
+  --rsv-bg: #fdf5ed;
+  --clean: #f56b6b;        /* 待清台红 */
+  --clean-bg: #fde3e3;
+}
+
+body {
+  font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: var(--bg);
+  color: var(--txt);
+  font-size: 14px;
+  min-width: 1440px;
+}
