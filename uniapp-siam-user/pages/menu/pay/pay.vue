@@ -12,7 +12,14 @@
 						<view>选择门店</view>
 						<van-icon name="arrow" />
 					</view>
-					<block v-if="selfOutActiveIndex==0&&initShopInfo&&shopInfo">
+					<block v-if="dineInfo">
+						<view class="flex_start">
+							<view class="out_of_range one_row">{{shopInfo.shop.name}}</view>
+							<view class="dine-table-tag">堂食·{{dineInfo.tableNo}}</view>
+						</view>
+						<view class="distance_m">堂食就餐 · {{dineInfo.personCount}} 人</view>
+					</block>
+					<block v-else-if="selfOutActiveIndex==0&&initShopInfo&&shopInfo">
 						<view class="flex_start">
 							<view class="out_of_range one_row">{{shopInfo.shop.name}}</view>
 							<van-icon name="arrow" />
@@ -245,6 +252,7 @@
 					index: 1
 				}],
 				selfOutActiveIndex: 0,
+				dineInfo: null,
 				currentTab: 0,
 				reducedDeliveryPrice: 0,
 				title: '请选择支付方式',
@@ -1017,12 +1025,10 @@
 							package: result.data.package,
 							signType: 'MD5',
 							paySign: result.data.paySign,
-							success(res) {
+							success: (res) => {
 								toastService.showSuccess('支付成功', true);
 								let timeout = setTimeout(() => {
-									uni.redirectTo({
-										url: '../../order/detail/detail?id=' + id
-									});
+									this.goPayResult(id, actualPrice, '微信支付');
 									clearTimeout(timeout);
 								}, 1000);
 							},
@@ -1098,9 +1104,9 @@
 						toastService.showSuccess('支付成功', true);
 						this.hidePwdLayer();
 						let timeout = setTimeout(() => {
-							uni.redirectTo({
-								url: '../../order/detail/detail?id=' + this.balanceId
-							});
+							this.goPayResult(this.balanceId, this.orderDetail
+								.fullPriceReductionIsHidden ? this.orderDetail.fullPriceReduction : this
+								.balanceActualPrice, '余额支付');
 							clearTimeout(timeout);
 						}, 1000);
 					}
@@ -1110,6 +1116,39 @@
 			bindtouchend(e) {
 				console.log('触摸结束');
 				this.showPwdLayer();
+			},
+
+			/**
+			 * 跳转支付结果页（设计稿 C-09）
+			 */
+			goPayResult(orderId, amount, channel) {
+				const d = getApp().globalData.deliveryAndSelfTaking || {};
+				const dine = d.dineInfo;
+				const mode = dine ? '堂食' : (this.selfOutActiveIndex == 1 ? '外送' : '自提');
+				let shopName = '';
+				if (this.shopInfo && this.shopInfo.shop && this.shopInfo.shop.name) {
+					shopName = this.shopInfo.shop.name;
+				}
+				let url = '/pages/menu/pay-result/pay-result?id=' + (orderId || '') +
+					'&amount=' + (amount || 0) +
+					'&channel=' + encodeURIComponent(channel || '微信支付') +
+					'&mode=' + encodeURIComponent(mode);
+				if (shopName) {
+					url += '&shop=' + encodeURIComponent(shopName);
+				}
+				uni.redirectTo({
+					url: url
+				});
+			},
+
+			/**
+			 * 结算页切到自提：清除堂食信息（设计稿 A-05 点餐方式切换）
+			 */
+			dineModeTapSelf() {
+				getApp().globalData.deliveryAndSelfTaking.dineInfo = null;
+				this.dineInfo = null;
+				this.selfOutActiveIndex = 0;
+				toastService.showToast('已切换为自提');
 			},
 
 			balancePayFail() {
@@ -1861,5 +1900,21 @@
 		font-size: 28rpx;
 		color: var(--tab-text-color, #646566);
 		margin-top: 10rpx;
+	}
+
+	/* 堂食桌号标签（设计稿 A-05） */
+	.shop-name-row {
+		gap: 8rpx;
+		align-items: center;
+	}
+
+	.dine-table-tag {
+		flex-shrink: 0;
+		background: #e8eef7;
+		color: #004ca0;
+		font-size: 22rpx;
+		line-height: 1;
+		padding: 6rpx 16rpx;
+		border-radius: 18rpx;
 	}
 </style>

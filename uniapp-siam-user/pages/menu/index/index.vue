@@ -10,16 +10,25 @@
 							<view>该区域外送功能即将开通</view>
 							<van-icon name="arrow" />
 						</view>
-						<block v-if="selfOutActiveIndex==0&&initShopInfo.id&&!isLoading">
-							<view @tap="selfTap" :data-index="selfOutActiveIndex">
-								<view class="flex_between">
-									<view class="out_of_range one_row">{{shopInfo.shop.name}}</view>
-									<van-icon name="arrow" />
-								</view>
-								<view class="distance_m" v-if="initShopInfo">
-									距您{{initShopInfo.shopAdditionalVo.deliveryDistanceText}}</view>
+					<block v-if="dineInfo&&!isLoading">
+						<view>
+							<view class="flex_start shop-name-row">
+								<view class="out_of_range one_row shop-name-text">{{shopInfo.shop.name}}</view>
+								<view class="dine-table-tag">堂食·{{dineInfo.tableNo}}</view>
 							</view>
-						</block>
+							<view class="distance_m">堂食就餐 · {{dineInfo.personCount}} 人</view>
+						</view>
+					</block>
+					<block v-else-if="selfOutActiveIndex==0&&initShopInfo.id&&!isLoading">
+						<view @tap="selfTap" :data-index="selfOutActiveIndex">
+							<view class="flex_between">
+								<view class="out_of_range one_row">{{shopInfo.shop.name}}</view>
+								<van-icon name="arrow" />
+							</view>
+							<view class="distance_m" v-if="initShopInfo">
+								距您{{initShopInfo.shopAdditionalVo.deliveryDistanceText}}</view>
+						</view>
+					</block>
 						<block v-if="(selfOutActiveIndex==0||selfOutActiveIndex==1)&&initShopInfo&&isLoading">
 							<van-loading custom-class="loading_box_class">加载中...</van-loading>
 						</block>
@@ -43,12 +52,18 @@
 							</view>
 						</block>
 					</view>
-					<view class="flex_between self_out_button" v-if="selfOutItems.length>0&&!isLoading">
-						<view v-for="(item,index) in selfOutItems" @tap="selfTap" :data-index="item.index"
-							:class="selfOutActiveIndex==index?'self_out_active self_button theme-bg':'self_button'">
-							{{item.text}}
-						</view>
+				<view class="flex_between self_out_button" v-if="dineInfo!==null&&!isLoading">
+					<view :class="dineInfo ? 'self_out_active self_button theme-bg' : 'self_button'"
+						@tap="dineModeTap" data-mode="dine">堂食</view>
+					<view :class="!dineInfo ? 'self_out_active self_button theme-bg' : 'self_button'"
+						@tap="dineModeTap" data-mode="self">自提</view>
+				</view>
+				<view class="flex_between self_out_button" v-else-if="selfOutItems.length>0&&!isLoading">
+					<view v-for="(item,index) in selfOutItems" @tap="selfTap" :data-index="item.index"
+						:class="selfOutActiveIndex==index?'self_out_active self_button theme-bg':'self_button'">
+						{{item.text}}
 					</view>
+				</view>
 				</view>
 			</view>
 		</view>
@@ -480,6 +495,7 @@
 					index: 1
 				}],
 				selfOutActiveIndex: 0,
+				dineInfo: null,
 				winHeight: 0,
 				topHeight: 0,
 				topArr: [],
@@ -1632,6 +1648,45 @@
 				uni.navigateTo({
 					url: `/pages/address/choose/choose`
 				})
+			},
+			/**
+			 * 堂食/自提切换（设计稿 A-02 点餐方式切换）
+			 */
+			dineModeTap(e) {
+				const mode = e.currentTarget.dataset.mode;
+				if (mode === 'dine') {
+					if (this.dineInfo) return;
+					uni.scanCode({
+						success: (res) => {
+							const text = res.result || '';
+							// 桌台码内容支持：tid=05&area=A 或含这些参数的 URL
+							const match = text.match(/(?:\?|&)?(tid|tableId|tableNo)=(\w+)/i);
+							if (!match) {
+								toastService.showToast('桌台码无效，请扫描桌台二维码');
+								return;
+							}
+							const area = (text.match(/[?&]area=(\w+)/i) || [])[1] || '';
+							const tableId = match[2];
+							const dineInfo = {
+								tableId: tableId,
+								area: area,
+								tableNo: (area ? area + '区' : '') + tableId + '桌',
+								tableLabel: tableId,
+								personCount: 4
+							};
+							app.globalData.deliveryAndSelfTaking.dineInfo = dineInfo;
+							this.dineInfo = dineInfo;
+						},
+						fail: () => {}
+					});
+					return;
+				}
+				// 切到自提：清除堂食信息
+				if (!this.dineInfo) return;
+				app.globalData.deliveryAndSelfTaking.dineInfo = null;
+				this.dineInfo = null;
+				this.selfOutActiveIndex = 0;
+				toastService.showToast('已切换为自提');
 			},
 			//获取距离顶部的高度
 			getScrollTop(selector) {
@@ -3058,6 +3113,26 @@
 
 	#shopping-cart-detail {
 		bottom: calc(var(--window-bottom));
+	}
+
+	/* 堂食桌号标签（设计稿 A-02 桌号标签） */
+	.shop-name-row {
+		gap: 8rpx;
+		align-items: center;
+	}
+
+	.shop-name-text {
+		max-width: 340rpx;
+	}
+
+	.dine-table-tag {
+		flex-shrink: 0;
+		background: #e8eef7;
+		color: #004ca0;
+		font-size: 22rpx;
+		line-height: 1;
+		padding: 6rpx 16rpx;
+		border-radius: 18rpx;
 	}
 
 	.content {

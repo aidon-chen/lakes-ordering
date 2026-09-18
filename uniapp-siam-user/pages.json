@@ -138,6 +138,19 @@
 			}
 		},
 		{
+			"path": "pages/menu/scan-table/scan-table",
+			"style": {
+				"navigationBarTitleText": "扫码进桌"
+			}
+		},
+		{
+			"path": "pages/menu/pay-result/pay-result",
+			"style": {
+				"navigationBarTitleText": "支付结果",
+				"navigationStyle": "custom"
+			}
+		},
+		{
 			"path": "pages/menu/search/search",
 			"style": {
 				"navigationBarBackgroundColor": "#004ca0",
@@ -182,6 +195,20 @@
 			"path": "pages/address/search/search",
 			"style": {
 				"navigationBarTitleText": "选择地址"
+			}
+		},
+		{
+			"path": "pages/shop/shop-list/shop-list",
+			"style": {
+				"navigationBarTitleText": "选择门店",
+				"enablePullDownRefresh": true,
+				"backgroundTextStyle": "dark"
+			}
+		},
+		{
+			"path": "pages/shop/shop-detail/shop-detail",
+			"style": {
+				"navigationBarTitleText": "门店详情"
 			}
 		},
 		{
@@ -329,12 +356,6 @@
 				"text": "商城",
 				"iconPath": "static/assets/tabbar/Icon/store.png",
 				"selectedIconPath": "static/assets/tabbar/SelectedIcon/blue/store.png"
-			},
-			{
-				"pagePath": "pages/internal/mall/car/car",
-				"text": "购物车",
-				"iconPath": "static/assets/tabbar/Icon/car.png",
-				"selectedIconPath": "static/assets/tabbar/SelectedIcon/blue/car.png"
 			},
 			{
 				"pagePath": "pages/mine/index/index",
