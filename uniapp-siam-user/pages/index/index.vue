@@ -1,39 +1,46 @@
 <template>
-	<view class="page">
+	<view class="page" :style="{ paddingTop: statusBarHeight + 'px' }">
 
-		<swiper :indicator-dots="indicatorDots" class="carousel-swiper" :autoplay="autoplay" :interval="interval"
-			:duration="duration" :indicator-active-color="afterColor" style="margin: 0;border-radius: 0;">
-			<block v-for="(item, index) in carouselUrls" :key="index">
-				<swiper-item class="carousel-swiper-item">
-					<image :src="item.imagePath" class="carousel-image" mode="aspectFill"
-						:data-imageLinkUrl="item.imageLinkUrl" @tap="carouseCommodityDetailTap" />
-				</swiper-item>
-			</block>
-		</swiper>
-		<view class="self_out_items">
-			<view class="self_out_item" hover-class="hover-class-public" @tap="businessTap" data-index="0">
-				<view class="self_out_items_view">
-					<image src="https://siam-hangzhou.oss-cn-hangzhou.aliyuncs.com/data/images/system/selfPickup.jpg"
-						class="self_out_image" mode="widthFix"></image>
-					<view class="self_out_item_text">
-						<view class="self_out_item_title">
-							<view class="self_out_title">自提</view>
-							<view class="self_out_desc">下单免排队</view>
-						</view>
-					</view>
-
+		<!-- C-02 首页活动弹窗 -->
+		<view class="activity-mask" v-if="activityDialogShow" @tap="closeActivityDialog">
+			<view class="activity-dialog" @tap.stop>
+				<image v-if="activityAd.imagePath" :src="activityAd.imagePath" class="activity-image" mode="widthFix"
+					@tap="activityImageTap" />
+				<view class="activity-close" @tap="closeActivityDialog">
+					<text class="activity-close-icon">✕</text>
 				</view>
 			</view>
-			<view class="self_out_item" hover-class="hover-class-public" @tap="businessTap" data-index="1">
-				<image src="https://siam-hangzhou.oss-cn-hangzhou.aliyuncs.com/data/images/system/delivery.jpg"
-					class="self_out_image" mode="widthFix"></image>
-				<view class="self_out_item_text">
-					<view class="self_out_item_title">
-						<view class="self_out_title">雪王外送</view>
-						<view class="self_out_desc">甜蜜送到家</view>
-					</view>
+		</view>
 
-				</view>
+		<!-- A-01 露出式轮播：左右各露出 55px -->
+		<swiper class="expose-swiper" previous-margin="110rpx" next-margin="110rpx" :autoplay="true"
+			:interval="5000" :duration="500" :circular="true" @change="swiperChange">
+			<swiper-item class="expose-swiper-item" v-for="(item, index) in carouselUrls" :key="index">
+				<image :src="item.imagePath" class="expose-image" :class="swiperCurrent === index ? 'is-active' : ''"
+					mode="aspectFill" :data-imageLinkUrl="item.imageLinkUrl" @tap="carouseCommodityDetailTap" />
+			</swiper-item>
+		</swiper>
+
+		<!-- A-01 会员入口条（活动展示位） -->
+		<view class="member-bar" hover-class="hover-class-public" @tap="memberCenterTap">
+			<view class="member-bar-left">
+				<view class="member-bar-title">会员中心</view>
+				<view class="member-bar-desc">成长值 · 优惠券 · 会员专属价</view>
+			</view>
+			<van-icon name="arrow" class="member-bar-arrow" />
+		</view>
+
+		<!-- A-01 入口卡片区：堂食点餐 / 自提外带 -->
+		<view class="entry-cards">
+			<view class="entry-card" hover-class="hover-class-public" @tap="dineScanTap">
+				<view class="entry-card-title">堂食点餐</view>
+				<view class="entry-card-desc">扫桌台码 · 自动带入桌号</view>
+				<van-icon name="scan" class="entry-card-icon" />
+			</view>
+			<view class="entry-card" hover-class="hover-class-public" @tap="selfPickupTap">
+				<view class="entry-card-title">自提外带</view>
+				<view class="entry-card-desc">下单免排队 · 到店即取</view>
+				<van-icon name="bag-o" class="entry-card-icon" />
 			</view>
 		</view>
 	</view>
@@ -43,239 +50,49 @@
 	import GlobalConfig from '../../utils/global-config';
 	import https from '../../utils/http';
 	import authService from '../../utils/auth';
-	import toastService from '../../utils/toast.service';
-	import show from '../../utils/toast.service';
-	import amapFile from '../../utils/gaode-libs/amap-wx';
-	import * as Config from '../../utils/gaode-libs/config';
 	//获取应用实例
 	let app = null;
 	export default {
 		data() {
 			return {
-				indicatorDots: false,
-				autoplay: true,
-				interval: 5000,
-				duration: 1000,
-				//beforeColor: "white",//指示点颜色,
-				afterColor: '#f1a142',
-				//当前选中的指示点颜色
-				previousmargin: '60px',
-				//前边距
-				nextmargin: '60px',
-				//后边距
-				opacity: 0.4,
-				extClass: 'weui-dialog-ext-index',
-				scrollTop: false,
-				noDataTip: '../../assets/common/no-data.png',
-				shopList: [],
-				isActivityDialog: false,
 				statusBarHeight: 0,
-				dialogShow: false,
-				maskClosable: false,
-				regeoInfo: {
-					name: '',
-					address: '',
-					location: ''
-				},
-				dialogvisible: false,
-				recommendGoodsList: '',
+				swiperCurrent: 0,
 				carouselUrls: [],
-				shopIndex: 0,
-				shopAdditionalVo: {
-					promotionList: []
-				},
-				rule: {
-					name: ''
-				},
-				reducedDeliveryPrice: 0,
-				isLoading: true
+				// C-02 活动弹窗
+				activityDialogShow: false,
+				activityAd: {
+					imagePath: '',
+					imageLinkUrl: ''
+				}
 			};
 		},
 		onLoad: function() {
 			app = getApp();
-			this.statusBarHeight = app.globalData.systemInfoSync.statusBarHeight * 2;
+			this.statusBarHeight = app.globalData.systemInfoSync.statusBarHeight;
 			this.getCarouselList();
-
+			this.getActivityDialog();
 		},
 		onShow: function() {
-			//判断是否显示新用户弹窗
-			this.getRegeoInit();
+			const addressInfo = app.globalData.deliveryAndSelfTaking.initRegeoInfo;
+			if (addressInfo) {
+				app.globalData.deliveryAndSelfTaking.regeoInfo = addressInfo;
+				app.globalData.deliveryAndSelfTaking.location = addressInfo.location;
+			}
 		},
 		onPullDownRefresh() {
 			this.getCarouselList();
-			this.getRegeoInit();
-
-			setTimeout((outtime) => {
-				// 停止下拉动作
+			setTimeout(() => {
 				uni.stopPullDownRefresh();
-				// 隐藏导航栏加载框
-				uni.hideNavigationBarLoading();
-
-				clearTimeout(outtime);
 			}, 1000);
 		},
 		onHide() {
-			this.dialogShow = false;
-			this.maskClosable = true;
+			this.activityDialogShow = false;
 		},
 		methods: {
-			// position 为关闭时点击的位置
-			beforeClose(position) {
-				switch (position) {
-					case 'left':
-					case 'cell':
-					case 'outside':
-						return true;
-					case 'right':
-						return new Promise((resolve) => {
-							showConfirmDialog({
-									title: '确定删除吗？',
-								})
-								.then(() => resolve(true))
-								.catch(() => resolve(false));
-						});
-				}
-			},
-			getRegeo() {
-				var _this = this;
-				var key = Config.key();
-				var myAmapFun = new amapFile.AMapWX({
-					key: key
-				});
-				myAmapFun.getRegeo({
-					success: function(getRegeo) {
-						console.log(getRegeo);
-						if (!app.globalData.deliveryAndSelfTaking.regeoInfo) {
-							_this.regeoInfo = getRegeo[0].regeocodeData.pois[0];
-							app.globalData.deliveryAndSelfTaking.location = getRegeo[0].longitude +
-								',' +
-								getRegeo[0].latitude;
-							app.globalData.deliveryAndSelfTaking.regeoInfo = getRegeo[0].regeocodeData
-								.pois[0];
-							app.globalData.deliveryAndSelfTaking.regeoInfo.isAutoLocation = true;
-						} else {
-							app.globalData.deliveryAndSelfTaking.location = app.globalData
-								.deliveryAndSelfTaking.location;
-							app.globalData.deliveryAndSelfTaking.regeoInfo.isAutoLocation = true;
-							_this.regeoInfo = app.globalData.deliveryAndSelfTaking.regeoInfo;
-
-						}
-					},
-					fail: function(info) {
-						// wx.showModal({title:info.errMsg})
-					}
-				});
-			},
-			getRegeoInit() {
-				var _this = this;
-				console.log(app.globalData.deliveryAndSelfTaking.location)
-				var addressInfo = app.globalData.deliveryAndSelfTaking.initRegeoInfo;
-
-				_this.regeoInfo = addressInfo;
-				app.globalData.deliveryAndSelfTaking.regeoInfo = addressInfo;
-				app.globalData.deliveryAndSelfTaking.location = addressInfo.location;
-			},
-			shoppingAddressTap() {
-				uni.navigateTo({
-					url: `../address/replace/replace?jump_page=index`
-				});
+			swiperChange(e) {
+				this.swiperCurrent = e.detail.current;
 			},
 
-			showDialog: function() {
-				this.setData({
-					dialogvisible: true
-				});
-			},
-
-			gotoShop(e) {
-				app.globalData.isRemindNewPeople().then((result) => {
-					if (result) {
-						this.setData({
-							dialogShow: false,
-							maskClosable: true
-						});
-					}
-					uni.switchTab({
-						url: '../menu/index/index'
-					});
-				});
-			},
-
-			businessTap(e) {
-				console.log(e)
-				var index = e.currentTarget.dataset.index;
-				console.log("tiaozhuan", index);
-				app.globalData.deliveryAndSelfTaking.selfOutActiveIndex = index;
-				app.globalData.deliveryAndSelfTaking.ifIndexSwitchTab = true;
-				app.globalData.deliveryAndSelfTaking.ifChooseBack = false;
-				app.globalData.deliveryAndSelfTaking.ifChoosePayBack = false;
-				uni.switchTab({
-					url: `/pages/menu/index/index`
-				});
-			},
-
-			searchBusinessTap(e) {
-				console.log(this);
-				uni.navigateTo({
-					url: '../menu/search/search?location=' + app.globalData.deliveryAndSelfTaking.location
-				});
-			},
-
-			commodityDetailTap(e) {
-				uni.navigateTo({
-					url: '../menu/detail/detail?id=' + e.currentTarget.dataset.id + '&shopId=' + e
-						.currentTarget
-						.dataset.shopid
-				});
-			},
-
-			carouseCommodityDetailTap(e) {
-				let _this = this;
-				authService.checkIsLogin().then((result) => {
-					console.log(result);
-					if (result) {
-						_this.getUserInfo(e);
-						return;
-					}
-					app.globalData.checkIsAuth('scope.userInfo');
-				});
-			},
-
-			getUserInfo: function(e) {
-				https.request('/rest/member/getLoginMemberInfo', {}).then((result) => {
-					if (result.success) {
-						uni.navigateTo({
-							url: e.currentTarget.dataset.imagelinkurl
-						});
-					} else {
-						app.globalData.checkIsAuth('scope.userInfo');
-					}
-				});
-			},
-			bindInDevelopment() {
-				app.globalData.bindInDevelopment();
-			},
-			getShoppingCartList() {
-				this.shopList.forEach((item, index) => {
-					https.request('/rest/member/shoppingCart/list', {
-						shopId: item.id,
-						pageNo: -1,
-						pageSize: 20
-					}).then((result) => {
-						show.hideLoading();
-						if (result.success && result.data) {
-							var number = 0;
-							result.data.records.forEach((cart, index) => {
-								number = number + cart.number;
-							});
-							item.shopCartNums = number;
-							this.setData({
-								shopList: this.shopList
-							});
-						}
-					});
-				});
-			},
 			getCarouselList() {
 				https.request('/rest/advertisement/list', {
 					type: 1,
@@ -283,40 +100,118 @@
 					pageSize: 20
 				}).then((result) => {
 					if (result.success) {
-						result.data.records.forEach(function(item, index) {
+						result.data.records.forEach(function(item) {
 							item.imagePath = GlobalConfig.ossUrl + item.imagePath;
 						});
-						this.setData({
-							carouselUrls: result.data.records
-						});
+						this.carouselUrls = result.data.records;
 					}
 				});
 			},
 
-			openConfirm() {
-				this.setData({
-					dialogShow: true,
-					maskClosable: false
+			// C-02 首页活动弹窗：取弹窗广告（type=2），无数据则不展示
+			getActivityDialog() {
+				https.request('/rest/advertisement/list', {
+					type: 2,
+					pageNo: -1,
+					pageSize: 1
+				}).then((result) => {
+					if (result.success && result.data && result.data.records && result.data.records
+						.length > 0) {
+						const ad = result.data.records[0];
+						this.activityAd = {
+							imagePath: GlobalConfig.ossUrl + ad.imagePath,
+							imageLinkUrl: ad.imageLinkUrl || ''
+						};
+						this.activityDialogShow = true;
+					}
 				});
 			},
-
-			close() {
-				app.globalData.isRemindNewPeople().then((result) => {
+			closeActivityDialog() {
+				this.activityDialogShow = false;
+			},
+			activityImageTap() {
+				if (!this.activityAd.imageLinkUrl) return;
+				this.activityDialogShow = false;
+				let _this = this;
+				authService.checkIsLogin().then((result) => {
 					if (result) {
-						this.setData({
-							dialogShow: false,
-							maskClosable: true
+						_this.navigateToAd(_this.activityAd.imageLinkUrl);
+						return;
+					}
+					app.globalData.checkIsAuth('scope.userInfo');
+				});
+			},
+			navigateToAd(url) {
+				https.request('/rest/member/getLoginMemberInfo', {}).then((result) => {
+					if (result.success) {
+						uni.navigateTo({
+							url: url
 						});
+					} else {
+						app.globalData.checkIsAuth('scope.userInfo');
 					}
 				});
 			},
 
-			isPromotionTap(e) {
-				let shopIndex = e.currentTarget.dataset.shopindex;
-				console.log(shopIndex);
-				this.setData({
-					isActivityDialog: true,
-					shopIndex: shopIndex
+			// 轮播图跳转（保留原登录检查逻辑）
+			carouseCommodityDetailTap(e) {
+				let _this = this;
+				authService.checkIsLogin().then((result) => {
+					if (result) {
+						_this.navigateToAd(e.currentTarget.dataset.imagelinkurl);
+						return;
+					}
+					app.globalData.checkIsAuth('scope.userInfo');
+				});
+			},
+
+			// A-01 会员入口条
+			memberCenterTap() {
+				uni.navigateTo({
+					url: '/pages/mine/member/index/index'
+				});
+			},
+
+			// A-01 堂食点餐：扫桌台码 → 写入 dineInfo → 进点餐台（与点餐台切换逻辑一致）
+			dineScanTap() {
+				uni.scanCode({
+					success: (res) => {
+						const text = res.result || '';
+						// 桌台码内容支持：tid=05&area=A 或含这些参数的 URL
+						const match = text.match(/(?:\?|&)?(tid|tableId|tableNo)=(\w+)/i);
+						if (!match) {
+							uni.showToast({
+								title: '桌台码无效，请扫描桌台二维码',
+								icon: 'none'
+							});
+							return;
+						}
+						const area = (text.match(/[?&]area=(\w+)/i) || [])[1] || '';
+						const tableId = match[2];
+						app.globalData.deliveryAndSelfTaking.dineInfo = {
+							tableId: tableId,
+							area: area,
+							tableNo: (area ? area + '区' : '') + tableId + '桌',
+							tableLabel: (area ? area + ' 区 · ' : '') + '散台 ' + tableId,
+							personCount: 4
+						};
+						uni.switchTab({
+							url: '/pages/menu/index/index'
+						});
+					},
+					fail: () => {}
+				});
+			},
+
+			// A-01 自提外带：切自提模式进点餐台
+			selfPickupTap() {
+				app.globalData.deliveryAndSelfTaking.selfOutActiveIndex = 0;
+				app.globalData.deliveryAndSelfTaking.dineInfo = null;
+				app.globalData.deliveryAndSelfTaking.ifIndexSwitchTab = true;
+				app.globalData.deliveryAndSelfTaking.ifChooseBack = false;
+				app.globalData.deliveryAndSelfTaking.ifChoosePayBack = false;
+				uni.switchTab({
+					url: '/pages/menu/index/index'
 				});
 			}
 		}
@@ -325,377 +220,151 @@
 <style>
 	page {
 		width: 100%;
-
+		background: #FFFFFF;
 	}
 
-	.banner {
-		border-radius: 15rpx;
-		/* margin: 20rpx; */
-		background: white;
-		padding-bottom: 0rpx;
+	.page {
+		min-height: 100vh;
+		padding-bottom: 40rpx;
 	}
 
-	.location-address {
-		display: flex;
-		align-items: center;
-		padding: 20rpx;
-		font-weight: bold;
-		font-size: 34rpx;
-	}
-
-	.search-input-views {
-		padding: 20rpx;
-		background: white;
-	}
-
-	.iconsousuo-copy {
-		color: #c3c3c3;
-	}
-
-	.search-input-view {
-		width: 100%;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		background: #f5f5f5;
-		border-radius: 30rpx;
-		padding: 15rpx 0;
-	}
-
-	.search-image-class {
-		width: 44rpx;
-		height: auto;
-	}
-
-	.search-input {
-		color: #c3c3c3;
-		font-size: 28rpx;
-		margin-left: 10rpx;
-	}
-
-	.place-image {
-		width: 10%;
-		height: auto;
-		padding-right: 20rpx;
-	}
-
-	.menu-swiper {
-		height: 400rpx;
-		position: sticky;
-		top: 0;
-	}
-
-	.carousel_img {
-		border-radius: 15rpx;
-	}
-
-	.index-nav-view-first {
-		display: flex;
-		flex-direction: column;
-		margin: 30rpx 20rpx;
-	}
-
-	.index-nav-view-second {
-		display: flex;
-		justify-content: space-between;
-		margin-bottom: 20rpx;
-	}
-
-	.index-nav-view-third {
-		width: 100%;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		padding: 20rpx;
-	}
-
-	.index-nav-view-third image {
-		width: 70%;
-		height: auto;
-		margin-bottom: 14rpx;
-		box-shadow: -2px 0px 5px 0.5px rgba(0, 0, 0, 0), 0px -2px 5px 1px rgba(0, 0, 0, 0.1), 2px 0px 5px 1px rgba(0, 0, 0, 0), 0px 2px 5px 1px rgba(0, 0, 0, 0.1);
-		border-radius: 60rpx;
-	}
-
-	.index-nav-view-third text {
-		font-size: 24rpx;
-		color: rgb(0, 0, 0);
-	}
-
-	.carousel-swiper {
-		margin: 20rpx;
+	/* ===== A-01 露出式轮播 ===== */
+	.expose-swiper {
 		height: 558rpx;
 	}
 
-	.carousel-swiper-item {
+	.expose-swiper-item {
 		height: 100%;
 	}
 
-	.carousel-image {
-		width: 100%;
-		height: 100%;
+	.expose-image {
+		display: block;
+		width: 550rpx;
+		height: 558rpx;
+		margin: 0 auto;
+		border-radius: 20rpx;
+		transform: scale(0.92);
+		opacity: 0.6;
+		transition: transform 0.3s ease, opacity 0.3s ease;
 	}
 
-	.recommend-business-title {
-		font-size: 34rpx;
-		font-weight: bold;
-		margin: 20rpx;
+	.expose-image.is-active {
+		transform: scale(1);
+		opacity: 1;
 	}
 
-	.business-item {
-		display: flex;
-
-		/* align-items: center; */
-	}
-
-	.main-image-num {
-		position: relative;
-		width: 100%;
-	}
-
-	.business-image {
-		width: 100%;
-		height: auto;
-	}
-
-	.business-info {
-		width: 75%;
-		margin-left: 15rpx;
-		padding: 10rpx 0 20rpx 0;
-		border-bottom: 1rpx solid #f5f5f5;
-	}
-
-	.business-info-flex {
+	/* ===== A-01 会员入口条 ===== */
+	.member-bar {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		font-size: 24rpx;
-		color: #717171;
-		margin-top: 10rpx;
-	}
-
-	.business-sale {
-		margin: 5rpx 0;
-	}
-
-	.business-fsize-color {
-		font-size: 24rpx;
-		color: #717171;
-	}
-
-	.business-name {
-		font-size: 34rpx;
-		font-weight: bold;
-		color: black;
-	}
-
-	.business-evaluate {
-		color: #ff6500;
-	}
-
-	.business-right {
-		margin-left: 15rpx;
-	}
-
-	.business-discount-list {
-		padding: 1rpx 6rpx;
-		font-size: 20rpx;
-		border-radius: 10rpx;
-		margin-right: 10rpx;
-	}
-
-	.business-discount {
-		width: 85%;
-		padding-bottom: 1rpx;
-		/* margin-bottom: 10rpx; */
-		display: flex;
-		align-items: center;
-	}
-
-	.settlement-view {
-		position: fixed;
-		z-index: 999;
-		background: white;
-		width: 94.8%;
-		top: 0;
-	}
-
-	.radio-group {
-		width: 100%;
-		display: flex;
-		justify-content: flex-start;
-		align-items: center;
-		flex-wrap: wrap;
-		/* padding: 10rpx 10rpx 10rpx 0; */
-		background: #fff;
-		border-radius: 50rpx;
-	}
-
-	.group-label {
-		margin-right: 5rpx;
-		margin-bottom: 5rpx;
-		font-size: 20rpx;
-		border-radius: 10rpx;
-		text-align: center;
-		padding: 2rpx 5rpx;
-		display: inline-block；;
-	}
-
-	.disabled-group-label {
-		background: #f5f5f5;
-		color: #808080;
-		border: none;
-	}
-
-	.radio {
-		display: none;
-	}
-
-	/* 商品推荐 */
-	.like-items {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		grid-column-gap: 10px;
-		padding: 0 20rpx 10rpx 20rpx;
-	}
-
-	.like-item {
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		flex-direction: column;
-		background: #f5f5f5;
-		border-radius: 15rpx;
-		margin-bottom: 20rpx;
-		border: 1rpx #f5f5f5 solid;
-	}
-
-	.icon-like-class {
-		width: 100%;
-		height: 350rpx;
-		border-radius: 15rpx 15rpx 0 0;
-	}
-
-	.item-two {
-		margin: 0 3.5%;
-	}
-
-	.like-detail-view {
-		width: 100%;
-		height: 100%;
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		flex-direction: column;
-	}
-
-	.fullname-class {
-		margin-top: 11rpx;
-		font-size: 26rpx;
-		width: 90%;
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-	}
-
-	.name-text {
-		width: 65%;
-	}
-
-	.latelyMonthlySales {
-		width: 35%;
-	}
-
-	.num {
-		position: absolute;
-		top: -6px;
-		right: -10px;
-		width: 24px;
-		height: 24px;
-		line-height: 24px;
-		text-align: center;
-		border-radius: 16px;
-		font-size: 9px;
-		font-weight: 700;
-		color: #fff;
-		background: rgb(240, 20, 20);
-		box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.4);
-	}
-
-	.go-to-shop {
-		padding: 0 20rpx;
-		border-radius: 10rpx;
-	}
-
-	.engname-class {
-		font-size: 24rpx;
-		color: #ccc;
-		width: 90%;
-	}
-
-	.like-money-view {
-		width: 90%;
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		padding: 15rpx 0 10rpx 0;
-	}
-
-	.like-money {
-		font-size: 26rpx;
-		font-weight: bold;
-	}
-
-	.new-commodity-button {
-		font-size: 26rpx;
-	}
-
-	.reduced-delivery-price {
-		font-size: 30rpx;
-		margin-top: 20rpx;
-	}
-
-	.self_out_items {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		grid-column-gap: 10px;
-		padding: 20rpx;
-		height: 175px;
-	}
-
-	.self_out_items_view {
-		position: absolute;
-		width: 100%;
-	}
-
-	.self_out_item {
-		height: 175px;
-		position: relative;
-		background: #f6f6f6;
+		margin: 30rpx 30rpx 0;
+		padding: 28rpx 30rpx;
+		background: #FFF7E6;
 		border-radius: 20rpx;
 	}
 
-	.self_out_item_text {
-		position: relative;
+	.member-bar-left {
+		display: flex;
+		flex-direction: column;
 	}
 
-	.self_out_image {
-		position: absolute;
-		width: 100%;
-	}
-
-	.self_out_item_title {
-		margin-top: 32px;
-		margin-left: 20rpx;
-	}
-
-	.self_out_title {
+	.member-bar-title {
 		font-size: 32rpx;
+		font-weight: 600;
+		color: #333333;
 	}
 
-	.self_out_desc {
-		margin-top: 10rpx;
+	.member-bar-desc {
+		margin-top: 8rpx;
+		font-size: 24rpx;
+		color: #9C7A3C;
+	}
+
+	.member-bar-arrow {
+		font-size: 32rpx;
+		color: #C9A86A;
+	}
+
+	/* ===== A-01 入口卡片区 ===== */
+	.entry-cards {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		grid-column-gap: 20rpx;
+		margin: 30rpx 30rpx 0;
+	}
+
+	.entry-card {
+		position: relative;
+		height: 350rpx;
+		background: #F6F6F6;
+		border-radius: 20rpx;
+		padding: 32rpx;
+		box-sizing: border-box;
+		overflow: hidden;
+	}
+
+	.entry-card-title {
+		font-size: 34rpx;
+		font-weight: 600;
+		color: #222222;
+	}
+
+	.entry-card-desc {
+		margin-top: 12rpx;
 		font-size: 24rpx;
 		color: #646566;
+	}
+
+	.entry-card-icon {
+		position: absolute;
+		right: 28rpx;
+		bottom: 24rpx;
+		font-size: 88rpx;
+		color: #D9D9D9;
+	}
+
+	/* ===== C-02 活动弹窗 ===== */
+	.activity-mask {
+		position: fixed;
+		left: 0;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		z-index: 9999;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: rgba(0, 0, 0, 0.55);
+	}
+
+	.activity-dialog {
+		width: 560rpx;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+	}
+
+	.activity-image {
+		width: 560rpx;
+		border-radius: 24rpx;
+		background: #FFFFFF;
+	}
+
+	.activity-close {
+		margin-top: 32rpx;
+		width: 64rpx;
+		height: 64rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border: 2rpx solid rgba(255, 255, 255, 0.8);
+		border-radius: 50%;
+	}
+
+	.activity-close-icon {
+		font-size: 32rpx;
+		color: #FFFFFF;
+		line-height: 1;
 	}
 </style>
