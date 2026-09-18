@@ -947,9 +947,15 @@
 								this.orderDetail.fullPriceReduction :
 								this.orderDetail.actualPrice;
 							//data.actualPrice = data.actualPrice + this.orderDetail.feeData;
-							data.remark = this.remarks;
-							data.shoppingWay = this.selfOutActiveIndex == 0 ? 1 : 2;
-							data.shopId = this.initData.shopId;
+						data.remark = this.remarks;
+						data.shoppingWay = this.selfOutActiveIndex == 0 ? 1 : 2;
+						data.shopId = this.initData.shopId;
+						// 堂食扫码进桌：桌位信息随订单落库（订单详情「台位」展示）
+						if (data.shoppingWay == 1 && app.globalData.deliveryAndSelfTaking.dineInfo) {
+							const dineInfo = app.globalData.deliveryAndSelfTaking.dineInfo;
+							data.tableNo = dineInfo.tableId || '';
+							data.tableName = dineInfo.tableNo || '';
+						}
 							//console.log(data)
 							if (this.orderDetail.couponsIsHidden) {
 								data.couponsId = this.afterDiscount.couponsId;

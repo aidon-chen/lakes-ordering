@@ -98,12 +98,11 @@
 						</swiper-item>
 						<swiper-item class="swiper-items">
 							<view class="mine-blocking">
-								<navigator class="order-navigator"
-									:url="'../../order/index/index?currentTab=' + currentTab + '&modeType=' + item.modeType + '&currentOrderTab=' + item.modeId"
-									v-for="(item, index) in pointsOrderTabList" :key="index">
+								<view class="order-navigator" hover-class="hover-click-class"
+									@tap="goOrderCenter(item)" v-for="(item, index) in pointsOrderTabList" :key="index">
 									<van-icon :name="item.icon" size="50rpx" />
 									<view class="text-tip">{{ item.modeName }}</view>
-								</navigator>
+							</view>
 							</view>
 						</swiper-item>
 					</swiper>
@@ -410,8 +409,22 @@
 			},
 
 			bindOrderInfo(e) {
-				uni.navigateTo({
-					url: '../../order/index/index?currentTab=0&modeType=all&currentOrderTab=0'
+				// 订单中心已是 tabBar 页，switchTab 不能带参，经 globalData 传递入口状态
+				this.goOrderCenter({
+					modeType: 'all',
+					modeId: 0
+				}, 0);
+			},
+
+			goOrderCenter(item, currentTabOverride) {
+				app.globalData.orderCenterEntry = {
+					currentTab: currentTabOverride !== undefined ? currentTabOverride : this
+						.currentTab,
+					modeType: item.modeType,
+					currentOrderTab: item.modeId
+				};
+				uni.switchTab({
+					url: '/pages/order/index/index'
 				});
 			}
 		}

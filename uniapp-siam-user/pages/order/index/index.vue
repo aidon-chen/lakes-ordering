@@ -1,209 +1,89 @@
 <template>
-	<view>
-		<view class="position-sticky" id="top_tab_list">
-			<view class="swiper-content">
-				<view class="swiper-tab self-adaption">
-					<view class="swiper-tab-item" :data-current="index" @tap="clickTab" hover-class="hover-click-class"
-						v-for="(item, index) in tabList" :key="index">
-						<view :class="'swiper_table_item_view ' + (currentTab == item.modeId ? 'active' : '')"
-							:data-current="index" @tap="clickTab">
-							{{ item.modeName }}
-						</view>
-					</view>
+	<view class="page">
+		<!-- 顶部分栏Tabs + 状态子Tab（C-11） -->
+		<view class="top-tabs">
+			<view class="main-tabs">
+				<view class="main-tab-item" v-for="(item, index) in tabList" :key="index" @tap="clickTab(index)">
+					<text :class="'main-tab-text ' + (currentTab == index ? 'active' : '')">{{ item.modeName }}</text>
+					<view class="tab-indicator" v-if="currentTab == index"></view>
 				</view>
 			</view>
-			<view>
-				<van-search @search="searchFun" @cancel="searchInputClear" placeholder="请输入联系人手机号/订单号"></van-search>
+			<view class="sub-tabs">
+				<scroll-view scroll-x class="sub-tab-scroll" :show-scrollbar="false">
+					<view class="sub-tab-list">
+						<view class="sub-tab-item" v-for="(item, index) in activeSubTabs" :key="index"
+							@tap="clickOrderTab(index)">
+							<view class="sub-tab-inner">
+								<text :class="'sub-tab-text ' + (currentOrderTab == index ? 'active' : '')">{{ item.modeName }}</text>
+								<view class="badge" v-if="item.number > 0">{{ item.number > 99 ? '99+' : item.number }}</view>
+							</view>
+							<view class="sub-indicator" v-if="currentOrderTab == index"></view>
+						</view>
+					</view>
+				</scroll-view>
 			</view>
-			<scroll-view class="swiper-content" v-if="currentTab == 0" :scroll-x="true">
-				<view class="swiper-tab self-adaption">
-					<view class="swiper-tab-item two-tab" :data-current="index" @tap="clickOrderTab"
-						hover-class="hover-click-class" v-for="(item, index) in shopOrderTabList" :key="index">
-						<view :class="'swiper_table_item_view ' + (currentOrderTab == item.modeId ? 'active' : '')"
-							style="position: relative; margin-right: 10px">
-							<text class="out_of_range one_row">{{ item.modeName }}</text>
-							<view class="badge_position" v-if="item.number > 0">
-								// #ifdef APP-PLUS||H5
-								<van-badge :content="item.number > 0?item.number:''" />
-								// #endif
-								// #ifdef MP-WEIXIN||MP-ALIPAY
-								<text class="badge_num">{{item.number > 0?item.number:''}}</text>
-								// #endif
-
-							</view>
-
-						</view>
-					</view>
-				</view>
-			</scroll-view>
-			<scroll-view class="swiper-content" v-else :scroll-x="true">
-				<view class="swiper-tab self-adaption">
-					<view class="swiper-tab-item two-tab" :data-current="index" @tap="clickOrderTab"
-						hover-class="hover-click-class" v-for="(item, index) in pointsOrderTabList" :key="index">
-						<view :class="'swiper_table_item_view ' + (currentOrderTab == item.modeId ? 'active' : '')"
-							style="position: relative; margin-right: 10px">
-							<text class="out_of_range one_row" :decode="true">{{ item.modeName }}</text>
-							<view class="badge_position" v-if="item.number > 0">
-								// #ifdef APP-PLUS||H5
-								<van-badge :content="item.number > 0?item.number:''" />
-								// #endif
-								// #ifdef MP-WEIXIN||MP-ALIPAY
-								<text class="badge_num">{{item.number > 0?item.number:''}}</text>
-								// #endif
-							</view>
-						</view>
-					</view>
-				</view>
-			</scroll-view>
 		</view>
-		<!-- <swiper :current="currentOrderTab" class="swiper-box" @change="bindSlideChange"
-			:style="'height:' + winHeight + 'px;'" v-if="currentTab == 0">
-			<swiper-item class="swiper-items" v-for="(item, index) in shopOrderTabList" :key="index"
-				:style="'height:' + winHeight + 'px;'"> -->
-		<block v-if="currentTab == 0">
-			<scroll-view @scrolltoupper="onPullDownRefresh" upper-threshold="-50" :style="'height:' + winHeight + 'px;'"
-				@scrolltolower="onReachBottom" lower-threshold="50" scroll-y class="scroll-views"
-				v-if="list.length > 0">
-				<view class="order-list-view" v-for="(item, index1) in list" :key="index1">
-					<view class="order-item flex_between" hover-class="hover-class-public" @tap="orderDetailsTap"
-						:data-id="item.id" :data-index="index">
-						<image :src="item.shopLogoImg" class="commodity-image" mode="aspectFill"></image>
-						<view class="right-item">
-							<view class="address-status-info">
-								<view class="address-view">
-									<!-- <view class="order-mode theme-color-border">{{item.shoppingWay==1?"自取":"外卖"}}</view> -->
-									<view class="address-info out_of_range one_row">
-										{{ item.shopName }}
-									</view>
-								</view>
-								<view class="status-view">{{ item.paymentModeText }}</view>
-							</view>
-							<view class="name-num-money">
-								<view class="name-num flex_between">
-									<text class="name-view out_of_range one_row"
-										:decode="true">{{ item.description }}</text>
-									<text class="num-view">x{{ item.goodsTotalQuantity }}</text>
-								</view>
-								<view class="money-view">￥{{ item.actualPrice }}</view>
-							</view>
-							<view class="tiem-view">
-								{{ item.createTime }}
-								<text class="status-text theme-color">{{ item.statusText }}</text>
-							</view>
-						</view>
-					</view>
 
-					<view class="tiem-view" v-if="item.isAllowAppraise">
-						<text></text>
-						<button class="evaluate-btn theme-color theme-border" size="mini" :data-id="item.id"
-							:data-shopId="item.shopId" @tap.stop.prevent="evaluateTip"
-							style="font-size: 22rpx; margin-top: 0">
-							评价
-						</button>
-					</view>
+		<!-- 订单列表 -->
+		<view class="order-list" v-if="activeList.length > 0">
+			<view class="order-card" v-for="(item, index) in activeList" :key="item.id" hover-class="card-hover"
+				@tap="goDetail(item)">
+				<view class="card-header">
+					<text class="shop-name">{{ item.shopName }}</text>
+					<text :class="'status-text ' + (item.statusActive ? 'blue' : 'gray')">{{ item.statusText }}</text>
 				</view>
-				<view class="loading_list_box" v-if="isLoading&&!isEndList">
-					<van-loading />
+				<text class="goods-summary">{{ item.description }}</text>
+				<view class="money-row">
+					<text class="money-label">合计</text>
+					<text class="money-value">¥{{ item.actualPrice }}</text>
 				</view>
-				<van-divider contentPosition="center" style="padding-bottom: 20px;"
-					v-if="!isLoading&&isEndList">没有更多啦</van-divider>
-			</scroll-view>
-			<van-empty :description="'暂无'+shopOrderTabList[currentOrderTab].modeName+'订单'" v-if="list.length <= 0">
-				<van-button type="primary" size="small" color="#004ca0" class="bottom-button" @tap="goToDrink">
-					{{currentTab==0?'去喝一杯':'去逛逛'}}
-				</van-button>
-			</van-empty>
-		</block>
+				<view class="btn-row" v-if="cardButtons(item).length > 0">
+					<view v-for="btn in cardButtons(item)" :key="btn.key"
+						:class="'card-btn ' + (btn.type == 'primary' ? 'btn-primary' : 'btn-stroke')"
+						hover-class="btn-hover" @tap.stop="onCardButton(btn.key, item)">{{ btn.text }}</view>
+				</view>
+			</view>
+			<view class="loading-box" v-if="isLoading">
+				<van-loading />
+			</view>
+			<view class="end-tip" v-if="!isLoading && isEndList">没有更多啦</view>
+		</view>
 
-		<!-- </swiper-item>
-		</swiper> -->
-		<!-- <swiper :current="currentOrderTab" class="swiper-box" @change="bindSlideChange"
-			:style="'height:' + winHeight + 'px;'" v-if="currentTab == 1">
-			<swiper-item class="swiper-items" v-for="(item, index) in pointsOrderTabList" :key="index"
-				:style="'height:' + winHeight + 'px;'"> -->
-		<block v-if="currentTab == 1">
-			<scroll-view @scrolltoupper="onPullDownRefresh" upper-threshold="-50" :style="'height:' + winHeight + 'px;'"
-				@scrolltolower="onReachBottom" lower-threshold="0" scroll-y class="scroll-views"
-				v-if="mallList.length > 0">
-				<view class="order-list-view" v-for="(item, index1) in mallList" :key="index1">
-					<view class="order-item flex_between" hover-class="hover-class-public" @tap="orderMallDetailsTap"
-						:data-id="item.id" :data-index="index">
-						<image :src="item.firstGoodsMainImage" class="commodity-image" mode="aspectFill"></image>
-						<view class="right-item">
-							<view class="address-status-info">
-								<view class="address-view">
-									<view class="address-info out_of_range one_row">
-										{{ item.contactCity }}{{ item.contactArea }}{{ item.contactStreet }}
-									</view>
-									<view class="address-info out_of_range one_row">
-										{{ item.shopName }}
-									</view>
-								</view>
-								<view class="status-view">{{ item.paymentModeText }}</view>
-							</view>
-							<view class="name-num-money">
-								<view class="name-num flex_between">
-									<text class="name-view out_of_range one_row"
-										:decode="true">{{ item.description }}</text>
-									<text class="num-view">x{{ item.goodsTotalQuantity }}</text>
-								</view>
-								<view class="money-view">￥{{ item.actualPrice }}</view>
-							</view>
-							<view class="tiem-view">
-								{{ item.createTime }}
-								<text class="status-text theme-color">{{ item.statusText }}</text>
-							</view>
-						</view>
-					</view>
-
-					<view class="tiem-view" v-if="item.isAllowAppraise">
-						<text></text>
-						<button class="evaluate-btn theme-color theme-border" size="mini" :data-id="item.id"
-							:data-shopId="item.shopId" @tap.stop.prevent="evaluateTip"
-							style="font-size: 22rpx; margin-top: 0">
-							评价
-						</button>
-					</view>
-				</view>
-				<view class="loading_list_box" v-if="isMallLoading&&!isEndMallList">
-					<van-loading />
-				</view>
-				<van-divider contentPosition="center" style="padding-bottom: 20px;"
-					v-if="!isMallLoading&&isEndMallList">没有更多啦</van-divider>
-			</scroll-view>
-			<van-empty :description="'暂无'+shopOrderTabList[currentOrderTab].modeName+'订单'" v-if="mallList.length <= 0">
-				<van-button type="primary" size="small" color="#004ca0" class="bottom-button" @tap="goToDrink">
-					{{currentTab==0?'去喝一杯':'去逛逛'}}
-				</van-button>
-			</van-empty>
-		</block>
-
-		<!-- </swiper-item>
-		</swiper> -->
+		<!-- 空状态 -->
+		<van-empty v-if="!isLoading && activeList.length <= 0"
+			:description="'暂无' + activeSubTabs[currentOrderTab].modeName + '订单'">
+			<van-button type="primary" size="small" color="#004ca0" round @tap="goDrink">
+				{{ currentTab == 0 ? '去喝一杯' : '去逛逛' }}
+			</van-button>
+		</van-empty>
 	</view>
 </template>
 
 <script>
 	import https from '../../../utils/http';
 	import authService from '../../../utils/auth';
-	import GlabalConfig from '../../../utils/global-config';
 	import toastService from '../../../utils/toast.service';
-	import utilHelper from '../../../utils/util';
 	import dateHelper from '../../../utils/date-helper';
 	import systemStatus from '../../../utils/system-status';
-	var pageNo = 1;
-	var pageSize = 10;
-	var pageMallNo = 1;
-	var pageMallSize = 10;
-	//获取应用实例
-	let app = null;
+
+	const PAGE_SIZE = 10;
+	// 进行中状态（头行状态字标蓝），其余（已完成/售后/取消）标灰
+	const ACTIVE_STATUSES = [1, 2, 3, 4, 5];
+
 	export default {
 		data() {
 			return {
 				currentTab: 0,
-				orderTab: 1,
-				winWidth: 0,
-				winHeight: 0,
+				currentOrderTab: 0,
+				tabList: [{
+						modeId: 0,
+						modeName: '点单订单'
+					},
+					{
+						modeId: 1,
+						modeName: '商城订单'
+					}
+				],
 				shopOrderTabList: [{
 						modeId: 0,
 						modeType: 'all',
@@ -258,507 +138,248 @@
 				],
 				list: [],
 				mallList: [],
-				tabList: [{
-						modeId: 0,
-						modeName: '外卖订单'
-					},
-					{
-						modeId: 1,
-						modeName: '商城订单'
-					}
-				],
-				currentOrderTab: 0,
-				keyWords: '',
-				inputShowed: false,
-				inputVal: '',
-				i: 0,
-				tabType: '',
-				search: '',
-				modeType: '',
-				isOperation: false,
-				modeName: '',
-				isLoading: true,
-				isMallLoading: true,
-				isEndMallList: false,
+				pageNo: 1,
+				isLoading: false,
 				isEndList: false
 			};
 		},
-		/**
-		 * 生命周期函数--监听页面加载
-		 */
+		computed: {
+			activeSubTabs() {
+				return this.currentTab == 0 ? this.shopOrderTabList : this.pointsOrderTabList;
+			},
+			activeList() {
+				return this.currentTab == 0 ? this.list : this.mallList;
+			}
+		},
 		onLoad: function(options) {
-			console.log(options);
-			app = getApp();
-			pageNo = 1;
-
-			this.currentTab = Number(options.currentTab);
-			this.currentOrderTab = Number(options.currentOrderTab);
-			this.modeType = options.modeType;
-			this.selectTabNumber();
-			this.selectMallTabNumber();
-
+			// 首次打开：兼容旧版 URL 带参入口
+			this.applyEntry(options || {});
 		},
-		/**
-		 * 生命周期函数--监听页面初次渲染完成
-		 */
-		onReady: function() {
-			this.getHeight();
-		},
-		/**
-		 * 生命周期函数--监听页面显示
-		 */
 		onShow: function() {
+			// tabBar 页后续每次进入只触发 onShow：消费「我的」页经 globalData 传入的入口状态
+			const app = getApp();
+			const entry = app.globalData.orderCenterEntry;
+			if (entry) {
+				app.globalData.orderCenterEntry = null;
+				this.applyEntry(entry);
+			}
 			authService.checkIsLogin().then((result) => {
 				if (result) {
-					console.log(this.modeType);
-					if (this.currentTab == 0) {
-						console.log('如果pageNo乘以pageSize不等于pageSize====' + pageNo * pageSize);
-						console.log('如果pageNo乘以pageSize不等于pageSize====' + pageSize);
-						let no = pageNo;
-						if (pageNo * pageSize != pageSize) {
-							pageSize = no * pageSize;
-							pageNo = 1;
-							console.log('获取pageSize数' + pageSize);
-						}
-						this.getOrderList(this.modeType, '');
-						if (this.isOperation) {
-							this.getOrderDetail(this.modeType, '');
-						}
-					}
-					if (this.currentTab == 1) {
-						console.log('如果pageNo乘以pageSize不等于pageSize====' + pageMallNo * pageMallSize);
-						console.log('如果pageNo乘以pageSize不等于pageSize====' + pageMallSize);
-						let no = pageMallNo;
-						if (pageMallNo * pageMallSize != pageMallSize) {
-							pageMallSize = no * pageMallSize;
-							pageMallNo = 1;
-							console.log('获取pageSize数' + pageMallSize);
-						}
-						this.getMallOrderList(this.modeType, '');
-						if (this.isOperation) {
-							// this.getOrderDetail();
-						}
-					}
+					this.reload();
+					this.refreshTabNumbers();
 					return;
 				}
 				app.globalData.checkIsAuth('scope.userInfo');
 			});
 		},
-		/**
-		 * 生命周期函数--监听页面隐藏
-		 */
-		onHide: function() {},
-		/**
-		 * 生命周期函数--监听页面卸载
-		 */
-		onUnload: function() {},
-		/**
-		 * 页面相关事件处理函数--监听用户下拉动作
-		 */
 		onPullDownRefresh: function() {
-			// 显示顶部刷新图标
-			uni.showNavigationBarLoading();
-			if (this.currentTab == 0) {
-				pageNo = 1;
-				pageSize = 10;
-				this.isEndList = false;
-				this.getOrderList(this.shopOrderTabList[this.currentOrderTab].modeType, this.keyWords);
-			}
-			if (this.currentTab == 1) {
-				pageMallNo = 1;
-				pageMallSize = 10;
-				this.isEndMallList = false;
-				this.getMallOrderList(this.pointsOrderTabList[this.currentOrderTab].modeType, this.keyWords);
-			}
-			// 隐藏导航栏加载框
-			uni.hideNavigationBarLoading();
-			// 停止下拉动作
+			this.reload();
 			uni.stopPullDownRefresh();
 		},
-		/**
-		 * 页面上拉触底事件的处理函数
-		 */
 		onReachBottom: function() {
-
+			this.loadMore();
 		},
-		/**
-		 * 用户点击右上角分享
-		 */
 		onShareAppMessage: function() {},
 		methods: {
-			getHeight() {
-				//获取用户手机系统信息
-				var _this = this;
-				let winHeight = 0;
-				let height = 0;
-				uni.getSystemInfo({
-					success: function(res) {
-						console.log(res)
-						//获取到用户的手机信息
-						winHeight = res.windowHeight;
-						// 获取需要减去的dom结构的高度信息
-						setTimeout(function timeout() {
-							uni.createSelectorQuery()
-								.in(_this)
-								.selectAll('#top_tab_list')
-								.boundingClientRect(function(rects) {
-									console.log("#top_tab_list", rects)
-									rects.forEach(function(rect, index) {
-										height = height + rect.height;
-									});
-									if (rects.length > 0) {
-										_this.winHeight = winHeight - height;
-									}
-
-								}).exec();
-						}, 500);
-					}
-				});
-
-			},
-
-			// 滑动切换tab
-			bindSlideChange: function(e) {
-				console.log("bindSlideChange", e);
-				this.currentOrderTab = e.detail.current;
-				console.log("currentTab===", this.currentTab, "currentOrderTab===", this.currentOrderTab);
-				if (this.currentTab == 0) {
-					pageNo = 1;
-					this.isEndList = false;
-					this.isLoading = true;
-					this.list = [];
-					this.modeType = this.shopOrderTabList[e.detail.current].modeType;
-					console.log(this.shopOrderTabList[e.detail.current].modeName);
-					this.getOrderList(this.shopOrderTabList[e.detail.current].modeType, this.keyWords);
+			// 解析入口状态：{ currentTab, modeType, currentOrderTab }
+			applyEntry(entry) {
+				this.currentTab = Number(entry.currentTab) || 0;
+				const tabs = this.currentTab == 0 ? this.shopOrderTabList : this.pointsOrderTabList;
+				let idx = 0;
+				if (entry.modeType) {
+					const found = tabs.findIndex((t) => t.modeType == entry.modeType);
+					if (found >= 0) idx = found;
+				} else if (entry.currentOrderTab !== undefined) {
+					idx = Number(entry.currentOrderTab) || 0;
 				}
-				if (this.currentTab == 1) {
-					pageMallNo = 1;
-					this.isEndMallList = false;
-					this.isMallLoading = true;
-					this.mallList = [];
-					this.modeType = this.pointsOrderTabList[e.detail.current].modeType;
-					console.log(this.pointsOrderTabList[e.detail.current].modeName);
-					this.getMallOrderList(this.pointsOrderTabList[e.detail.current].modeType, this.keyWords);
-				}
+				this.currentOrderTab = idx;
 			},
-
-			//点击切换
-			clickTab: function(e) {
-				console.log("clickTab", e);
-				console.log(e.target.dataset.current);
-				if (this.currentTab === e.target.dataset.current) {
-					return false;
-				} else {
-					this.currentTab = e.target.dataset.current;
-					// 显示加载图标
-					this.currentOrderTab = 0;
-					if (this.currentTab == 0) {
-						pageNo = 1;
-						this.isEndList = false;
-						this.isLoading = true;
-						this.list = [];
-						this.modeType = this.shopOrderTabList[this.currentOrderTab].modeType;
-						this.getOrderList(this.shopOrderTabList[this.currentOrderTab].modeType, this.keyWords);
-					}
-					if (this.currentTab == 1) {
-						pageMallNo = 1;
-						this.isEndMallList = false;
-						this.isMallLoading = true;
-						this.mallList = [];
-						console.log(this.pointsOrderTabList[this.currentOrderTab].modeType);
-						this.modeType = this.pointsOrderTabList[this.currentOrderTab].modeType;
-						this.getMallOrderList(this.pointsOrderTabList[this.currentOrderTab].modeType, this.keyWords);
-					}
-				}
+			reload() {
+				this.pageNo = 1;
+				this.isEndList = false;
+				this.fetchList(false);
 			},
-
-			//点击切换
-			clickOrderTab: function(e) {
-				console.log("clickOrderTab", e);
-
-				if (this.currentOrderTab === e.currentTarget.dataset.current) {
-					return false;
-				} else {
-
-					// 显示加载图标
-					this.currentOrderTab = e.currentTarget.dataset.current;
-					console.log("currentTab", this.currentTab, "currentOrderTab", this.currentOrderTab);
-					if (this.currentTab === 0) {
-						pageNo = 1;
-						this.isEndList = false;
-						this.isLoading = true;
-						this.list = [];
-						this.modeType = this.shopOrderTabList[this.currentOrderTab].modeType;
-						console.log("this.modeType", this.modeType);
-						this.getOrderList(this.shopOrderTabList[this.currentOrderTab].modeType, this.keyWords);
-					}
-					if (this.currentTab === 1) {
-						pageMallNo = 1;
-						this.isEndMallList = false;
-						this.isMallLoading = true;
-						this.mallList = [];
-						this.modeType = this.pointsOrderTabList[this.currentOrderTab].modeType;
-						console.log("this.modeType", this.modeType);
-						this.getMallOrderList(this.pointsOrderTabList[this.currentOrderTab].modeType, this.keyWords);
-					}
-				}
+			loadMore() {
+				if (this.isEndList || this.isLoading) return;
+				this.pageNo++;
+				this.fetchList(true);
 			},
-
-			orderDetailsTap(e) {
-				var id = e.currentTarget.dataset.id;
-				var index = e.currentTarget.dataset.index;
-				this.clickId = id;
-				this.clickIndex = index;
-				uni.navigateTo({
-					url: '../detail/detail?id=' + id
-				});
-			},
-
-			orderMallDetailsTap(e) {
-				var id = e.currentTarget.dataset.id;
-				var index = e.currentTarget.dataset.index;
-				this.clickId = id;
-				this.clickIndex = index;
-				console.log(this.modeType);
-				uni.navigateTo({
-					url: '../../internal/mall/order/detail/detail?id=' + id
-				});
-			},
-
-			evaluateTip(e) {
-				var id = e.currentTarget.dataset.id;
-				let shopId = e.currentTarget.dataset.shopid;
-				uni.navigateTo({
-					url: '../evaluate/evaluate?orderId=' + id + '&shopId=' + shopId
-				});
-			},
-			goToDrink() {
-				uni.switchTab({
-					url: '../../menu/index/index'
-				});
-			},
-			getOrderList(tabType, keyWords) {
-				https.request('/rest/member/order/list', {
-					pageNo: pageNo,
-					pageSize: pageSize,
-					tabType: tabType,
-					keyWords: keyWords
-				}).then((result) => {
-					if (result.success) {
-						if (result.data.records.length < pageSize) {
-							this.isEndList = true;
-						}
-						result.data.records.forEach((res) => {
-							res.createTime = dateHelper.fmtDate(res.createTime);
-							res.statusText = systemStatus.statusText(res.status);
-							res.paymentModeText = systemStatus.paymentModeText(res.paymentMode);
-							res.shopLogoImg = GlabalConfig.ossUrl + res.shopLogoImg;
-						});
-						this.list = result.data.records;
-						this.isLoading = false;
-					}
-				});
-			},
-			getMallOrderList(tabType, keyWords) {
-				https.request('/rest/member/pointsMall/order/list', {
-					pageNo: pageMallNo,
-					pageSize: pageMallSize,
-					tabType: tabType,
-					keyWords: keyWords
-				}).then((result) => {
-					console.log(result)
-					if (result.success) {
-						if (result.data.records.length < pageMallSize) {
-							this.isEndMallList = true;
-						}
-						result.data.records.forEach((res) => {
-							res.createTime = dateHelper.fmtDate(res.createTime);
-							res.statusText = systemStatus.statusMallText(res.status);
-							res.paymentModeText = systemStatus.paymentModeText(res.paymentMode);
-							res.firstGoodsMainImage = GlabalConfig.ossUrl + res.firstGoodsMainImage;
-						});
-						this.mallList = result.data.records;
-						this.isMallLoading = false;
-
-					}
-				});
-			},
-
-			searchFun: function(keyWords) {
-				console.log(keyWords);
-				return new Promise((resolve, reject) => {
-					//判断大标签页
-					if (this.currentTab == 0) {
-						this.getOrderList(this.shopOrderTabList[this.currentOrderTab].modeType, keyWords
-							.detail);
-					}
-					if (this.currentTab == 1) {
-						this.getMallOrderList(this.pointsOrderTabList[this.currentOrderTab].modeType,
-							keyWords.detail);
-					}
-					resolve(keyWords.detail);
-					this.setData({
-						keyWords: keyWords.detail
-					});
-				});
-			},
-
-			selectResult: function(e) {
-				console.log('select result', e.detail);
-			},
-
-			searchInputClear(e) {
-				console.log(e);
-				if (this.currentTab == 0) {
-					this.getOrderList(this.shopOrderTabList[this.currentOrderTab].modeType, '');
-				}
-				if (this.currentTab == 1) {
-					this.getMallOrderList(this.pointsOrderTabList[this.currentOrderTab].modeType, '');
-				}
-				this.setData({
+			fetchList(append) {
+				if (this.isLoading) return;
+				this.isLoading = true;
+				const isShop = this.currentTab == 0;
+				const url = isShop ? '/rest/member/order/list' : '/rest/member/pointsMall/order/list';
+				https.request(url, {
+					pageNo: this.pageNo,
+					pageSize: PAGE_SIZE,
+					tabType: this.activeSubTabs[this.currentOrderTab].modeType,
 					keyWords: ''
+				}).then((result) => {
+					this.isLoading = false;
+					if (!result.success) return;
+					const records = result.data.records || [];
+					records.forEach((res) => {
+						res.createTime = dateHelper.fmtDate(res.createTime);
+						res.statusText = isShop ? systemStatus.statusText(res.status) : systemStatus
+							.statusMallText(res.status);
+						res.statusActive = ACTIVE_STATUSES.indexOf(Number(res.status)) != -1;
+					});
+					this.isEndList = records.length < PAGE_SIZE;
+					if (isShop) {
+						this.list = append ? this.list.concat(records) : records;
+					} else {
+						this.mallList = append ? this.mallList.concat(records) : records;
+					}
 				});
 			},
-
-			selectTabNumber() {
+			clickTab(index) {
+				if (this.currentTab === index) return;
+				this.currentTab = index;
+				this.currentOrderTab = 0;
+				this.reload();
+			},
+			clickOrderTab(index) {
+				if (this.currentOrderTab === index) return;
+				this.currentOrderTab = index;
+				this.reload();
+			},
+			refreshTabNumbers() {
 				https.request('/rest/member/order/selectTabNumber', {}).then((result) => {
 					if (result.success) {
-						this.shopOrderTabList.forEach((item, index) => {
-							if (item.modeType != 'all') {
-								for (let keyof in result.data) {
-									if (keyof.indexOf(item.modeType) != -1) {
-										console.log(keyof);
-										console.log(result.data[keyof]);
-										item.number = result.data[keyof];
-										continue;
-									}
+						this.shopOrderTabList.forEach((item) => {
+							if (item.modeType == 'all') return;
+							for (let key in result.data) {
+								if (key.indexOf(item.modeType) != -1) {
+									item.number = result.data[key];
+									break;
 								}
 							}
 						});
-						console.log(this.shopOrderTabList);
-						this.setData({
-							shopOrderTabList: this.shopOrderTabList
-						});
 					}
 				});
-			},
-
-			selectMallTabNumber() {
 				https.request('/rest/member/pointsMall/order/selectTabNumber', {}).then((result) => {
 					if (result.success) {
-						this.pointsOrderTabList.forEach((item, index) => {
-							if (item.modeType != 'all') {
-								for (let keyof in result.data) {
-									if (keyof.indexOf(item.modeType) != -1) {
-										console.log(keyof);
-										console.log(result.data[keyof]);
-										item.number = result.data[keyof];
-										continue;
-									}
+						this.pointsOrderTabList.forEach((item) => {
+							if (item.modeType == 'all') return;
+							for (let key in result.data) {
+								if (key.indexOf(item.modeType) != -1) {
+									item.number = result.data[key];
+									break;
 								}
 							}
 						});
-						console.log(this.shopOrderTabList);
-						this.setData({
-							pointsOrderTabList: this.pointsOrderTabList
-						});
 					}
 				});
 			},
-
-			getOrderDetail() {
-				https.request('/rest/member/order/selectById', {
-					id: id
-				}).then((result) => {
-					if (result.success) {
-						const status = result.data.order.status;
-						const createTime = result.data.order.createTime;
-						result.data.order.statusText = systemStatus.statusText(status);
-						result.data.order.createTime = dateHelper.formatDate(createTime);
-						this.setData({
-							['list[' + index + ']']: result.data.order,
-							isOperation: false
+			// C-11 订单卡按钮：待付款[取消/立即支付] 进行中[申请退款/取消订单] 已完成[评价/再来一单]
+			cardButtons(item) {
+				const s = Number(item.status);
+				const btns = [];
+				if (s === 1) {
+					btns.push({
+						key: 'cancel',
+						text: '取消订单',
+						type: 'stroke'
+					});
+					btns.push({
+						key: 'pay',
+						text: '立即支付',
+						type: 'primary'
+					});
+					return btns;
+				}
+				if (s >= 2 && s <= 5) {
+					btns.push({
+						key: 'refund',
+						text: '申请退款',
+						type: 'stroke'
+					});
+					if (s <= 3) {
+						btns.push({
+							key: 'cancel',
+							text: '取消订单',
+							type: 'stroke'
 						});
 					}
-				});
+				} else if (s === 6) {
+					if (item.isAllowAppraise) {
+						btns.push({
+							key: 'evaluate',
+							text: '评价',
+							type: 'stroke'
+						});
+					}
+				}
+				if (s === 6 || s === 10 || s === 11) {
+					btns.push({
+						key: 'reorder',
+						text: '再来一单',
+						type: 'primary'
+					});
+				}
+				return btns;
 			},
-
-			onPullDownRefresh() {
-				console.log('占位：函数 onPullDownRefresh 未声明');
+			onCardButton(key, item) {
+				const s = Number(item.status);
+				if (key === 'cancel') {
+					if (s === 1) {
+						// 未付款：列表页直接取消
+						toastService.showModal(null, '确定取消这个订单吗?', () => {
+							https.request('/rest/member/order/cancelOrder', {
+								id: item.id
+							}).then((result) => {
+								if (result.success) {
+									toastService.showSuccess('取消成功', true);
+									this.reload();
+									this.refreshTabNumbers();
+								}
+							});
+						}, null);
+					} else {
+						// 已付款：到详情页走无理由取消（需选原因）
+						this.goDetail(item);
+					}
+					return;
+				}
+				if (key === 'pay') {
+					this.goDetail(item);
+					return;
+				}
+				if (key === 'refund') {
+					uni.navigateTo({
+						url: '../refund/apply/apply?orderId=' + item.id
+					});
+					return;
+				}
+				if (key === 'evaluate') {
+					uni.navigateTo({
+						url: '../evaluate/evaluate?orderId=' + item.id + '&shopId=' + item.shopId
+					});
+					return;
+				}
+				if (key === 'reorder') {
+					uni.switchTab({
+						url: this.currentTab == 0 ? '/pages/menu/index/index' :
+							'/pages/internal/mall/index/index'
+					});
+				}
 			},
-
-			onReachBottom() {
-				console.log('占位：函数 onReachBottom 未声明');
+			goDetail(item) {
 				if (this.currentTab == 0) {
-					if (this.isEndList) {
-						this.isEndList = true;
-						return;
-					}
-					this.isLoading = true;
-					pageNo = pageNo + 1;
-					pageSize = 10;
-					https.request('/rest/member/order/list', {
-						pageNo: pageNo,
-						pageSize: pageSize,
-						tabType: this.pointsOrderTabList[this.currentOrderTab].modeType,
-						keyWords: this.keyWords
-					}).then((result) => {
-						if (result.success) {
-							if (result.data.records.length == 0) {
-								this.isLoading = false;
-								this.isEndList = true;
-								pageNo = pageNo - 1;
-							}
-							if (result.data.records.length > 0) {
-								result.data.records.forEach((res) => {
-									res.createTime = dateHelper.formatDate(res.createTime);
-									res.statusText = systemStatus.statusText(res.status);
-									res.shopLogoImg = GlabalConfig.ossUrl + res.shopLogoImg;
-									this.list.push(res);
-								});
-								this.list = this.list;
-								this.isLoading = false;
-							}
-
-						}
+					uni.navigateTo({
+						url: '../detail/detail?id=' + item.id
+					});
+				} else {
+					uni.navigateTo({
+						url: '../../internal/mall/order/detail/detail?id=' + item.id
 					});
 				}
-				if (this.currentTab == 1) {
-					if (this.isEndMallList) {
-						this.isEndMallList = true;
-						this.isMallLoading = false;
-						return;
-					}
-					this.isMallLoading = true;
-					pageMallNo = pageMallNo + 1;
-					pageMallSize = 10;
-					https.request('/rest/member/pointsMall/order/list', {
-						pageNo: pageMallNo,
-						pageSize: pageMallSize,
-						tabType: this.pointsOrderTabList[this.currentOrderTab].modeType,
-						keyWords: this.keyWords
-					}).then((result) => {
-						if (result.success) {
-							if (result.data.records.length == 0) {
-								this.isMallLoading = false;
-								this.isEndMallList = true;
-								pageMallNo = pageMallNo - 1;
-							}
-							if (result.data.records.length > 0) {
-								result.data.records.forEach((res) => {
-									res.createTime = dateHelper.formatDate(res.createTime);
-									res.statusText = systemStatus.statusText(res.status);
-									res.firstGoodsMainImage = GlabalConfig.ossUrl + res
-										.firstGoodsMainImage;
-									this.mallList.push(res);
-								});
-								this.mallList = this.mallList;
-								this.isMallLoading = false;
-							}
-
-						}
-					});
-				}
+			},
+			goDrink() {
+				uni.switchTab({
+					url: this.currentTab == 0 ? '/pages/menu/index/index' :
+						'/pages/internal/mall/index/index'
+				});
 			}
 		}
 	};
@@ -768,219 +389,242 @@
 		background: #f5f5f5;
 		width: 100%;
 		margin: 0;
-		padding-bottom: 0;
 	}
 
-	.swiper-content {
-		border-radius: 15rpx;
-		background-color: white;
+	.page {
+		min-height: 100vh;
+		background: #f5f5f5;
+		padding-bottom: 40rpx;
+	}
+
+	/* ===== 顶部分栏Tabs（C-11 163:71） ===== */
+	.top-tabs {
+		position: sticky;
+		top: 0;
+		z-index: 10;
+	}
+
+	.main-tabs {
 		display: flex;
+		background: #ffffff;
+		height: 88rpx;
+	}
+
+	.main-tab-item {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
 		align-items: center;
-		justify-content: space-between;
+		justify-content: center;
+	}
+
+	.main-tab-text {
+		font-size: 28rpx;
+		color: #666666;
+	}
+
+	.main-tab-text.active {
+		color: #004ca0;
+		font-weight: 500;
+	}
+
+	.tab-indicator {
+		width: 48rpx;
+		height: 6rpx;
+		border-radius: 4rpx;
+		background: #004ca0;
+		margin-top: 8rpx;
+	}
+
+	/* ===== 状态子Tab ===== */
+	.sub-tabs {
+		background: #ffffff;
+		border-top: 1rpx solid #f0f0f0;
+	}
+
+	.sub-tab-scroll {
+		width: 100%;
 		white-space: nowrap;
 	}
 
-	.swiper_table_item_view {
-		margin-right: 10rpx;
+	.sub-tab-list {
+		display: inline-flex;
+		padding: 0 12rpx;
 	}
 
-	.swiper-tab-item {
-		width: 50%;
-	}
-
-	.two-tab {
-		width: 20%;
-	}
-
-	.swiper-box {
-		/* height: 400rpx; */
-		border-radius: 0 0 15rpx 15rpx;
-	}
-
-	.swiper-tab {
-		width: 100%;
-		box-shadow: -2px 0px 5px 0.5px rgba(0, 0, 0, 0.1);
-		text-align: center;
-		height: 88rpx;
-		line-height: 88rpx;
-		display: flex;
-		flex-flow: row;
-		justify-content: space-between;
-		background: #fff;
-		z-index: 1;
-	}
-
-	.swiper-tab-item {
-		width: 50%;
-	}
-
-	.swiper-box {
-		display: block;
-		width: 100%;
-		height: 100%;
-		overflow: hidden;
-	}
-
-	.swiper-items {
-		height: 100%;
-	}
-
-	.scroll-views {
-		height: 100%;
-	}
-
-	::-webkit-scrollbar {
-		width: 0;
-		height: 0;
-		color: transparent;
-	}
-
-	.order-list-view {
-		margin: 0 20rpx;
-		margin-bottom: 20rpx;
-		background: white;
-		border-radius: 10rpx;
-	}
-
-	.order-item {
-		margin-top: 20rpx;
-		padding: 20rpx;
-		background: white;
-		border-radius: 10rpx;
-	}
-
-	.address-view {
-		display: flex;
-		align-items: center;
-		width: 70%;
-	}
-
-	.order-mode {
-		width: 15%;
-		text-align: center;
-		height: 28rpx;
-		font-size: 24rpx;
-		padding: 2rpx;
-		border-radius: 5rpx;
-		display: flex;
+	.sub-tab-item {
+		display: inline-flex;
+		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		border-radius: 10rpx;
+		height: 76rpx;
+		padding: 0 26rpx;
+		position: relative;
 	}
 
-	.address-info {
-		font-size: 28rpx;
+	.sub-tab-inner {
+		position: relative;
 	}
 
-	.address-status-info {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-	}
-
-	.status-view {
-		font-size: 28rpx;
-		color: #9f9f9f;
-	}
-
-	.name-num-money {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		line-height: 80rpx;
-	}
-
-	.name-num {
-		width: 72%;
-	}
-
-	.name-view {
-		font-size: 28rpx;
-	}
-
-	.num-view {
-		margin-left: 40rpx;
-		font-size: 30rpx;
-	}
-
-	.money-view {
-		font-size: 32rpx;
-		font-weight: bold;
-	}
-
-	.tiem-view {
+	.sub-tab-text {
 		font-size: 24rpx;
-		line-height: 48rpx;
-		color: #9f9f9f;
+		color: #666666;
+	}
+
+	.sub-tab-text.active {
+		color: #004ca0;
+		font-weight: 500;
+	}
+
+	.sub-indicator {
+		position: absolute;
+		bottom: 4rpx;
+		left: 50%;
+		margin-left: -16rpx;
+		width: 32rpx;
+		height: 4rpx;
+		border-radius: 2rpx;
+		background: #004ca0;
+	}
+
+	.badge {
+		position: absolute;
+		top: -10rpx;
+		right: -24rpx;
+		min-width: 28rpx;
+		height: 28rpx;
+		line-height: 28rpx;
+		padding: 0 6rpx;
+		box-sizing: border-box;
+		border-radius: 999rpx;
+		background-color: #ee0a24;
+		font-size: 18rpx;
+		color: #ffffff;
+		text-align: center;
+	}
+
+	/* ===== 订单卡（C-11 163:78/163:89） ===== */
+	.order-list {
+		padding: 24rpx;
+	}
+
+	.order-card {
+		background: #ffffff;
+		border-radius: 24rpx;
+		padding: 24rpx;
+		margin-bottom: 20rpx;
+	}
+
+	.card-hover {
+		opacity: 0.85;
+	}
+
+	.card-header {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
+	}
+
+	.shop-name {
+		font-size: 28rpx;
+		font-weight: 600;
+		color: #333333;
+		flex: 1;
+		margin-right: 16rpx;
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
 	}
 
 	.status-text {
-		font-weight: bold;
+		font-size: 24rpx;
+		flex-shrink: 0;
 	}
 
-	.no-data-view {
-		height: 100%;
-		text-align: center;
+	.status-text.blue {
+		color: #004ca0;
 	}
 
-	.no-data-icon {
-		width: 30%;
-		height: auto;
+	.status-text.gray {
+		color: #999999;
 	}
 
-	.no-data-tip {
-		font-size: 28rpx;
-		color: #434343;
+	.goods-summary {
+		display: block;
+		font-size: 24rpx;
+		color: #999999;
+		margin-top: 16rpx;
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
 	}
 
-	.go-to-btn {
-		font-size: 28rpx;
-		margin: 50rpx 38%;
-		padding: 10rpx;
-		border-radius: 10rpx;
+	.money-row {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		margin-top: 16rpx;
 	}
 
-	.evaluate-btn {
-		margin: 20rpx;
+	.money-label {
+		font-size: 24rpx;
+		color: #999999;
 	}
 
-	.tab-number {
-		border-radius: 50%;
+	.money-value {
+		font-size: 30rpx;
+		font-weight: 700;
+		color: #f01414;
 	}
 
-	.commodity-image {
-		width: 160rpx;
-		height: 160rpx;
-		border-radius: 10rpx;
+	.btn-row {
+		display: flex;
+		align-items: center;
+		justify-content: flex-end;
+		margin-top: 20rpx;
 	}
 
-	.right-item {
-		width: 75%;
-	}
-
-	.badge_position {
-		position: absolute;
-		right: -6px;
-		top: -6px;
-	}
-
-	.badge_num {
-		display: inline-block;
+	.card-btn {
+		min-width: 152rpx;
+		height: 56rpx;
+		padding: 0 24rpx;
 		box-sizing: border-box;
-		background-color: #ee0a24;
-		padding: 1px 3px;
-		border-radius: 999px;
-		min-width: 16px;
-		line-height: 1.2;
-		height: 1.2;
+		border-radius: 28rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 24rpx;
+	}
+
+	.card-btn + .card-btn {
+		margin-left: 16rpx;
+	}
+
+	.btn-hover {
+		opacity: 0.8;
+	}
+
+	.btn-stroke {
+		background: #ffffff;
+		border: 1rpx solid #e0e0e0;
+		color: #666666;
+	}
+
+	.btn-primary {
+		background: #004ca0;
+		color: #ffffff;
+	}
+
+	.loading-box {
+		display: flex;
+		justify-content: center;
+		padding: 24rpx 0;
+	}
+
+	.end-tip {
 		text-align: center;
-		font-size: 12px;
-		color: #fff;
-		position: absolute;
-		right: -6px;
-		top: 6px;
+		color: #999999;
+		font-size: 24rpx;
+		padding: 24rpx 0 20rpx;
 	}
 </style>

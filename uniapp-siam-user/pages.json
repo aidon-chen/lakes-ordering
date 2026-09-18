@@ -10,7 +10,7 @@
 		{
 			"path": "pages/order/index/index",
 			"style": {
-				"navigationBarTitleText": "订单",
+				"navigationBarTitleText": "订单中心",
 				"enablePullDownRefresh": true,
 				"backgroundTextStyle": "dark"
 			}
@@ -350,6 +350,12 @@
 				"text": "点餐",
 				"iconPath": "static/assets/tabbar/Icon/order.png",
 				"selectedIconPath": "static/assets/tabbar/SelectedIcon/blue/order.png"
+			},
+			{
+				"pagePath": "pages/order/index/index",
+				"text": "订单中心",
+				"iconPath": "static/assets/tabbar/Icon/order-center.png",
+				"selectedIconPath": "static/assets/tabbar/SelectedIcon/blue/order-center.png"
 			},
 			{
 				"pagePath": "pages/internal/mall/index/index",

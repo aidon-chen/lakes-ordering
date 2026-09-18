@@ -6,7 +6,7 @@ const statusText = (status) => {
         case 2:
             return '待处理';
         case 3:
-            return '待自取';
+            return '待自提';
         case 4:
             return '待配送';
         case 5:
@@ -36,7 +36,7 @@ const statusMallText = (status) => {
         case 2:
             return '待处理';
         case 3:
-            return '待自取';
+            return '待自提';
         case 4:
             return '待发货';
         case 5:

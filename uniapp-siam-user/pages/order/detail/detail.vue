@@ -1,118 +1,90 @@
 <template>
-	<view>
-		<view class="status-to-greet">
-			<view class="unpaid-class" v-if="order.status == 1">
-				<view class="comfirm-tip">请在五分钟内完成支付，过时订单将会自动取消！</view>
-				<view class="pay-cancel-button">
-					<view class="cancel-button" hover-class="hover-class-public" @tap="cancelOrder">取消订单</view>
-					<view class="pay-button theme-border theme-color" hover-class="hover-class-public"
-						@tap="openConfirm">立即支付</view>
-				</view>
-			</view>
-			<view class="to-greet-view" v-else-if="order.status == 2">
-				{{ order.shoppingWay == 1 ? '取餐号:' : '配送号:' }}
-				<text class="order-queueNo">{{ order.queueNo }}</text>
-			</view>
-			<view class="to-greet-view" v-else-if="order.status == 3">
-				取餐号:
-				<text class="order-queueNo">{{ order.queueNo }}</text>
-			</view>
-			<view class="to-greet-view" v-else-if="order.status == 4 || order.status == 5">
-				配送号:
-				<text class="order-queueNo">{{ order.queueNo }}</text>
-			</view>
-			<view class="to-greet-view" v-else>期待您再次光临。</view>
-			<view class="status-view">{{ order.statusText }}</view>
-
-			<view class="caozuo-buttons">
-				<button size="mini" class="quxiao-shenqing-button pinglun-btn" hover-class="hover-class-public"
-					@tap="isAllowCancelNoReason" v-if="order.isAllowCancelNoReason" style="font-size: 28rpx">
-					取消订单
-				</button>
-				<button size="mini" class="quxiao-shenqing-button pinglun-btn" hover-class="hover-class-public"
-					@tap="applyRefund" v-if="order.isAllowApplyRefund" style="font-size: 28rpx">
-					申请退款
-				</button>
-				<button v-if="order.isAllowAppraise" size="mini" class="pinglun-btn theme-bg" :data-id="order.id"
-					:data-shopId="order.shopId" @tap="evaluateTip" style="font-size: 28rpx">
-					评论
-				</button>
-				<button size="mini" class="pinglun-btn theme-bg" @tap="contactBussinessTap"
-					style="font-size: 28rpx">联系商家</button>
-			</view>
+	<view class="page">
+		<!-- 状态头（C-11 163:106 蓝底） -->
+		<view class="status-header">
+			<text class="status-title">{{ statusTitle }}</text>
+			<text class="status-desc">{{ statusDesc }}</text>
 		</view>
-		<view class="refund-process-view" @tap="bindRefundProcess" v-if="order.isRefundOrder">
-			<view class="refund-process-detail">
-				<text>退款进度</text>
-				<view class="refund-process-right">
-					<text class="theme-color">{{ order.refundStatusText }}</text>
-					<van-icon name="arrow" color="#004ca0" />
-				</view>
+
+		<!-- 门店行卡（163:109） -->
+		<view class="shop-row-card" hover-class="row-hover" @tap="contactShop">
+			<text class="shop-row-name">{{ order.shopName }}</text>
+			<text class="shop-row-contact">联系门店</text>
+		</view>
+
+		<!-- 取餐码卡（163:112） -->
+		<view class="queue-card" v-if="showQueueCard">
+			<text class="queue-label">取餐码</text>
+			<text class="queue-code">{{ order.queueNo }}</text>
+			<text class="queue-tip">向店员出示此码，核销后取货</text>
+		</view>
+
+		<!-- 退款进度 -->
+		<view class="refund-card" v-if="order.isRefundOrder" hover-class="row-hover" @tap="bindRefundProcess">
+			<text class="refund-label">退款进度</text>
+			<view class="refund-right">
+				<text class="refund-status">{{ order.refundStatusText }}</text>
+				<van-icon name="arrow" color="#004ca0" size="14px" />
 			</view>
 		</view>
 
-		<view class="order-details-view">
-			<view class="order-number-time">
-				<text class="order-number-text">{{ order.shoppingWay == 1 ? '自取' : '外卖' }}订单：{{ order.orderNo }}</text>
-				<text class="time-text">{{ order.createTime }}</text>
-			</view>
-			<view class="view-line"></view>
-			<view class="commodity-details-view" v-for="(item, index) in orderDetailList" :key="index">
-				<view class="commodity-name-specs">
-					<view class="commodity-name out_of_range one_row">{{ item.goodsName }}</view>
-					<view class="commodity-specs">{{ item.specListAnalysis }}</view>
+		<!-- 明细卡（163:116） -->
+		<view class="detail-card">
+			<text class="card-title">商品明细</text>
+			<view class="goods-row" v-for="(item, index) in orderDetailList" :key="index">
+				<view class="goods-name-box">
+					<text class="goods-name">{{ item.goodsName }}</text>
+					<text class="goods-spec" v-if="item.specListAnalysis">（{{ item.specListAnalysis }}）</text>
+					<text class="goods-num">×{{ item.number }}</text>
 				</view>
-
-				<view class="commodity-number-money">
-					<text class="commodity-number">x{{ item.number }}</text>
-					<text class="commodity-money">￥{{ item.price }}</text>
-				</view>
+				<text class="goods-subtotal">¥{{ item.lineSubtotal }}</text>
 			</view>
-			<view class="distribution-fee-view">
-				<text>配送费</text>
-				<text>￥{{ order.deliveryFee }}</text>
-			</view>
-			<view class="distribution-fee-view">
+			<view class="fee-row" v-if="Number(order.packingCharges) > 0">
 				<text>包装费</text>
-				<text>￥{{ order.packingCharges }}</text>
+				<text>¥{{ order.packingCharges }}</text>
 			</view>
-			<view class="distribution-fee-view" v-if="order.fullReductionRuleId">
-				<text>使用满减</text>
-				<text>{{ order.fullReductionRuleDescription }}</text>
+			<view class="fee-row" v-if="Number(order.deliveryFee) > 0">
+				<text>配送费</text>
+				<text>¥{{ order.deliveryFee }}</text>
 			</view>
-			<view class="distribution-fee-view" v-if="order.couponsId">
-				<text>使用优惠券</text>
+			<view class="fee-row" v-if="order.fullReductionRuleId">
+				<text>满减优惠</text>
+				<text>{{ order.reducedPrice ? '-¥' + order.reducedPrice : order.fullReductionRuleDescription }}</text>
+			</view>
+			<view class="fee-row" v-if="order.couponsId">
+				<text>优惠券</text>
 				<text>{{ order.couponsDescription }}</text>
 			</view>
-			<view class="view-line"></view>
-			<view class="actual-payment-view">
-				<text class="actual-payment-number" :decode="true">{{ order.description }}商品</text>
-				<view class="actual-payment-view">
-					<text class="actual-payment-title">实付</text>
-					<text class="actual-payment-money">￥{{ order.actualPrice }}</text>
-				</view>
+			<view class="divider"></view>
+			<view class="sum-row">
+				<text class="sum-label">合计</text>
+				<text class="sum-value">¥{{ order.actualPrice }}</text>
 			</view>
 		</view>
-		<view class="order-time-view">
-			<text class="receiving-address-title">支付方式</text>
-			<text class="receiving-address">{{ order.paymentModeText }}</text>
+
+		<!-- 订单信息卡（163:128） -->
+		<view class="info-card">
+			<text class="info-row">订单编号  {{ order.orderNo }}</text>
+			<text class="info-row">下单时间  {{ order.createTime }}</text>
+			<text class="info-row" v-if="order.tableName">台位  {{ order.tableName }}</text>
+			<text class="info-row" v-if="order.paymentModeText && Number(order.status) != 1">支付方式  {{ order.paymentModeText }}</text>
+			<text class="info-row"
+				v-if="order.shoppingWay == 2 && order.contactRealname">收货信息  {{ order.contactProvince }}{{ order.contactCity }}{{ order.contactArea }}{{ order.contactStreet }} {{ order.contactRealname }} {{ order.contactPhone }}</text>
 		</view>
-		<view class="receiving-address-view">
-			<text class="receiving-address-title">{{ order.shoppingWay == 1 ? '自取' : '配送' }}地址</text>
-			<view class="receiving-address-details" v-if="order.shoppingWay == 1">
-				<view class="receiving-address out_of_range">【{{ order.shopName }}】{{ order.shopAddress }}
-				</view>
-			</view>
-			<view class="receiving-address-details" v-else>
-				<view class="receiving-address out_of_range">
-					{{ order.contactProvince }}{{ order.contactCity }}{{ order.contactArea }}{{ order.contactStreet }}
-				</view>
-				<view class="username-phone">{{ order.contactRealname }}{{ order.contactSex == 0 ? '先生' : '女士' }}
-					{{ order.contactPhone }}
-				</view>
-			</view>
+
+		<!-- 底部按钮占位 -->
+		<view class="bottom-space" v-if="bottomButtons.length > 0"></view>
+
+		<!-- 底部按钮栏（163:133） -->
+		<view class="bottom-bar" v-if="bottomButtons.length > 0">
+			<view v-for="btn in bottomButtons" :key="btn.key"
+				:class="'bar-btn ' + (btn.type == 'primary' ? 'btn-primary' : 'btn-stroke')" hover-class="btn-hover"
+				@tap="onBarButton(btn.key)">{{ btn.text }}</view>
 		</view>
-		<van-action-sheet :show="choiceReasonDialog" title="选择取消原因" @close="close" @cancel="close" z-index="1">
+
+		<!-- 取消原因（无理由取消） -->
+		<van-action-sheet :show="choiceReasonDialog" title="选择取消原因" @close="closeSheet" @cancel="closeSheet"
+			z-index="10">
 			<view class="content_box">
 				<scroll-view style="height: 55vh" scroll-y>
 					<radio-group class="choiceReason-radio-group" @change="radioChange">
@@ -120,7 +92,6 @@
 							:class="'choiceReason-lable ' + (refundReasonRapidly.length - 1 != index ? 'choiceReason-border' : '')"
 							v-for="(item, index) in refundReasonRapidly" :key="index">
 							{{ item.name }}
-
 							<radio :value="item.value"></radio>
 						</label>
 					</radio-group>
@@ -129,18 +100,20 @@
 					<view class="good-choice-btn theme-bg" @tap="cancelOrderNoReasonFun">确定</view>
 				</view>
 			</view>
-
 		</van-action-sheet>
+
+		<!-- 支付方式选择 -->
 		<van-action-sheet :show="dialogShow" :actions="paymentModes" @select="goToPay" cancel-text="取消" :title="title"
 			@cancel="closeDialog" @close="closeDialog"></van-action-sheet>
-		<van-dialog use-slot :show="showPayPwdInput" :showConfirmButton="false" :showCancelButton="false" z-index='2'>
+
+		<!-- 余额支付密码 -->
+		<van-dialog use-slot :show="showPayPwdInput" :showConfirmButton="false" :showCancelButton="false" z-index="12">
 			<view class="flex_between content_box">
 				<view></view>
 				<view>输入支付密码</view>
 				<van-icon name="cross" @tap="balancePayFail" />
 			</view>
 			// #ifdef APP-PLUS||H5
-			<!-- 密码输入框 -->
 			<view class="content_box" style="padding: 0 0;">
 				<view class="password_dialog_tip" style="padding: 0 16px;"><text>使用会员卡余额支付需要验证身份，验证通过后才可进行支付。</text></view>
 				<van-password-input :value="pwdVal" :focused="payFocus" @focus="payFocus = true" />
@@ -173,11 +146,10 @@
 		Base64
 	} from 'js-base64';
 	import toastService from '../../../utils/toast.service';
-	import utilHelper from '../../../utils/util';
 	import dateHelper from '../../../utils/date-helper';
 	import systemStatus from '../../../utils/system-status';
 
-	var id = '';
+	var orderId = '';
 	let app = null;
 	export default {
 		data() {
@@ -215,7 +187,6 @@
 						name: '我不想要了'
 					}
 				],
-
 				refundStatusTexts: [{
 						value: 1,
 						name: '退款申请已提交'
@@ -246,20 +217,9 @@
 					}
 				],
 				choiceReasonDialog: false,
-				choiceReasonApplyDialog: false,
-				buttons: [{
-						text: '取消'
-					},
-					{
-						text: '确定'
-					}
-				],
 				showPayPwdInput: false,
-				//是否展示密码输入层
 				pwdVal: '',
-				//输入的密码
 				payFocus: false,
-				//文本框焦点
 				adjustPosition: false,
 				isForgetThePassword: false,
 				userInfo: '',
@@ -267,7 +227,6 @@
 				maskClosable: false,
 				title: '',
 				paymentModes: [],
-				paymentMode: '',
 				paymentModeIndex: '',
 				balanceId: '',
 				balanceOpenId: '',
@@ -286,17 +245,17 @@
 					shoppingWay: 0,
 					orderNo: '',
 					createTime: '',
+					tableName: '',
 					deliveryFee: '',
 					packingCharges: '',
 					fullReductionRuleId: '',
 					fullReductionRuleDescription: '',
 					couponsId: '',
 					couponsDescription: '',
-					description: '',
 					actualPrice: '',
 					paymentModeText: '',
 					shopName: '',
-					shopAddress: '',
+					shopContactPhone: '',
 					contactProvince: '',
 					contactCity: '',
 					contactArea: '',
@@ -305,410 +264,198 @@
 					contactSex: 0,
 					contactPhone: ''
 				},
-				orderDetailList: '',
-				shopInfo: '',
-				i: ''
+				orderDetailList: []
 			};
 		},
-		/**
-		 * 生命周期函数--监听页面加载
-		 */
+		computed: {
+			statusTitle() {
+				return this.order.statusText || '-';
+			},
+			statusDesc() {
+				const s = Number(this.order.status);
+				const dine = this.order.shoppingWay == 1;
+				if (s === 1) return '订单已提交，请在5分钟内完成支付';
+				if (s === 2) return dine ? '支付成功，商家正在备餐' : '支付成功，商家正在安排配送';
+				if (s === 3) return '下单成功，到店出示取餐码即可';
+				if (s === 4) return '商家已接单，骑手正在赶来的路上';
+				if (s === 5) return '订单配送中，请保持手机畅通';
+				if (s === 6) return '订单已完成，感谢惠顾';
+				if (s === 7) return '售后处理中，请耐心等待';
+				if (s === 8) return '退款已原路退回，请注意查收';
+				if (s === 9) return '售后处理完成，期待您再次光临';
+				if (s === 10 || s === 11) return '订单已取消，期待您再次光临';
+				return '';
+			},
+			// 待自取（shoppingWay==1）且已支付未完成时展示取餐码
+			showQueueCard() {
+				return this.order.shoppingWay == 1 && this.order.queueNo &&
+					[2, 3].indexOf(Number(this.order.status)) != -1;
+			},
+			// 底部按钮栏（C-11 163:133）
+			bottomButtons() {
+				const s = Number(this.order.status);
+				const btns = [];
+				if (s === 1) {
+					btns.push({
+						key: 'cancel',
+						text: '取消订单',
+						type: 'stroke'
+					});
+					btns.push({
+						key: 'pay',
+						text: '立即支付',
+						type: 'primary'
+					});
+					return btns;
+				}
+				if (s >= 2 && s <= 5) {
+					if (this.order.isAllowApplyRefund) {
+						btns.push({
+							key: 'refund',
+							text: '申请退款',
+							type: 'stroke'
+						});
+					}
+					if (s <= 3 && this.order.isAllowCancelNoReason) {
+						btns.push({
+							key: 'cancel',
+							text: '取消订单',
+							type: 'stroke'
+						});
+					}
+				}
+				if (s === 6 && this.order.isAllowAppraise) {
+					btns.push({
+						key: 'evaluate',
+						text: '评价',
+						type: 'stroke'
+					});
+				}
+				btns.push({
+					key: 'reorder',
+					text: '再来一单',
+					type: 'primary'
+				});
+				return btns;
+			}
+		},
 		onLoad: function(options) {
 			app = getApp();
-			id = options.id;
-			this.getOrderDetail(id);
+			orderId = options.id;
+			this.getOrderDetail(orderId);
 		},
-		/**
-		 * 生命周期函数--监听页面初次渲染完成
-		 */
-		onReady: function() {},
-		/**
-		 * 生命周期函数--监听页面显示
-		 */
 		onShow: function() {
 			if (this.isForgetThePassword || this.showPayPwdInput) {
-				console.log(this.paymentModes);
-				console.log(this.paymentModeIndex);
-				if (this.paymentModes[this.paymentModeIndex].value == 2) {
+				if (this.paymentModes[this.paymentModeIndex] && this.paymentModes[this.paymentModeIndex]
+					.value == 2) {
 					this.showPwdLayer();
-					this.setData({
-						isForgetThePassword: false
-					});
+					this.isForgetThePassword = false;
 				}
 			}
 			this.getLoginMemberInfo();
 		},
-		/**
-		 * 生命周期函数--监听页面隐藏
-		 */
-		onHide: function() {},
-		/**
-		 * 生命周期函数--监听页面卸载
-		 */
-		onUnload: function() {},
-		/**
-		 * 页面相关事件处理函数--监听用户下拉动作
-		 */
 		onPullDownRefresh: function() {},
-		/**
-		 * 页面上拉触底事件的处理函数
-		 */
 		onReachBottom: function() {},
-		/**
-		 * 用户点击右上角分享
-		 */
 		onShareAppMessage: function() {},
 		methods: {
-			getLoginMemberInfo: function(e) {
+			getLoginMemberInfo: function() {
 				https.request('/rest/member/getLoginMemberInfo', {}).then((result) => {
 					if (result.success) {
-						result.data.typeVipText = systemStatus.typeVipText(result.data.vipType);
-						result.data.statusVipText = systemStatus.statusVipText(result.data.vipStatus);
-						result.data.vipStartTime = dateHelper.formatDate(result.data.vipStartTime);
-						result.data.vipEndTime = dateHelper.formatDate(result.data.vipEndTime);
-						this.setData({
-							userInfo: result.data
-						});
+						this.userInfo = result.data;
 					}
 				});
 			},
 
-			deliveryAddressChange(e) {
-				let deliveryData = {
-					deliveryAddress: 0
-				};
-				let self = this;
-				authService.checkIsLogin().then((result) => {
-					if (result) {
-						//判断店铺是否打烊
-						let startTime = this.shopInfo.shop.startTime;
-						let endTime = this.shopInfo.shop.endTime;
-						let isOperating = this.shopInfo.shop.isOperating;
-						app.globalData.getIsBusiness(startTime, endTime, isOperating).then((result) => {
-							if (!result) {
-								return;
+			getOrderDetail(id) {
+				https.request('/rest/member/order/selectById', {
+					id: id
+				}).then((result) => {
+					if (result.success) {
+						const data = result.data;
+						data.order.statusText = systemStatus.statusText(data.order.status);
+						data.order.createTime = dateHelper.fmtDate(data.order.createTime);
+						data.order.paymentModeText = systemStatus.paymentModeText(data.order
+							.paymentMode);
+						//解析订单商品的规格
+						(data.orderDetailList || []).forEach((item) => {
+							let specListAnalysis = '';
+							try {
+								const specMap = JSON.parse(item.specList || '{}');
+								for (let key in specMap) {
+									specListAnalysis = (specListAnalysis ? specListAnalysis + '/' :
+										specListAnalysis) + specMap[key];
+								}
+							} catch (e) {
+								specListAnalysis = '';
 							}
-							console.log(this);
-							uni.navigateTo({
-								url: '../../address/choose/choose?radioIndex=0&pageType=orderDetail&orderNo=' +
-									this.order.orderNo +
-									'&orderId=' +
-									this.order.id +
-									'&deliveryData=' +
-									JSON.stringify(deliveryData) +
-									'&shopId=' +
-									this.order.shopId +
-									'&reducedDeliveryPrice=' +
-									this.shopInfo.shop.reducedDeliveryPrice
-							});
+							item.specListAnalysis = specListAnalysis;
+							item.lineSubtotal = item.subtotal != null ? item.subtotal : (item
+								.price * item.number);
 						});
-						return;
-					}
-					app.globalData.checkIsAuth('scope.userInfo');
-				});
-			},
-
-			openConfirm() {
-				let paymentModes = [{
-						value: 1,
-						name: '微信支付',
-						icon: 'wechat-pay',
-						show: true
-					},
-					{
-						value: 2,
-						name: '平台余额',
-						icon: 'balance-pay',
-						show: true
-					}
-				];
-				console.log('余额=', this.userInfo.balance);
-				console.log('需支付金额=', this.order.actualPrice);
-				if (this.order.actualPrice > this.userInfo.balance) {
-					paymentModes[1].subname = '余额不足';
-					paymentModes[1].isBindTap = true;
-				}
-				if (!this.userInfo.paymentPassword) {
-					paymentModes[1].subname = '未设置支付密码,去设置';
-					paymentModes[1].isBindTap = false;
-				}
-				this.dialogShow = true;
-				this.maskClosable = false;
-				this.title = '请选择支付方式';
-				this.paymentModes = paymentModes;
-			},
-
-			closeDialog: function() {
-				this.setData({
-					dialogShow: false
-				});
-			},
-
-			btnClick(e) {
-				console.log(e);
-				this.closeDialog();
-			},
-
-			paymentModeChange(e) {
-				console.log(e);
-				console.log(this.paymentModes[e.detail.value].name);
-				this.setData({
-					paymentMode: this.paymentModes[e.detail.value].mode
-				});
-			},
-
-			goToPay(e) {
-				console.log(e)
-				var _this = this;
-				authService.getOpenId().then((openId) => {
-					console.log(openId);
-					_this.closeDialog();
-					// if (!openId) {
-					//   toastService.showToast("登录用户错误，请重新登录");
-					//   return
-					// }
-					console.log(_this.order);
-					var paymentModeIndex = 1;
-					// #ifdef APP-PLUS||H5
-					paymentModeIndex = e.value;
-					// #endif
-					// #ifdef MP-WEIXIN||MP-ALIPAY
-					paymentModeIndex = e.detail.value;
-					// #endif
-					_this.setData({
-						paymentModeIndex: paymentModeIndex
-					});
-					if (paymentModeIndex == 1) {
-						console.log('微信支付');
-						toastService.showToast('暂不支持微信支付，请选择余额支付/积分支付');
-						return;
-						//toastService.showLoading();
-						//that.weChatPay(id, openId);
-					}
-
-					if (paymentModeIndex == 2) {
-						console.log('余额支付');
-						if (!_this.userInfo.paymentPassword) {
-							uni.navigateTo({
-								url: '../../mine/security/index/index'
-							});
-							return;
+						for (let i in this.refundStatusTexts) {
+							if (data.order.refundStatus == this.refundStatusTexts[i].value) {
+								data.order.refundStatusText = this.refundStatusTexts[i].name;
+							}
 						}
-						_this.setData({
-							balanceId: id,
-							balanceOpenId: openId
-						});
-						_this.$nextTick(() => {
-							_this.showPayPwdInput = true;
-							_this.getFocus();
-						});
-					}
-				}, null);
-			},
-
-			close(e) {
-				console.log(e);
-			},
-
-			weChatPay(id, openId) {
-				var that = this;
-				let pages = getCurrentPages();
-				let prevPage = pages[pages.length - 2]; //上一个页面
-				https.request('/rest/member/wxPay/toPay4Applet', {
-					openid: openId,
-					type: 1,
-					out_trade_no: this.order.orderNo,
-					total_fee: this.order.actualPrice
-				}).then((result) => {
-					if (result.success) {
-						toastService.hideLoading();
-						uni.requestPayment({
-							appId: result.data.appid,
-							timeStamp: result.data.timeStamp,
-							nonceStr: result.data.nonceStr,
-							package: result.data.package,
-							signType: 'MD5',
-							paySign: result.data.paySign,
-							success(res) {
-								toastService.showSuccess('支付成功', true);
-								let timeout = setTimeout(() => {
-									that.getOrderDetail(id);
-									prevPage.getOrderDetail(id);
-									clearTimeout(timeout);
-								}, 1000);
-							},
-							fail(res) {
-								toastService.showError('支付失败', true);
-								let timeout = setTimeout(() => {
-									that.getOrderDetail(id);
-									clearTimeout(timeout);
-								}, 1000);
-							}
-						});
+						this.order = data.order;
+						this.orderDetailList = data.orderDetailList || [];
 					}
 				});
 			},
-			deletePwd(e) {
-				if (this.pwdVal.length === 0) {
-					return;
-				}
-				const lastIndex = this.pwdVal.length - 1;
-				this.pwdVal = this.pwdVal.substring(0, lastIndex) + "";
-			},
-			inputPwd: function(e) {
-				// #ifdef APP-PLUS||H5
-				this.pwdVal = this.pwdVal + e;
-				// #endif
-				// #ifdef MP-WEIXIN||MP-ALIPAY
-				this.pwdVal = e.detail.value;
-				// #endif
-				if (this.pwdVal.length >= 6) {
-					toastService.showLoading('正在加载...');
-					this.balancePay();
+
+			contactShop() {
+				if (this.order.shopContactPhone) {
+					uni.makePhoneCall({
+						phoneNumber: this.order.shopContactPhone
+					});
+				} else {
+					toastService.showToast('暂无门店联系电话');
 				}
 			},
 
-			/**
-			 * 获取焦点
-			 */
-			getFocus: function() {
-				var _this = this;
-				this.payFocus = false;
-				//this.showPayPwdInput = true;
-				this.$nextTick(() => {
-					console.log("点击获取焦点");
-					// #ifdef APP-PLUS||H5
-					_this.payFocus = true;
-					// #endif
-					// #ifdef MP-WEIXIN||MP-ALIPAY
-					setTimeout(() => {
-						_this.payFocus = true;
-					}, 100);
-					// #endif
-				})
-			},
-
-			balancePay() {
-				let pages = getCurrentPages();
-				let prevPage = pages[pages.length - 2]; //上一个页面
-				var password = Base64.encode(this.pwdVal);
-				this.setData({
-					pwdVal: '',
-					payFocus: true
-				});
-				https.request('/rest/member/platformPay/byBalance', {
-					openid: this.balanceOpenId,
-					type: 1,
-					paymentMode: 2,
-					paymentPassword: password,
-					out_trade_no: this.order.orderNo,
-					total_fee: this.order.actualPrice
-				}).then((result) => {
-					toastService.hideLoading();
-					if (result.success) {
-						toastService.showSuccess('支付成功', true);
-						this.hidePwdLayer();
-						let timeout = setTimeout(() => {
-							this.getOrderDetail(this.balanceId);
-							prevPage.getOrderDetail(this.balanceId);
-							clearTimeout(timeout);
-						}, 1000);
-					}
+			reorder() {
+				uni.switchTab({
+					url: '/pages/menu/index/index'
 				});
 			},
 
-			bindtouchend(e) {
-				console.log('触摸结束');
-				this.showPwdLayer();
+			onBarButton(key) {
+				if (key === 'cancel') this.cancelOrderTap();
+				if (key === 'pay') this.openConfirm();
+				if (key === 'refund') this.applyRefund();
+				if (key === 'evaluate') this.evaluateTip();
+				if (key === 'reorder') this.reorder();
 			},
 
-			balancePayFail() {
-				this.hidePwdLayer();
-				toastService.showError('支付失败', true);
-				// let timeout = setTimeout(() => {
-
-				//   this.getOrderDetail(this.data.balanceId);
-				//   clearTimeout(timeout);
-				// }, 1000);
-			},
-
-			hidePwdLayer() {
-				this.setData({
-					showPayPwdInput: false,
-					payFocus: false,
-					pwdVal: ''
-				});
-			},
-
-			showPwdLayer() {
-				this.setData({
-					showPayPwdInput: true,
-					payFocus: true,
-					pwdVal: ''
-				});
-			},
-
-			/**
-			 * 隐藏支付密码输入层
-			 */
-			forgetThePassword: function() {
-				this.setData({
-					isForgetThePassword: true
-				});
-				uni.navigateTo({
-					url: '../../mine/security/index/index'
-				});
-			},
-
-			cancelOrder() {
-				let that = this;
-				toastService.showModal(
-					null,
-					'确定取消这个订单吗?',
-					function() {
+			cancelOrderTap() {
+				if (Number(this.order.status) === 1) {
+					// 未付款：直接取消
+					const that = this;
+					toastService.showModal(null, '确定取消这个订单吗?', function() {
 						https.request('/rest/member/order/cancelOrder', {
-							id: id
+							id: orderId
 						}).then((result) => {
 							if (result.success) {
 								toastService.showSuccess('取消成功', true);
-								// var pages = getCurrentPages();
-								// var prevPage = pages[pages.length - 2]; //上一个页面
-								//直接调用上一个页面的 setData() 方法，把数据存到上一个页面中去
-								// prevPage.setData({
-								//   isOperation: true
-								// })
-								let timeout = setTimeout(() => {
-									//wx.navigateBack(1);
-									that.getOrderDetail(id);
+								const timeout = setTimeout(() => {
+									that.getOrderDetail(orderId);
 									clearTimeout(timeout);
 								}, 1500);
 							}
 						});
-					},
-					null
-				);
-			},
-			close() {
-				this.choiceReasonDialog = false;
-			},
-			isAllowCancelNoReason() {
-				this.choiceReasonDialog = true;
+					}, null);
+				} else if (this.order.isAllowCancelNoReason) {
+					// 已付款：无理由取消（选择原因）
+					this.choiceReasonDialog = true;
+				}
 			},
 
-			applyRefund() {
-				// this.setData({
-				//   choiceReasonApplyDialog: this.data.choiceReasonApplyDialog ? false : true
-				// });
-				uni.navigateTo({
-					url: '../refund/apply/apply?orderId=' + this.order.id
-				});
+			closeSheet() {
+				this.choiceReasonDialog = false;
 			},
 
 			radioChange(e) {
-				console.log(e);
-				this.setData({
-					cancelOrderNoReason: e.detail.value
-				});
+				this.cancelOrderNoReason = e.detail.value;
 			},
 
 			cancelOrderNoReasonFun() {
@@ -728,27 +475,9 @@
 				});
 			},
 
-			cancelOrderNoReasonApply() {
-				toastService.showLoading();
-				var orderRefundGoodsListStr = [];
-				this.orderDetailList((item, index) => {
-					orderRefundGoodsListStr.push({
-						orderDetailId: item.id,
-						number: item.number
-					});
-				});
-				https.request('/rest/member/order/applyRefund', {
-					id: this.order.id,
-					orderRefundGoodsListStr: orderRefundGoodsListStr,
-					orderRefund: {
-						refundReason: this.cancelOrderNoReason
-					}
-				}).then((result) => {
-					toastService.hideLoading();
-					if (result.success) {
-						toastService.showSuccess('操作成功');
-						this.getOrderDetail(this.order.id);
-					}
+			applyRefund() {
+				uni.navigateTo({
+					url: '../refund/apply/apply?orderId=' + this.order.id
 				});
 			},
 
@@ -758,62 +487,193 @@
 				});
 			},
 
-			getOrderDetail(id) {
-				https.request('/rest/member/order/selectById', {
-					id: id
+			evaluateTip() {
+				uni.navigateTo({
+					url: '../evaluate/evaluate?orderId=' + this.order.id + '&shopId=' + this.order
+						.shopId
+				});
+			},
+
+			/* ===== 支付流程（待付款订单） ===== */
+			openConfirm() {
+				const paymentModes = [{
+						value: 1,
+						name: '微信支付',
+						icon: 'wechat-pay',
+						show: true
+					},
+					{
+						value: 2,
+						name: '平台余额',
+						icon: 'balance-pay',
+						show: true
+					}
+				];
+				if (Number(this.order.actualPrice) > Number(this.userInfo.balance || 0)) {
+					paymentModes[1].subname = '余额不足';
+					paymentModes[1].isBindTap = true;
+				}
+				if (!this.userInfo.paymentPassword) {
+					paymentModes[1].subname = '未设置支付密码,去设置';
+					paymentModes[1].isBindTap = false;
+				}
+				this.dialogShow = true;
+				this.title = '请选择支付方式';
+				this.paymentModes = paymentModes;
+			},
+
+			closeDialog: function() {
+				this.dialogShow = false;
+			},
+
+			goToPay(e) {
+				const that = this;
+				authService.getOpenId().then((openId) => {
+					that.closeDialog();
+					let paymentModeIndex = 1;
+					// #ifdef APP-PLUS||H5
+					paymentModeIndex = e.value;
+					// #endif
+					// #ifdef MP-WEIXIN||MP-ALIPAY
+					paymentModeIndex = e.detail.value;
+					// #endif
+					this.paymentModeIndex = paymentModeIndex;
+					if (paymentModeIndex == 1) {
+						toastService.showToast('暂不支持微信支付，请选择余额支付/积分支付');
+						return;
+					}
+					if (paymentModeIndex == 2) {
+						if (!that.userInfo.paymentPassword) {
+							uni.navigateTo({
+								url: '../../mine/security/index/index'
+							});
+							return;
+						}
+						that.balanceId = orderId;
+						that.balanceOpenId = openId;
+						that.$nextTick(() => {
+							that.showPayPwdInput = true;
+							that.getFocus();
+						});
+					}
+				}, null);
+			},
+
+			weChatPay(id, openId) {
+				const that = this;
+				https.request('/rest/member/wxPay/toPay4Applet', {
+					openid: openId,
+					type: 1,
+					out_trade_no: this.order.orderNo,
+					total_fee: this.order.actualPrice
 				}).then((result) => {
 					if (result.success) {
-						const status = result.data.order.status;
-						const createTime = result.data.order.createTime;
-						result.data.order.statusText = systemStatus.statusText(status);
-						result.data.order.createTime = dateHelper.fmtDate(createTime);
-						result.data.order.paymentModeText = systemStatus.paymentModeText(result.data.order
-							.paymentMode);
-						//解析订单商品的规格
-						result.data.orderDetailList.forEach((orderDetailList) => {
-							let specListAnalysis = '';
-							for (var key in JSON.parse(orderDetailList.specList)) {
-								specListAnalysis = (specListAnalysis ? specListAnalysis + '/' :
-									specListAnalysis) + JSON.parse(orderDetailList.specList)[key];
+						toastService.hideLoading();
+						uni.requestPayment({
+							appId: result.data.appid,
+							timeStamp: result.data.timeStamp,
+							nonceStr: result.data.nonceStr,
+							package: result.data.package,
+							signType: 'MD5',
+							paySign: result.data.paySign,
+							success() {
+								toastService.showSuccess('支付成功', true);
+								const timeout = setTimeout(() => {
+									that.getOrderDetail(id);
+									clearTimeout(timeout);
+								}, 1000);
+							},
+							fail() {
+								toastService.showError('支付失败', true);
+								const timeout = setTimeout(() => {
+									that.getOrderDetail(id);
+									clearTimeout(timeout);
+								}, 1000);
 							}
-							orderDetailList.specListAnalysis = specListAnalysis;
-							//console.log(orderDetailList)
 						});
-
-						for (let i in this.refundStatusTexts) {
-							if (result.data.order.refundStatus == this.refundStatusTexts[i].value) {
-								result.data.order.refundStatusText = this.refundStatusTexts[i].name;
-							}
-						}
-						this.order = result.data.order;
-						this.orderDetailList = result.data.orderDetailList;
-						this.getShopInfo(result.data.order.shopId);
 					}
 				});
 			},
 
-			contactBussinessTap() {
-				uni.makePhoneCall({
-					phoneNumber: this.order.shopContactPhone
+			deletePwd() {
+				if (this.pwdVal.length === 0) {
+					return;
+				}
+				this.pwdVal = this.pwdVal.substring(0, this.pwdVal.length - 1);
+			},
+
+			inputPwd: function(e) {
+				// #ifdef APP-PLUS||H5
+				this.pwdVal = this.pwdVal + e;
+				// #endif
+				// #ifdef MP-WEIXIN||MP-ALIPAY
+				this.pwdVal = e.detail.value;
+				// #endif
+				if (this.pwdVal.length >= 6) {
+					toastService.showLoading('正在加载...');
+					this.balancePay();
+				}
+			},
+
+			getFocus: function() {
+				this.payFocus = false;
+				this.$nextTick(() => {
+					// #ifdef APP-PLUS||H5
+					this.payFocus = true;
+					// #endif
+					// #ifdef MP-WEIXIN||MP-ALIPAY
+					setTimeout(() => {
+						this.payFocus = true;
+					}, 100);
+					// #endif
 				});
 			},
 
-			evaluateTip(e) {
-				id = e.currentTarget.dataset.id;
-				let shopId = e.currentTarget.dataset.shopid;
-				uni.navigateTo({
-					url: '../evaluate/evaluate?orderId=' + id + '&shopId=' + shopId
-				});
-			},
-
-			getShopInfo(shopId) {
-				https.request('/rest/shop/detail', {
-					id: shopId,
-					position: app.globalData.deliveryAndSelfTaking.location
+			balancePay() {
+				const password = Base64.encode(this.pwdVal);
+				this.pwdVal = '';
+				this.payFocus = true;
+				https.request('/rest/member/platformPay/byBalance', {
+					openid: this.balanceOpenId,
+					type: 1,
+					paymentMode: 2,
+					paymentPassword: password,
+					out_trade_no: this.order.orderNo,
+					total_fee: this.order.actualPrice
 				}).then((result) => {
-					if (result.success && result.data) {
-						this.shopInfo = result.data;
+					toastService.hideLoading();
+					if (result.success) {
+						toastService.showSuccess('支付成功', true);
+						this.hidePwdLayer();
+						const timeout = setTimeout(() => {
+							this.getOrderDetail(orderId);
+							clearTimeout(timeout);
+						}, 1000);
 					}
+				});
+			},
+
+			balancePayFail() {
+				this.hidePwdLayer();
+				toastService.showError('支付失败', true);
+			},
+
+			hidePwdLayer() {
+				this.showPayPwdInput = false;
+				this.payFocus = false;
+				this.pwdVal = '';
+			},
+
+			showPwdLayer() {
+				this.showPayPwdInput = true;
+				this.payFocus = true;
+				this.pwdVal = '';
+			},
+
+			forgetThePassword: function() {
+				this.isForgetThePassword = true;
+				uni.navigateTo({
+					url: '../../mine/security/index/index'
 				});
 			}
 		}
@@ -822,276 +682,288 @@
 <style>
 	page {
 		background: #f5f5f5;
-		padding-bottom: 20rpx;
+		padding-bottom: 0;
 	}
 
-	.status-to-greet {
-		background: white;
-		text-align: center;
-		padding: 20rpx;
+	.page {
+		min-height: 100vh;
+		background: #f5f5f5;
+	}
+
+	/* ===== 状态头（C-11 163:106） ===== */
+	.status-header {
+		background: #004ca0;
+		padding: 32rpx 32rpx 40rpx;
 		display: flex;
-		align-items: center;
 		flex-direction: column;
-		margin: 20rpx;
-		border-radius: 15rpx;
 	}
 
-	.status-view {
-		font-size: 40rpx;
-		line-height: 88rpx;
-		font-weight: bold;
+	.status-title {
+		font-size: 36rpx;
+		font-weight: 700;
+		color: #ffffff;
 	}
 
-	.caozuo-buttons {
-		display: flex;
-		align-items: center;
-		/* justify-content: center; */
-		width: 100%;
-		margin: 20rpx;
-		flex-wrap: wrap;
-	}
-
-	.caozuo-buttons .cancel-button {
-		width: 199rpx;
-		margin: 0;
-		margin-right: 10rpx;
-	}
-
-	.quxiao-shenqing-button {
-		border: 1rpx #898989 solid;
-	}
-
-	.pinglun-btn {
-		margin: 0;
-		margin-right: 10rpx;
-		margin-bottom: 10rpx;
-	}
-
-	.appraise-button-view {
-		text-align: center;
-		background: white;
-	}
-
-	.unpaid-class {
-		display: flex;
-		align-items: center;
-		flex-direction: column;
-		justify-content: center;
-	}
-
-	.comfirm-tip {
+	.status-desc {
 		font-size: 24rpx;
+		color: #ffffff;
+		opacity: 0.92;
+		margin-top: 8rpx;
 	}
 
-	.pay-cancel-button {
+	/* ===== 门店行卡（163:109） ===== */
+	.shop-row-card {
+		background: #ffffff;
+		border-radius: 24rpx;
+		height: 104rpx;
 		display: flex;
-		justify-content: space-between;
 		align-items: center;
-		line-height: 60rpx;
+		justify-content: space-between;
+		padding: 0 24rpx;
+		margin-top: 20rpx;
+	}
+
+	.row-hover {
+		opacity: 0.85;
+	}
+
+	.shop-row-name {
+		font-size: 28rpx;
+		font-weight: 600;
+		color: #333333;
+		flex: 1;
+		margin-right: 16rpx;
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+	}
+
+	.shop-row-contact {
+		font-size: 24rpx;
+		color: #004ca0;
+		flex-shrink: 0;
+	}
+
+	/* ===== 取餐码卡（163:112） ===== */
+	.queue-card {
+		background: #ffffff;
+		border-radius: 24rpx;
+		padding: 32rpx;
+		margin-top: 20rpx;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.queue-label {
+		font-size: 24rpx;
+		color: #999999;
+	}
+
+	.queue-code {
+		font-size: 80rpx;
+		font-weight: 700;
+		color: #333333;
+		margin-top: 12rpx;
+		letter-spacing: 4rpx;
+	}
+
+	.queue-tip {
+		font-size: 22rpx;
+		color: #999999;
+		margin-top: 12rpx;
+	}
+
+	/* ===== 退款进度 ===== */
+	.refund-card {
+		background: #ffffff;
+		border-radius: 24rpx;
+		height: 104rpx;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 0 24rpx;
+		margin-top: 20rpx;
+	}
+
+	.refund-label {
+		font-size: 28rpx;
+		font-weight: 600;
+		color: #333333;
+	}
+
+	.refund-right {
+		display: flex;
+		align-items: center;
+	}
+
+	.refund-status {
+		font-size: 24rpx;
+		color: #004ca0;
+		margin-right: 8rpx;
+	}
+
+	/* ===== 明细卡（163:116） ===== */
+	.detail-card {
+		background: #ffffff;
+		border-radius: 24rpx;
+		padding: 24rpx;
+		margin-top: 20rpx;
+	}
+
+	.card-title {
+		font-size: 28rpx;
+		font-weight: 500;
+		color: #333333;
+	}
+
+	.goods-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-top: 16rpx;
+	}
+
+	.goods-name-box {
+		flex: 1;
+		margin-right: 16rpx;
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
 		font-size: 26rpx;
-		width: 100%;
-		margin: 30rpx;
+		color: #333333;
 	}
 
-	.cancel-button,
-	.pay-button {
-		width: 45%;
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		border-radius: 15rpx;
+	.goods-name {
+		font-size: 26rpx;
+		color: #333333;
 	}
 
-	.cancel-button {
-		border: 1rpx #898989 solid;
-		margin: 20rpx;
-		border-radius: 15rpx;
+	.goods-spec {
+		font-size: 22rpx;
+		color: #999999;
 	}
 
-	.refund-process-view {
-		margin: 20rpx;
-		border-radius: 15rpx;
-		background-color: white;
-		padding: 20rpx;
+	.goods-num {
+		font-size: 26rpx;
+		color: #999999;
+		margin-left: 8rpx;
 	}
 
-	.refund-process-detail {
+	.goods-subtotal {
+		font-size: 26rpx;
+		color: #333333;
+		flex-shrink: 0;
+	}
+
+	.fee-row {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
+		font-size: 24rpx;
+		color: #999999;
+		margin-top: 12rpx;
+	}
+
+	.divider {
+		height: 2rpx;
+		background: #f5f5f5;
+		margin-top: 20rpx;
+	}
+
+	.sum-row {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		margin-top: 20rpx;
+	}
+
+	.sum-label {
+		font-size: 26rpx;
+		color: #999999;
+	}
+
+	.sum-value {
 		font-size: 30rpx;
+		font-weight: 700;
+		color: #f01414;
 	}
 
-	.refund-process-right {
+	/* ===== 订单信息卡（163:128） ===== */
+	.info-card {
+		background: #ffffff;
+		border-radius: 24rpx;
+		padding: 24rpx;
+		margin-top: 20rpx;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.info-row {
+		font-size: 24rpx;
+		color: #999999;
+		line-height: 44rpx;
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+	}
+
+	/* ===== 底部按钮栏（163:133） ===== */
+	.bottom-space {
+		height: 160rpx;
+	}
+
+	.bottom-bar {
+		position: fixed;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		z-index: 20;
+		background: #ffffff;
+		display: flex;
+		padding: 20rpx 24rpx;
+		padding-bottom: calc(20rpx + constant(safe-area-inset-bottom));
+		padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+	}
+
+	.bar-btn {
+		flex: 1;
+		height: 80rpx;
+		border-radius: 40rpx;
 		display: flex;
 		align-items: center;
+		justify-content: center;
+		font-size: 28rpx;
 	}
 
-	.wenxin-tip {
-		color: #979797;
-		font-size: 26rpx;
-	}
-
-	.right-gray {
-		width: 20rpx;
-		height: auto;
+	.bar-btn + .bar-btn {
 		margin-left: 20rpx;
 	}
 
-	.to-greet-view {
-		font-size: 38rpx;
+	.btn-hover {
+		opacity: 0.85;
 	}
 
-	.order-queueNo {
-		font-size: 50rpx;
-		font-weight: bold;
+	.btn-stroke {
+		background: #ffffff;
+		border: 1rpx solid #e0e0e0;
+		color: #666666;
 	}
 
-	.order-details-view {
-		margin: 20rpx;
-		border-radius: 15rpx;
-		background: white;
-		padding: 0 20rpx;
+	.btn-primary {
+		background: #004ca0;
+		color: #ffffff;
+		font-weight: 500;
 	}
 
-	.order-number-time {
-		line-height: 88rpx;
+	/* ===== 弹层 ===== */
+	.content_box {
+		padding: 20rpx 0;
+	}
+
+	.flex_between {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		font-size: 28rpx;
-	}
-
-	.order-number-text {
-		font-size: 24rpx;
-	}
-
-	.time-text {
-		color: #898989;
-		font-size: 24rpx;
-	}
-
-	.commodity-details-view {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		margin-top: 20rpx;
-		margin-bottom: 10rpx;
-	}
-
-	.commodity-name-specs {
-		width: 75%;
-		padding-right: 20rpx;
-	}
-
-	.commodity-name {
-		font-size: 30rpx;
-		line-height: 58rpx;
-		font-weight: bold;
-	}
-
-	.commodity-specs {
-		font-size: 24rpx;
-	}
-
-	.commodity-number-money {
-		width: 25%;
-		display: flex;
-		justify-content: space-between;
-	}
-
-	.commodity-number {
-		font-size: 28rpx;
-	}
-
-	.commodity-money {
-		font-size: 30rpx;
-		font-weight: bold;
-	}
-
-	.distribution-fee-view {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		/* line-height: 88rpx; */
-		padding: 10rpx 0;
-		font-size: 28rpx;
-	}
-
-	.actual-payment-view {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		line-height: 88rpx;
-	}
-
-	.actual-payment-number {
-		font-size: 26rpx;
-	}
-
-	.actual-payment-title {
-		font-size: 32rpx;
-		margin-right: 10rpx;
-	}
-
-	.actual-payment-money {
-		font-size: 32rpx;
-		font-weight: bold;
-	}
-
-	.order-time-view {
-		margin: 20rpx;
-		border-radius: 15rpx;
-		background: white;
-		color: #898989;
-		line-height: 78rpx;
-		padding: 0 20rpx;
-		font-size: 28rpx;
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-	}
-
-	.receiving-address-view {
-		margin: 20rpx;
-		border-radius: 15rpx;
-		background: white;
-		display: flex;
-		justify-content: space-between;
-		padding: 40rpx 20rpx;
-	}
-
-	.receiving-address-title {
-		width: 30%;
-		font-size: 28rpx;
-		color: #898989;
-	}
-
-	.receiving-address-details {
-		width: 80%;
-		font-size: 28rpx;
-	}
-
-	.receiving-address {
-		text-align: end;
-	}
-
-	.username-phone {
-		text-align: end;
-	}
-
-	.fullPriceReductionText {
-		position: relative;
-		left: -47%;
-		font-size: 30rpx;
-		font-weight: bold;
-		top: 0;
-	}
-
-	.fullPriceReductionClass {
-		color: gainsboro;
-		display: flex;
-		align-items: center;
 	}
 
 	.choiceReason-radio-group {
@@ -1104,7 +976,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding: 20rpx 0;
+		padding: 20rpx 32rpx;
 		font-size: 30rpx;
 	}
 
@@ -1121,29 +993,47 @@
 		font-weight: bold;
 	}
 
+	.password_dialog_tip {
+		color: #979797;
+		font-size: 26rpx;
+		line-height: 40rpx;
+	}
+
+	.password_dialog_row {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		margin: 30rpx 0;
+	}
+
+	.password_dialog_item_input {
+		width: 80rpx;
+		height: 80rpx;
+		border: 1rpx solid #e0e0e0;
+		border-radius: 8rpx;
+		margin: 0 8rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.password_dialog_forget_pwd {
+		text-align: center;
+		font-size: 26rpx;
+		padding-bottom: 30rpx;
+	}
+
+	.password_dialog_input_control {
+		position: fixed;
+		left: -9999rpx;
+		width: 10rpx;
+		height: 10rpx;
+		opacity: 0;
+	}
+
 	::-webkit-scrollbar {
 		width: 0;
 		height: 0;
 		color: transparent;
-	}
-
-	.radio-group-label {
-		/* width: 100%; */
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		height: 88rpx;
-		padding: 0 20rpx;
-		font-weight: bold;
-	}
-
-	.iconwechat_pay {
-		color: #09bb07;
-		font-size: 40rpx;
-	}
-
-	.iconyue {
-		color: #f0dcab;
-		font-size: 40rpx;
 	}
 </style>
