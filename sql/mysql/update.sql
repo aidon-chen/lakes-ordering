@@ -236,3 +236,40 @@ ALTER TABLE `tb_advertisement`
 -- 9.4 tb_order_detail：单品备注（C-08 缺口，随 M1 一并补）
 ALTER TABLE `tb_order_detail`
   ADD `remark` varchar(200) DEFAULT NULL COMMENT '单品备注' AFTER after_coupons_discount_price;
+
+-- ---------------------------------------------------------------------------
+-- 10) 收银台台位作业增量（2026-09-19，grill Round 0-10 定稿：开台/清台/转台）
+-- ---------------------------------------------------------------------------
+-- 10.1 tb_dining_session：开台无会员（收银开台为空，扫码开台后续回填）
+ALTER TABLE `tb_dining_session` MODIFY `member_id` int(11) NULL COMMENT '开台会员id（收银开台为空，扫码开台回填）';
+
+-- 10.2 台位区域表（桌台图分区 W-07；Round 1 拍板）
+DROP TABLE IF EXISTS `tb_table_zone`;
+CREATE TABLE `tb_table_zone` (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键id',
+  `shop_id` int(11) NOT NULL COMMENT '门店id',
+  `name` varchar(50) NOT NULL COMMENT '区域名 A区/K区/V区',
+  `description` varchar(200) DEFAULT NULL COMMENT '区域说明',
+  `sort_number` int(11) DEFAULT 1 COMMENT '排序号',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime DEFAULT NULL COMMENT '修改时间',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='台位区域表';
+
+-- 10.3 tb_dining_table 加区域列（幂等：已存在则跳过）
+SET @col_exists = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tb_dining_table' AND COLUMN_NAME = 'zone_id');
+SET @ddl = IF(@col_exists = 0, 'ALTER TABLE `tb_dining_table` ADD `zone_id` int(11) DEFAULT NULL COMMENT ''区域id（tb_table_zone.id）'' AFTER `type_id`', 'SELECT 1');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- 10.4 测试数据段（Round 10：3 区域 + 3 类型 + 18 桌；shop_id=13 = 商家 siam）
+INSERT INTO `tb_table_zone` (`shop_id`,`name`,`description`,`sort_number`) VALUES
+  (13,'A区散台','散台区',1),(13,'K区卡座','卡座区',2),(13,'V区包间','包间区',3);
+INSERT INTO `tb_table_type` (`shop_id`,`name`,`min_consume`,`sort_number`) VALUES
+  (13,'散台',0.00,1),(13,'卡座',0.00,2),(13,'包间',0.00,3);
+INSERT INTO `tb_dining_table` (`shop_id`,`table_no`,`table_name`,`type_id`,`zone_id`,`capacity`,`status`) VALUES
+  (13,'A01','A区·A01',1,1,4,1),(13,'A02','A区·A02',1,1,4,1),(13,'A03','A区·A03',1,1,4,1),
+  (13,'A04','A区·A04',1,1,4,1),(13,'A05','A区·A05',1,1,4,1),(13,'A06','A区·A06',1,1,4,1),
+  (13,'A07','A区·A07',1,1,4,1),(13,'A08','A区·A08',1,1,4,1),(13,'A09','A区·A09',1,1,4,1),
+  (13,'A10','A区·A10',1,1,4,1),(13,'A11','A区·A11',1,1,4,1),(13,'A12','A区·A12',1,1,4,1),
+  (13,'K01','K区·K01',2,2,6,1),(13,'K02','K区·K02',2,2,6,1),(13,'K03','K区·K03',2,2,6,1),
+  (13,'K04','K区·K04',2,2,6,1),(13,'V01','V区·V01',3,3,10,1),(13,'V02','V区·V02',3,3,10,1);

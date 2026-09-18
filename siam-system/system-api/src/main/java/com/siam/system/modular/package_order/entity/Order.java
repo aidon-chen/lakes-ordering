@@ -176,9 +176,17 @@ public class Order {
 
     private Integer checkoutMode;
 
+    private Long tableId;
+
     private String tableNo;
 
     private String tableName;
+
+    private Integer diningNum;
+
+    private Integer diningSessionId;
+
+    private Integer orderScene;
 
     private Boolean isPayment;
 

@@ -2,7 +2,7 @@
 	"pages": [{
 			"path": "pages/index/index",
 			"style": {
-				"navigationBarTitleText": "暹罗外卖",
+				"navigationBarTitleText": "乐章酒馆",
 				"enablePullDownRefresh": true,
 				"navigationStyle": "custom"
 			}
@@ -234,6 +234,20 @@
 			}
 		},
 		{
+			"path": "pages/internal/agreement/user",
+			"style": {
+				"usingComponents": {},
+				"navigationBarTitleText": "用户协议"
+			}
+		},
+		{
+			"path": "pages/internal/agreement/privacy",
+			"style": {
+				"usingComponents": {},
+				"navigationBarTitleText": "隐私政策"
+			}
+		},
+		{
 			"path": "pages/mine/share/withdrawal/index/index",
 			"style": {
 				"navigationBarTitleText": "奖励提现"
@@ -399,7 +413,7 @@
 	"globalStyle": {
 		"backgroundTextStyle": "dark",
 		"navigationBarBackgroundColor": "#fff",
-		"navigationBarTitleText": "暹罗外卖",
+		"navigationBarTitleText": "乐章酒馆",
 		"navigationBarTextStyle": "black"
 		// #ifdef H5
 		,"app-plus": {

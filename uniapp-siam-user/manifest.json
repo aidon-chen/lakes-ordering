@@ -1,5 +1,5 @@
 {
-	"name": "(server) uniapp-siam-user",
+	"name": "乐章酒馆",
 	"appid": "__UNI__EB75A45",
 	"description": "",
 	"versionName": "1.0.0",
@@ -127,7 +127,7 @@
 				"enable": false
 			}
 		},
-		"title": "暹罗外卖"
+		"title": "乐章酒馆"
 	},
 	"mp-alipay": {
 		"usingComponents": true

@@ -726,6 +726,11 @@
 		border-color: #5f7d22;
 	}
 
+	/* 主色的浅色派生（胶囊/标签底），对应设计稿浅蓝派生色统一换算为绿色系 */
+	.theme-bg-light {
+		background: #eef3e4;
+	}
+
 	/* 选择地址radio公共样式 */
 	.radio-active {
 		background: #5f7d22;

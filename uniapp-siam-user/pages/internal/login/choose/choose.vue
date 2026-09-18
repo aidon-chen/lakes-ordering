@@ -1,99 +1,87 @@
 <template>
-	<view>
-		<view class="userinfo-view">
-			<image class="userinfo-avatar"
-				:src="userInfo.avatarUrl ? userInfo.avatarUrl : '/static/assets/images/user-head.png'" mode="cover">
-			</image>
-			<view class="userinfo-text">{{ userInfo.username }}</view>
-			<view class="userinfo-text">欢迎回来</view>
+	<!--
+		E-08b 登录方式选择页（品牌化重构）
+		设计稿：文件 726120934925304 · 页 2:5 · 板 5:769「E-08b 欢迎登录优化」
+		  · 头像占位 72×72 圆 r36 底 #F5F5F5 + 白描边（节点 5:777），人形 38×38 #C3C3C3（5:778）
+		  · 主标题「欢迎回来」24px 600 #333（节点 5:782）；副标题 13px #808080（5:783）
+		  · 主按钮 325×44 r4 实心主色「微信手机号码登录」（节点 5:784）
+		  · 次按钮 325×44 r4 白底主色描边「手机号验证码登录」（节点 5:786）
+		  · 协议勾选行（节点 5:788）→ 公共组件 login-agreement
+		⚠️ 本板**没有品牌方框**：节点 5:772~5:776（品牌标 + 酒杯 + 3 个矢量）已被设计删除，
+		   页首是 63px 留白后直接是头像。原稿文件 726124180849143 的 2:379 版本仍有该方框，
+		   两版不一致时以本板（用户指定的交接画布）为准。
+		纵向节奏（页面内容坐标系，1px = 2rpx）：
+		   头像 63~135 · 标题 159.5~194.5 · 副标题 197.5~216.5 · 按钮 262~306 / 322~366 · 协议行 406
+		副标题手机号按设计稿要求脱敏展示（D5）：138****5678
+		配色：设计稿蓝 #004CA0 → 主题绿 #5f7d22
+	-->
+	<view class="choose-page">
+		<view class="avatar-ring">
+			<image class="avatar-img" v-if="avatarUrl" :src="avatarUrl" mode="aspectFill"></image>
+			<image class="avatar-img" v-else src="/static/assets/icons/login-person-gray.png" mode="aspectFit"></image>
 		</view>
-		<view class="button-view">
-			<button class="getphonenumber" type="primary" @getphonenumber="getPhoneNumber" open-type="getPhoneNumber"
-				style="font-size: 30rpx">微信手机号码登录</button>
-			<!-- <button class="getphonenumber" type="primary" wx:else
-	bindtap="getUserProfile">获取用户信息</button> -->
-			<button class="verification-code theme-color-border" hover-class="hover-class-public"
-				@tap="verificationCodeTap" style="font-size: 30rpx">手机号验证码登录</button>
-			<!-- <button class="getphonenumber" type="primary" wx:if="{{hasUserInfo}}" bindgetphonenumber='getPhoneNumber' open-type='getPhoneNumber'>微信一键登录</button> -->
-			<!-- <button class="getphonenumber" type="primary" wx:else
-    open-type='getUserInfo' bindgetuserinfo='onLoad'>微信一键登录</button>
-		<button class="verification-code theme-color-border" hover-class="hover-class-public" bindtap="verificationCodeTap">手机号验证码登录</button> -->
+
+		<view class="welcome-title">欢迎回来</view>
+		<view class="welcome-sub" v-if="subText">{{ subText }}</view>
+
+		<view class="btn-group">
+			<button class="choose-btn theme-bg" @tap="wxPhoneLogin">微信手机号码登录</button>
+			<button class="choose-btn choose-btn-ghost theme-color theme-border-color" @tap="codeLogin">手机号验证码登录</button>
+		</view>
+
+		<view class="agreement-wrap">
+			<login-agreement v-model="agreed" />
 		</view>
 	</view>
 </template>
 
 <script>
 	import toastService from '../../../../utils/toast.service';
-	import https from '../../../../utils/http';
-	import utilHelper from '../../../../utils/util';
+	import authService from '../../../../utils/auth';
+	// .vue 组件必须在脚本里 import + components 注册（本工程 easycom.autoscan=false，
+	// 且 pages.json 的 usingComponents 只对 wxcomponents 原生组件生效，不会打包 .vue）
+	import loginAgreement from '@/components/login-agreement/login-agreement.vue';
+
 	//获取应用实例
 	let app = null;
+
 	export default {
+		components: {
+			'login-agreement': loginAgreement
+		},
 		data() {
 			return {
-				canIUseGetUserProfile: false,
 				inviterId: '',
-
-				userInfo: {
-					avatarUrl: false,
-					username: ''
-				},
-
-				hasUserInfo: false
+				agreed: true,
+				avatarUrl: '',
+				nickname: '',
+				phone: ''
 			};
-		}
-		/**
-		 * 生命周期函数--监听页面加载
-		 */
-		,
-		onLoad: function(options) {
-			console.log(options.scene);
-			app = getApp();
-			if (options.scene) {
-				options.inviterId = options.scene.split('%3D')[1];
-			}
-			console.log(options);
-			//判断是否有邀请者id传递过来
-			if (options.inviterId) {
-				this.inviterId = options.inviterId;
-			}
-			console.log('options.inviterId = ' + options.inviterId);
-
-			//app.onLaunch();
-			console.log(app.globalData.userInfo);
-			if (app.globalData.userInfo) {
-				this.userInfo = app.globalData.userInfo;
-				this.hasUserInfo = true;
-				this.canIUseGetUserProfile = true;
-			} else if (this.canIUse) {
-				// 由于 getUserInfo 是网络请求，可能会在 Page.onLoad 之后才返回
-				// 所以此处加入 callback 以防止这种情况
-				app.globalData.userInfoReadyCallback = (res) => {
-					this.userInfo = res.userInfo;
-					this.hasUserInfo = true;
-				};
-			} else {
-				// 在没有 open-type=getUserInfo 版本的兼容处理
-				// app.checkIsAuth("scope.userInfo",{inviterId:options.inviterId});
-				// wx.getUserInfo({
-				//   success: res => {
-				//     app.globalData.userInfo = res.userInfo;
-				//     this.setData({
-				//       userInfo: res.userInfo,
-				//       hasUserInfo: true
-				//     })
-				//   }
-				// })
+		},
+		computed: {
+			//设计稿副标题格式：昵称 · 138****5678（手机号必须脱敏）
+			subText() {
+				const masked = this.maskPhone(this.phone);
+				return [this.nickname, masked].filter(Boolean).join(' · ');
 			}
 		},
-		/**
-		 * 生命周期函数--监听页面初次渲染完成
-		 */
-		onReady: function() {},
-		/**
-		 * 生命周期函数--监听页面显示
-		 */
-		onShow: function() {
+		onLoad(options) {
+			app = getApp();
+			const opts = options || {};
+			console.log(opts.scene);
+			let inviterId = opts.inviterId || '';
+			//扫码进入时 scene 形如 xxx%3D<inviterId>
+			if (opts.scene) {
+				const parts = String(opts.scene).split('%3D');
+				if (parts.length > 1) inviterId = parts[1];
+			}
+			this.inviterId = inviterId;
+			console.log('options.inviterId = ' + inviterId);
+			this.syncUser();
+		},
+		onShow() {
+			//页面可能从 code 页登录成功后退回，这里重新同步一次展示信息
+			this.syncUser();
 			uni.login({
 				success: (res) => {
 					// 发送 res.code 到后台换取 openId, sessionKey, unionId
@@ -101,139 +89,128 @@
 				}
 			});
 		},
-		/**
-		 * 生命周期函数--监听页面隐藏
-		 */
-		onHide: function() {},
-		/**
-		 * 生命周期函数--监听页面卸载
-		 */
-		onUnload: function() {},
-		/**
-		 * 页面相关事件处理函数--监听用户下拉动作
-		 */
-		onPullDownRefresh: function() {},
-		/**
-		 * 页面上拉触底事件的处理函数
-		 */
-		onReachBottom: function() {},
-		/**
-		 * 用户点击右上角分享
-		 */
-		onShareAppMessage: function() {},
 		methods: {
-			getPhoneNumber: function(e) {
-				//是否授权过用户信息
-				// if (e.detail.iv && e.detail.encryptedData) {
-				//   app.getLoginCode().then(code => {
-				//     toastService.showLoading("正在登录...", true);
-				//     https.request("/rest/wxLogin/getWxPhone", {
-				//       wxCode: code,
-				//       wxIV: e.detail.iv,
-				//       encryptedData: e.detail.encryptedData
-				//     }).then(result => {
-				//       toastService.hideLoading();
-				//       if (result.success) {
-				//         app.weChatLogin(result.data.phoneNumber, result.data.openid, this.data.inviterId);
-				//       }
-				//     })
-				//   })
-				//   //app.wxLogin(e.detail.iv, e.detail.encryptedData, app.globalData.code);
-				//   //this.wxLogin(e.detail.iv, e.detail.encryptedData,app.globalData.code);
-				//   return
-				// }
-				toastService.showToast('暂不支持微信登录，请选择验证码登录');
+			maskPhone(phone) {
+				const s = String(phone || '').replace(/\D/g, '');
+				if (s.length !== 11) return '';
+				return s.slice(0, 3) + '****' + s.slice(7);
 			},
 
-			wxLogin(iv, encryptedData, code) {
-				// session_key 已经失效，需要重新执行登录流程\
-				// 检查登录态是否过期
-				https
-					.request('/rest/wxLogin/getWxPhone', {
-						wxCode: code,
-						wxIV: iv,
-						encryptedData: encryptedData
-					})
-					.then((result) => {
-						toastService.hideLoading();
-						if (result.success) {
-							toastService.showLoading('正在登录...', true);
-							app.globalData.weChatLogin(result.data.phoneNumber, result.data.openid, this.inviterId);
-						}
-					});
-			},
-
-			getUserProfile(e) {
-				// 推荐使用wx.getUserProfile获取用户信息，开发者每次通过该接口获取用户个人信息均需用户确认
-				// 开发者妥善保管用户快速填写的头像昵称，避免重复弹窗
-				uni.getUserProfile({
-					desc: '用于完善会员资料',
-					// 声明获取用户个人信息后的用途，后续会展示在弹窗中，请谨慎填写
-					success: (res) => {
-						console.log(res);
-						if (res.userInfo) {
-							app.globalData.userInfo = res.userInfo;
-							this.setData({
-								userInfo: res.userInfo,
-								hasUserInfo: true,
-								canIUseGetUserProfile: true
-							});
-						}
-					},
-					fail(res) {
-						console.log(res);
-						app.globalData.userInfo = null;
-					}
+			syncUser() {
+				const info = app.globalData.userInfo || {};
+				this.avatarUrl = info.avatarUrl || '';
+				this.nickname = info.nickName || info.username || '';
+				authService.getPhoneNumber().then((phone) => {
+					this.phone = phone || '';
 				});
 			},
 
-			verificationCodeTap() {
-				//如果邀请者id不为空，就携带到下一个跳转的页面
-				if (this.inviterId) {
-					console.log('choose-log-in.js -> 邀请者不为空');
-					uni.navigateTo({
-						url: '../../login/code/code?inviterId=' + this.inviterId
-					});
-				} else {
-					console.log('choose-log-in.js -> 邀请者为空');
-					uni.navigateTo({
-						url: '../../login/code/code?inviterId'
-					});
-				}
+			//未勾选协议时统一拦截
+			checkAgreed() {
+				if (this.agreed) return true;
+				toastService.showToast('请先阅读并同意《用户协议》和《隐私政策》');
+				return false;
+			},
+
+			wxPhoneLogin() {
+				if (!this.checkAgreed()) return;
+				//微信手机号快捷登录需要小程序已认证并开通「手机号快速验证」组件，
+				//后端旧接口 /rest/wxLogin/getWxPhone 走的是已废弃的 encryptedData 解密流，暂不可用（见批次4 D3）
+				toastService.showToast('暂不支持微信手机号登录，请选择验证码登录');
+			},
+
+			codeLogin() {
+				if (!this.checkAgreed()) return;
+				uni.navigateTo({
+					url: '../code/code?inviterId=' + this.inviterId
+				});
 			}
 		}
 	};
 </script>
+
 <style>
-	.userinfo-view {
-		text-align: center;
-		margin: 50rpx 0;
+	.choose-page {
+		min-height: 100vh;
+		background: #ffffff;
+		padding: 0 50rpx;
+		box-sizing: border-box;
 	}
 
-	.userinfo-avatar {
-		width: 108rpx;
-		height: 108rpx;
+	/* 头像占位 72×72 圆（设计稿 y=63 起，即 126rpx） */
+	.avatar-ring {
+		width: 144rpx;
+		height: 144rpx;
+		margin: 126rpx auto 0 auto;
 		border-radius: 50%;
-		box-shadow: -2px 0px 5px 0.5px rgba(0, 0, 0, 0), 0px -2px 5px 1px rgba(0, 0, 0, 0.1), 2px 0px 5px 1px rgba(0, 0, 0, 0), 0px 2px 5px 1px rgba(0, 0, 0, 0.1);
+		background: #f5f5f5;
+		border: 2rpx solid #ffffff;
+		overflow: hidden;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 	}
 
-	.userinfo-text {
-		line-height: 58rpx;
-		font-size: 32rpx;
+	.avatar-img {
+		width: 76rpx;
+		height: 76rpx;
+		border-radius: 50%;
 	}
 
-	.button-view {
+	/* 头像底 135 → 标题顶 159.5，间距 24.5px；行高锁 35px 对齐设计稿文本块高度 */
+	.welcome-title {
+		margin-top: 49rpx;
+		font-size: 48rpx;
+		font-weight: 600;
+		color: #333333;
 		text-align: center;
+		line-height: 70rpx;
 	}
 
-	.getphonenumber {
-		margin: 150rpx 50rpx 50rpx 50rpx;
-		font-size: 32rpx;
+	/* 标题底 194.5 → 副标题顶 197.5，间距 3px */
+	.welcome-sub {
+		margin-top: 6rpx;
+		font-size: 26rpx;
+		color: #808080;
+		text-align: center;
+		line-height: 38rpx;
 	}
 
-	.verification-code {
-		margin: 50rpx 50rpx 50rpx 50rpx;
-		background: white;
-		font-size: 32rpx;
+	/* 副标题底 216.5 → 按钮顶 262，间距 45.5px */
+	.btn-group {
+		margin-top: 91rpx;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.choose-btn {
+		width: 100%;
+		height: 88rpx;
+		line-height: 88rpx;
+		border-radius: 8rpx;
+		font-size: 30rpx;
+		font-weight: 500;
+		padding: 0;
+	}
+
+	.choose-btn + .choose-btn {
+		margin-top: 32rpx;
+	}
+
+	.choose-btn-ghost {
+		background: #ffffff;
+		/* 颜色由全局 theme-border-color 提供，此处只给宽度与线型 */
+		border-width: 2rpx;
+		border-style: solid;
+	}
+
+	.choose-btn::after {
+		border: none;
+	}
+
+	.agreement-wrap {
+		margin-top: 80rpx;
+		display: flex;
+		justify-content: center;
 	}
 </style>

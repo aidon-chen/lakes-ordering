@@ -360,4 +360,15 @@ public interface OrderMapper extends BaseMapper<Order> {
             "</script>")
     Integer selectCountWaitHandle(@Param("order") OrderParam param);
 
+    /**
+     * 转台：迁移会话下全部堂食订单的台位快照列
+     * （Round 2 拍板：只改 table_id/table_no/table_name 三个快照列，不动支付流水）
+     */
+    @Update("UPDATE tb_order SET table_id = #{targetTableId}, table_no = #{targetTableNo}, table_name = #{targetTableName} " +
+            "WHERE dining_session_id = #{sessionId} AND order_scene = 1")
+    int migrateSessionTables(@Param("sessionId") Long sessionId,
+                             @Param("targetTableId") Long targetTableId,
+                             @Param("targetTableNo") String targetTableNo,
+                             @Param("targetTableName") String targetTableName);
+
 }
