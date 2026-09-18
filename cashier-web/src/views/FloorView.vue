@@ -5,16 +5,12 @@
     <div class="flex items-center gap-3">
       <select v-model="pos.zone" class="toolbar-select w-[140px]">
         <option>全部区域</option>
-        <option>A区散台</option>
-        <option>K区卡座</option>
-        <option>V区包间</option>
+        <option v-for="z in pos.zones" :key="z.id" :value="z.name">{{ z.name }}</option>
       </select>
       <select v-model="pos.statusFilter" class="toolbar-select w-[140px]">
         <option>全部状态</option>
         <option>空闲</option>
         <option>占用</option>
-        <option>预定</option>
-        <option>待清台</option>
       </select>
       <input
         v-model="pos.keyword"
@@ -33,7 +29,7 @@
       </button>
     </div>
 
-    <!-- 图例行 2:597 -->
+    <!-- 图例行 2:597（Round 8 两态） -->
     <div class="flex items-center gap-6">
       <span v-for="g in legends" :key="g.label" class="flex items-center gap-2">
         <i class="w-[14px] h-[14px] rounded-[3px] inline-block" :style="{ background: g.bg, border: `1px solid ${g.border}` }" />
@@ -50,11 +46,11 @@
     </div>
 
     <p class="text-[12px] mt-1" style="color: var(--tc-hold)">
-      点台位卡开抽屉：查看该台订单 + 只读台位码（生成/作废在管理端 A-09）
+      点台位卡进单/开台；占用卡可「加酒」或「转台」
     </p>
   </div>
 
-  <!-- 开台弹窗（空闲 / 预定到店共用） -->
+  <!-- 开台弹窗（空闲共用） -->
   <Teleport to="body">
     <div v-if="openTable" class="fixed inset-0 z-50 flex items-center justify-center" style="background: rgba(23,28,15,.45)" @click.self="pos.cancelOpen()">
       <div class="w-[380px] rounded-xl bg-white p-6 shadow-xl">
@@ -63,7 +59,7 @@
           <span class="text-[12px]" style="color: var(--tc-sub)">{{ openTable.typeName }} · {{ openTable.zone }} · 低消 ¥{{ openTable.minSpend }}</span>
         </div>
         <p class="mt-1 text-[12px]" style="color: var(--tc-sub)">
-          {{ openTable.reservation ? `预定到店 · 预计 ${openTable.reservation.expectedGuests} 人 · ${openTable.reservation.arriveTime}` : '空闲 · 确认后进入点单' }}
+          空闲 · 确认后进入点单
         </p>
 
         <div class="mt-5">
@@ -87,6 +83,36 @@
       </div>
     </div>
   </Teleport>
+
+  <!-- 转台弹窗（Round 5 拍板：弹窗选空闲目标台） -->
+  <Teleport to="body">
+    <div v-if="changeTable" class="fixed inset-0 z-50 flex items-center justify-center" style="background: rgba(23,28,15,.45)" @click.self="pos.cancelChange()">
+      <div class="w-[420px] rounded-xl bg-white p-6 shadow-xl">
+        <div class="flex items-baseline justify-between">
+          <span class="text-[20px] font-bold" style="color: var(--tc-title)">转台 · {{ changeTable.tableNo }}</span>
+          <span class="text-[12px]" style="color: var(--tc-sub)">{{ changeTable.typeName }} · {{ changeTable.zone }}</span>
+        </div>
+        <p class="mt-1 text-[12px]" style="color: var(--tc-sub)">选择目标空闲台位（就餐与会话将迁移）</p>
+
+        <div class="mt-4 max-h-[320px] overflow-auto flex flex-wrap gap-2">
+          <button
+            v-for="t in pos.changeTargets"
+            :key="t.id"
+            class="h-[44px] px-4 rounded border text-[13px]"
+            style="border-color: var(--tc-line); color: var(--tc-gray)"
+            @click="pos.confirmChange(t.id)"
+          >{{ t.tableNo }} · {{ t.zone }}</button>
+          <span v-if="!pos.changeTargets.length" class="text-[12px]" style="color: var(--tc-gray)">暂无空闲台位</span>
+        </div>
+
+        <div class="mt-6 flex gap-3 justify-end">
+          <button class="h-[36px] px-4 rounded border text-[13px]" style="border-color: var(--tc-line); color: var(--tc-gray)" @click="pos.cancelChange()">
+            取消
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -102,11 +128,14 @@ const openTable = computed<TableInfo | null>(() =>
   pos.tables.find(t => t.id === pos.openForTableId) ?? null
 )
 
+/** 转台弹窗当前源台 */
+const changeTable = computed<TableInfo | null>(() =>
+  pos.tables.find(t => t.id === pos.changeForTableId) ?? null
+)
+
 const legends = computed(() => [
   { label: '空闲', count: pos.uiCounts.idle, bg: '#ffffff', border: 'var(--tc-line)' },
-  { label: '占用', count: pos.uiCounts.busy, bg: 'var(--pl)', border: 'var(--p)' },
-  { label: '预定', count: pos.uiCounts.reserved, bg: 'var(--rsv-bg)', border: 'var(--rsv)' },
-  { label: '待清台', count: pos.uiCounts.cleaning, bg: 'var(--clean-bg)', border: 'var(--clean)' }
+  { label: '占用', count: pos.uiCounts.busy, bg: 'var(--pl)', border: 'var(--p)' }
 ])
 </script>
 

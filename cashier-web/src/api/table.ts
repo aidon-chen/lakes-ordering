@@ -1,19 +1,52 @@
-import http from './http'
-import type { TableInfo } from '@/types'
+import { http } from './http'
 
-/** 桌台 / 会话接口（M1 后端交付后启用） */
+/** 台位作业接口（对齐后端 /rest/merchant/diningTable/**，2026-09-19） */
 
-/** 桌台总览：一次带回桌位+分区+进行中会话聚合 */
-export const fetchTableList = (shopId: number) =>
-  http.get<unknown, TableInfo[]>('/rest/merchant/table/list', { params: { shopId } })
+/** 桌台图数据：{ tables: TableFloorRow[], zoneList: ZoneRow[] } */
+export interface TableFloorRow {
+  id: number
+  tableNo: string
+  tableName: string
+  typeName: string
+  zone: string
+  capacity: number
+  status: 1 | 2 | 3
+  minSpend: number
+  // 占用时的进行中会话摘要
+  sessionId: number | null
+  memberNum: number | null
+  openMinutes: number | null
+  goodsTotalPrice: number | null
+  addedCount: number | null
+}
 
-/** 开台：乐观占位 + 建会话 + 首单；同桌已有进行中会话时返回既有（复用） */
-export const openTable = (tableId: number, guests: number) =>
-  http.post<unknown, { sessionId: number; orderId: number; reused: boolean }>(
-    '/rest/merchant/table/open',
-    { tableId, guests }
+/** 区域行 */
+export interface ZoneRow {
+  id: number
+  shopId: number
+  name: string
+  description?: string
+  sortNumber: number
+}
+
+/** 桌台总览：全量台位 + 区域列表（不分页） */
+export const fetchTableList = () =>
+  http.post<unknown, { tables: TableFloorRow[]; zoneList: ZoneRow[] }>(
+    '/rest/merchant/diningTable/list',
+    {}
   )
 
-/** 进行中会话列表（chips 行 / TicketView 共用数据源） */
-export const fetchPendingOrders = (shopId: number) =>
-  http.get<unknown, unknown[]>('/rest/merchant/order/pending-list', { params: { shopId } })
+/** 开台：返回 { sessionId, tableId } */
+export const openTable = (id: number, memberNum: number) =>
+  http.post<unknown, { sessionId: number; tableId: number }>(
+    '/rest/merchant/diningTable/open',
+    { id, memberNum }
+  )
+
+/** 转台 */
+export const changeTable = (id: number, targetTableId: number) =>
+  http.post<unknown, null>('/rest/merchant/diningTable/change', { id, targetTableId })
+
+/** 清台 */
+export const clearTable = (id: number) =>
+  http.post<unknown, null>('/rest/merchant/diningTable/clear', { id })

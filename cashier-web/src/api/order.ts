@@ -1,4 +1,4 @@
-import http from './http'
+import { http } from './http'
 
 /** 点单 / 结账接口（M1 后端交付后启用） */
 
