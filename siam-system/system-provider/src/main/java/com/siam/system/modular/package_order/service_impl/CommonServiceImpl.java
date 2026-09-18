@@ -48,13 +48,10 @@ public class CommonServiceImpl implements CommonService {
         /*String addressA = dbDeliveryAddress.getProvince() + dbDeliveryAddress.getCity() + dbDeliveryAddress.getArea() + dbDeliveryAddress.getStreet();*/
         /*String addressB = dbShop.getProvince() + dbShop.getCity() + dbShop.getArea() + dbShop.getStreet();*/
 
-        //获取收货地址定位 与 门店的行车距离
-        LinkedTreeMap map = baiduMapUtils.getTravelingDistanceFromCoordinate(lngA, latA, dbShop.getLongitude(), dbShop.getLatitude(), BusinessType.BAIDU_TRAVELING_PLAN_RIDING);
-        LinkedTreeMap distanceMap = (LinkedTreeMap) map.get("distance");
-        LinkedTreeMap durationMap = (LinkedTreeMap) map.get("duration");
-        //路线距离 得保留三位小数，精确到1~9米
-        BigDecimal distanceValue = BigDecimal.valueOf((double) distanceMap.get("value"));
-        distanceValue = distanceValue.divide(BigDecimal.valueOf(1000), 3, BigDecimal.ROUND_HALF_UP);
+        //单店模式简化（2026-09-18）：移除百度路线矩阵 API 依赖（baidu.map.ak 未配置，
+        //百度返回 ak is invalid 抛 RuntimeException，导致下单/支付链路异常），
+        //与 selectTravelingDistance 统一改为 haversine 直线距离（单位：公里）
+        BigDecimal distanceValue = this.straightLineKm(lngA, latA, dbShop.getLongitude(), dbShop.getLatitude());
 
         //如果距离为0，则代表百度地图没有计算结果
         //还有一种情况会造成距离为0，那就是起点和终点相等--这种情况也算作地址填写错误
@@ -89,37 +86,21 @@ public class CommonServiceImpl implements CommonService {
     public TravelingDistanceVo selectTravelingDistance(BigDecimal lngA, BigDecimal latA, BigDecimal lngB, BigDecimal latB) {
         TravelingDistanceVo travelingDistanceVo = new TravelingDistanceVo();
 
-        //容错：云托管容器可能访问不了百度接口（网络受限），此时降级为直线距离估算，
-        //保证店铺列表/详情/搜索流程可用（见 04-deploy-cost/mvp-migration/云托管部署工作日志.md）
-        try {
-            //获取收货地址定位 与 门店的行车距离
-            LinkedTreeMap map = baiduMapUtils.getTravelingDistanceFromPoints(lngA, latA, lngB, latB, BusinessType.BAIDU_TRAVELING_PLAN_RIDING);
-            LinkedTreeMap distanceMap = (LinkedTreeMap) map.get("distance");
-            LinkedTreeMap durationMap = (LinkedTreeMap) map.get("duration");
-            if (distanceMap == null || durationMap == null || distanceMap.get("value") == null) {
-                throw new IllegalStateException("百度路线规划返回缺少 distance/duration");
-            }
-            //路线距离 得保留三位小数，精确到1~9米
-            BigDecimal distanceValue = BigDecimal.valueOf((double) distanceMap.get("value"));
-            distanceValue = distanceValue.divide(BigDecimal.valueOf(1000), 3, BigDecimal.ROUND_HALF_UP);
-
-            travelingDistanceVo.setDistanceValue(distanceValue);
-            travelingDistanceVo.setDurationText((String) durationMap.get("text"));
-            travelingDistanceVo.setDistanceText((String) distanceMap.get("text"));
-            travelingDistanceVo.setDurationValue(BigDecimal.valueOf((double) durationMap.get("value")));
-        } catch (Exception e) {
-            BigDecimal km = this.straightLineKm(lngA, latA, lngB, latB);
-            travelingDistanceVo.setDistanceValue(km);
-            if (km.compareTo(BigDecimal.ONE) < 0) {
-                travelingDistanceVo.setDistanceText(km.multiply(BigDecimal.valueOf(1000)).setScale(0, BigDecimal.ROUND_HALF_UP) + "m");
-            } else {
-                travelingDistanceVo.setDistanceText(km + "km");
-            }
-            int minutes = Math.max(1, km.multiply(BigDecimal.valueOf(3)).setScale(0, BigDecimal.ROUND_HALF_UP).intValue());
-            travelingDistanceVo.setDurationText("约" + minutes + "分钟");
-            travelingDistanceVo.setDurationValue(BigDecimal.valueOf(minutes * 60));
-            log.warn("百度路线规划调用失败，降级为直线距离：" + e.getClass().getSimpleName() + " - " + e.getMessage());
+        //单店模式简化（2026-09-18）：移除百度路线矩阵 API 依赖。
+        //原实现调用百度 routematrix 计算骑行距离，但 baidu.map.ak 从未配置（默认值是邮箱，
+        //百度返回 ak is invalid 抛 RuntimeException），导致 /rest/shop/list 等接口全量异常。
+        //现在统一改为 haversine 直线距离估算（纯本地计算，无外部依赖），
+        //配送费按直线距离计算，单店/开发场景足够；多门店按直线距离升序排序语义不变。
+        BigDecimal km = this.straightLineKm(lngA, latA, lngB, latB);
+        travelingDistanceVo.setDistanceValue(km);
+        if (km.compareTo(BigDecimal.ONE) < 0) {
+            travelingDistanceVo.setDistanceText(km.multiply(BigDecimal.valueOf(1000)).setScale(0, BigDecimal.ROUND_HALF_UP) + "m");
+        } else {
+            travelingDistanceVo.setDistanceText(km + "km");
         }
+        int minutes = Math.max(1, km.multiply(BigDecimal.valueOf(3)).setScale(0, BigDecimal.ROUND_HALF_UP).intValue());
+        travelingDistanceVo.setDurationText("约" + minutes + "分钟");
+        travelingDistanceVo.setDurationValue(BigDecimal.valueOf(minutes * 60));
         return travelingDistanceVo;
     }
 
