@@ -98,7 +98,7 @@
 									@tap="parseEventDynamicCode($event, chil.goodsStatus == 4 ? '' : 'commodityDetailTap')"
 									:data-id="chil.goodsId">
 									<image
-										:src="chil.mainImage ? chil.mainImage : '/static/assets/images/load-image.png'"
+										:src="chil.mainImage ? chil.mainImage : '/static/assets/common/load-image.png'"
 										mode="aspectFill" class="commodity-image"></image>
 									<view class="sell-out" v-if="chil.goodsStatus == 4">售罄</view>
 									<view class="commodity-name-english-view">
