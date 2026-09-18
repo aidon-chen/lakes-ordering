@@ -35,7 +35,8 @@ public class MenuServiceImpl implements MenuService {
     @Autowired
     private RedisTemplate redisTemplate;
 
-    @Autowired
+    /**Redisson 在无 Redis 环境（云托管 mvp）不装配：required=false，用时降级进程内锁（见 04-deploy-cost/mvp-migration/02）*/
+    @Autowired(required = false)
     private RedissonClient redissonClient;
 
     @Override
@@ -82,12 +83,8 @@ public class MenuServiceImpl implements MenuService {
             menuList = (List<Map<String, Object>>) JsonUtils.toObject(redisUtils.get("menuList").toString(), List.class);
             log.debug("\n\n》》》 getListByRedis - 从Redis获取，" + menuList);
         }else{
-//            //本地锁，synchronized
-//            menuList = readByDBWithSynchronized(menu);
-//            //Redis分布式锁，底层操作
-//            menuList = readByDBWithRedisLock(menu);
-            //Redisson分布式锁
-            menuList = readByDBWithRedission(menu);
+            //mvp 单实例：进程内锁即可（原 Redisson 分布式锁在无 Redis 环境不可用，语义等价降级）
+            menuList = readByDBWithSynchronized(menu);
         }
         return menuList;
     }

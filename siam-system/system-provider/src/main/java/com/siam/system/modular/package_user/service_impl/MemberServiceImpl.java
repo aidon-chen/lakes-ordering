@@ -591,12 +591,22 @@ public class MemberServiceImpl implements MemberService {
             }
         }
 
-        //获取小程序openId
-        WxSession wxSession = WxLoginController.getSessionKeyFromWxByCode(param.getCode());
-//        if (wxSession.getOpenid() == null) {
-//            throw new StoneCustomerException("用户唯一标识获取失败");
-//        }
-        log.debug("\n\n自动注册获取的openid：" + wxSession.getOpenid());
+        //获取小程序openId：优先使用 callContainer 自动注入的 x-wx-openid（见 MemberController.applyWxHeaders），
+        //缺失时才用 wx.login 的 code 走 jscode2session；两路都失败也不阻断手机验证码登录
+        String openid = param.getOpenId();
+        WxSession wxSession = null;
+        if (openid == null || openid.isEmpty()) {
+            try {
+                wxSession = WxLoginController.getSessionKeyFromWxByCode(param.getCode());
+                if (wxSession != null && wxSession.getOpenid() != null) {
+                    openid = wxSession.getOpenid();
+                    param.setOpenId(openid);
+                }
+            } catch (Exception e) {
+                log.warn("\n\n换取 openid 失败（不影响手机验证码登录）：" + e.getMessage());
+            }
+        }
+        log.debug("\n\n本次登录使用的 openid：" + openid);
 
         // 判断是否已经注册
         Member dbMember = memberMapper.selectByMobile(param.getMobile());
@@ -622,7 +632,7 @@ public class MemberServiceImpl implements MemberService {
         //创建登录cookie
         TokenUtil.addLoginCookie(token);
 
-        memberResult.setOpenId(wxSession.getOpenid());
+        memberResult.setOpenId(openid);
         memberResult.setToken(token);
         return memberResult;
     }

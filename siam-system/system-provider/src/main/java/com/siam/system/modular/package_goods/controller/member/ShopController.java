@@ -18,6 +18,7 @@ import com.siam.package_common.util.DateUtilsPlus;
 import com.siam.system.modular.package_goods.entity.FullReductionRule;
 import com.siam.system.modular.package_goods.entity.Goods;
 import com.siam.system.modular.package_goods.entity.Shop;
+import com.siam.system.modular.package_goods.entity.TableType;
 import com.siam.system.modular.package_goods.model.example.GoodsExample;
 import com.siam.system.modular.package_goods.model.param.SearchParam;
 import com.siam.system.modular.package_goods.model.vo.PromotionVo;
@@ -26,6 +27,7 @@ import com.siam.system.modular.package_goods.model.vo.ShopDetailVo;
 import com.siam.system.modular.package_goods.service.FullReductionRuleService;
 import com.siam.system.modular.package_goods.service.GoodsService;
 import com.siam.system.modular.package_goods.service.ShopService;
+import com.siam.system.modular.package_goods.service.TableTypeService;
 import com.siam.system.modular.package_order.entity.TravelingDistanceVo;
 import io.swagger.annotations.Api;
 import lombok.extern.slf4j.Slf4j;
@@ -63,6 +65,9 @@ public class ShopController {
 
     @Autowired
     private SettingService settingService;
+
+    @Autowired
+    private TableTypeService tableTypeService;
 
     @Autowired
     private BaiduMapUtils baiduMapUtils;
@@ -405,6 +410,99 @@ public class ShopController {
             basicResult.setData(page);
         }
 
+        basicResult.setSuccess(true);
+        basicResult.setCode(BasicResultCode.SUCCESS);
+        basicResult.setMessage("查询成功");
+        return basicResult;
+    }
+
+    /**
+     * 门店列表（自提语义，乐章点餐 C-03）
+     * 与 /list（外卖语义）的区别：不做配送范围过滤（打烊/超距门店照常返回），不计算配送费；
+     * 按直线距离升序，逐店返回营业状态与格式化距离文本。
+     * 设计依据：《客户端缺失功能设计方案-C02-03-04-10-14-15-16-v1.0.md》3.2
+     */
+    @PostMapping(value = "/listForPickup")
+    public BasicResult listForPickup(@RequestBody @Validated(value = {}) Shop shop){
+        BasicData basicResult = new BasicData();
+
+        if(StringUtils.isBlank(shop.getPosition())){
+            throw new StoneCustomerException("position(经纬度)不能为空");
+        }
+
+        //TODO(MARK)-小程序用的是高德地图，后端用的是百度地图，所以需要转换一下
+        String[] strArray = shop.getPosition().split(",");
+        Map<String, BigDecimal> coordinateMap = baiduMapUtils.gaoDeToBaidu(Double.valueOf(strArray[0]), Double.valueOf(strArray[1]));
+
+        //复用基座直线距离分页查询；deliveryDistanceLimit 传极大值 = 不做范围过滤
+        Page<Map<String, Object>> page = shopService.selectMapByDistance(
+                shop.getPageNo() == null ? 1 : shop.getPageNo(),
+                shop.getPageSize() == null ? 20 : shop.getPageSize(),
+                coordinateMap.get("lng"), coordinateMap.get("lat"),
+                BigDecimal.valueOf(999999000L));
+
+        page.getRecords().forEach(map -> {
+            Integer shopId = (Integer) map.get("id");
+
+            //营业状态 = 店铺开关(is_operating) && 营业时间判断(基座已处理跨零点)
+            boolean timeOperating = Boolean.TRUE.equals(commonService.selectIsOperatingOfShop(shopId));
+            Object operatingFlag = map.get("isOperating");
+            boolean shopOperating;
+            if(operatingFlag == null){
+                shopOperating = true;
+            }else if(operatingFlag instanceof Boolean){
+                shopOperating = (Boolean) operatingFlag;
+            }else{
+                shopOperating = Integer.valueOf(1).equals(((Number) operatingFlag).intValue());
+            }
+            map.put("isOperatingOfShop", timeOperating && shopOperating);
+
+            //直线距离文本（SQL 返回的 distance 单位=米）
+            Object distObj = map.get("distance");
+            if(distObj != null){
+                BigDecimal distance = new BigDecimal(String.valueOf(distObj));
+                String distanceText = distance.compareTo(BigDecimal.valueOf(1000)) < 0
+                        ? distance.setScale(0, BigDecimal.ROUND_HALF_UP) + "m"
+                        : distance.divide(BigDecimal.valueOf(1000), 1, BigDecimal.ROUND_HALF_UP) + "km";
+                map.put("distanceText", distanceText);
+            }
+        });
+
+        return BasicResult.success(page);
+    }
+
+    /**
+     * 门店详情（自提语义，乐章点餐 C-03）
+     * 与 /detail（外卖语义）的区别：不计算配送范围/配送费；
+     * 返回门店信息 + 营业状态 + 台位类型说明（散台/卡座/低消）。
+     */
+    @PostMapping(value = "/detailForPickup")
+    public BasicResult detailForPickup(@RequestBody @Validated(value = {}) Shop shop){
+        BasicData basicResult = new BasicData();
+        ShopDetailVo shopDetailVo = new ShopDetailVo();
+
+        if(shop.getId() == null){
+            throw new StoneCustomerException("门店id不能为空");
+        }
+
+        Shop dbShop = this.shopService.getById(shop.getId());
+        if(dbShop == null){
+            throw new StoneCustomerException("该门店信息不存在");
+        }
+        if(dbShop.getStatus() != Quantity.INT_2){
+            throw new StoneCustomerException("该店铺待上架或已下架，不允许查看");
+        }
+
+        //查询当前门店是否营业（基座方法已处理跨零点；店铺 is_operating 开关由前端读 shop 对象叠加）
+        shopDetailVo.setIsOperatingOfShop(commonService.selectIsOperatingOfShop(dbShop.getId()));
+
+        //台位类型说明（散台/卡座/低消）
+        List<TableType> tableTypeList = tableTypeService.selectByShopId(dbShop.getId());
+        shopDetailVo.setTableTypes(tableTypeList);
+
+        shopDetailVo.setShop(dbShop);
+
+        basicResult.setData(shopDetailVo);
         basicResult.setSuccess(true);
         basicResult.setCode(BasicResultCode.SUCCESS);
         basicResult.setMessage("查询成功");

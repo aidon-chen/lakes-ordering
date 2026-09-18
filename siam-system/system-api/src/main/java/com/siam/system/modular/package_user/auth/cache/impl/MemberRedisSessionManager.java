@@ -4,12 +4,14 @@ import com.siam.package_common.util.JsonUtils;
 import com.siam.system.modular.package_user.auth.cache.MemberSessionManager;
 import com.siam.system.modular.package_user.entity.Member;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.concurrent.TimeUnit;
 
 @Component
+@ConditionalOnProperty(name = "siam.session.store", havingValue = "redis")
 public class MemberRedisSessionManager implements MemberSessionManager {
 
     @Autowired

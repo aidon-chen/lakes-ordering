@@ -13,6 +13,7 @@ import java.util.Date;
 public class MemberToken {
 
     @ApiModelProperty(notes = "主键id")
+    /**必须 IdType.AUTO；IdType.NONE＝跟随全局策略（默认 ASSIGN_ID 雪花 Long），会回填进 Integer id 报 argument type mismatch。实测：NONE 报错、AUTO 正常。见 04-deploy-cost/mvp-migration/02*/
     @TableId(type = IdType.AUTO)
     private Integer id;
 

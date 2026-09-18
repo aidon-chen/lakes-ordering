@@ -2,6 +2,7 @@ package com.siam.system.modular.package_goods.model.vo;
 
 import com.siam.system.modular.package_goods.entity.FullReductionRule;
 import com.siam.system.modular.package_goods.entity.Shop;
+import com.siam.system.modular.package_goods.entity.TableType;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -33,4 +34,7 @@ public class ShopDetailVo {
 
     //距离公里数
     private String deliveryDistanceText;
+
+    //台位类型列表（C-03 门店详情台位说明；detailForPickup 返回）
+    private List<TableType> tableTypes;
 }

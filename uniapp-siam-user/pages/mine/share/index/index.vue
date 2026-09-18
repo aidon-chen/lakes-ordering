@@ -320,8 +320,9 @@
 			},
 
 			getAccessToken(e) {
-				var appid = 'wx2e1a8193d3ed12fe'; //填写微信小程序appid
-				var secret = '2774e3a86dc30fbf1ac63d81b56f2291'; //填写微信小程序secret
+				//TODO(正式版)：appid/secret 挪到后端接口换取 access_token（前端硬编码密钥有泄露风险，仅MVP临时）
+				var appid = 'wx0ce2826a2aeb1e29'; //小程序appid（自有小程序）
+				var secret = 'df4d867dd6ac94adee3f698638c7a4e8'; //小程序secret（已配置；正式版挪后端）
 				var _this = this;
 				uni.request({
 					url: 'https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=' + appid +

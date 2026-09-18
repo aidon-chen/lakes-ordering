@@ -1,0 +1,22 @@
+# 构建上下文裁剪：前端工程 / 无关模块 / 本地产物一律不进镜像
+# 注意：siam-monitor 不能裁——根 pom.xml <modules> 声明了它，
+# 裁掉会导致云端构建 Maven 读 pom 失败（Child module does not exist）
+uniapp-siam-user/
+uniapp-siam-cashier/
+vue-siam-admin/
+vue-siam-shop/
+siam-generator/
+.git/
+.gitignore
+.idea/
+*.iml
+doc/
+bin/
+logs/
+**/target/
+**/node_modules/
+Dockerfile
+.dockerignore
+README.md
+project.config.json
+project.private.config.json

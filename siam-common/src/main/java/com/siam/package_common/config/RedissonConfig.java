@@ -5,10 +5,16 @@ import org.redisson.Redisson;
 import org.redisson.api.RedissonClient;
 import org.redisson.config.Config;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * Redisson 会在启动期建立连接；云托管环境无 Redis，必须按需装配。
+ * 仅当 siam.redis.enabled=true 时创建（见 04-deploy-cost/mvp-migration/02）。
+ */
 @Configuration
+@ConditionalOnProperty(name = "siam.redis.enabled", havingValue = "true")
 public class RedissonConfig {
 
 //    @Value("${spring.redis.sentinel.nodes}")

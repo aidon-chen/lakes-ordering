@@ -92,7 +92,9 @@
   import $ from 'jquery'
   
   // var urlPrefix = 'https://api.siam.shop';
-  var urlPrefix = 'https://api.show.siamit.cn';
+  // var urlPrefix = 'https://api.show.siamit.cn';
+  //生产：云托管 bar-mvp 公网域名（2026-09-18 部署接入）；拼接 /rest/xxx，必须带 /siam-server
+  var urlPrefix = 'https://bar-mvp-315579-12-1488393615.sh.run.tcloudbase.com/siam-server';
   // var urlPrefix = 'http://localhost:8060/siam-multi-brand-server';
 
   export default {

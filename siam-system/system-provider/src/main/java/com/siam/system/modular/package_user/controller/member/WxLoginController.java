@@ -51,20 +51,35 @@ public class WxLoginController {
         String url = "https://api.weixin.qq.com/sns/jscode2session?appid=" + appId + "&secret=" + secret
                 + "&js_code=" + code + "&grant_type=authorization_code";
 
-        RestTemplate restTemplate = new RestTemplate();
-        // 进行网络请求,访问url接口
-        ResponseEntity<String> responseEntity = restTemplate.exchange(url, HttpMethod.GET, null, String.class);
-        if (responseEntity != null) {
-            //获取到openid:用户唯一标识,session_key:会话密钥,unionid:用户在开放平台的唯一标识符,在满足 UnionID 下发条件的情况下会返回
-            String sessionData = responseEntity.getBody();
-            log.debug("-------------------------" + sessionData);
-            Gson gson = new Gson();
-            // 解析从微信服务器获得的openid和session_key;
-            WxSession wsSession = gson.fromJson(sessionData, WxSession.class);
-            log.debug(wsSession.getSession_key());
-            return wsSession;
+        //容错：云端容器可能访问不了微信接口（网络受限/被拦），此时不应让整个登录流程崩掉——
+        //失败只意味着拿不到 openid，手机验证码登录仍应成功（见 04-deploy-cost/mvp-migration/云托管部署工作日志.md）
+        try {
+            RestTemplate restTemplate = new RestTemplate();
+            // 设置超时，避免网络不通时长时间挂住
+            org.springframework.http.client.SimpleClientHttpRequestFactory factory = new org.springframework.http.client.SimpleClientHttpRequestFactory();
+            factory.setConnectTimeout(5000);
+            factory.setReadTimeout(8000);
+            restTemplate.setRequestFactory(factory);
+
+            // 进行网络请求,访问url接口
+            ResponseEntity<String> responseEntity = restTemplate.exchange(url, HttpMethod.GET, null, String.class);
+            if (responseEntity != null) {
+                //获取到openid:用户唯一标识,session_key:会话密钥,unionid:用户在开放平台的唯一标识符,在满足 UnionID 下发条件的情况下会返回
+                String sessionData = responseEntity.getBody();
+                log.debug("-------------------------" + sessionData);
+                Gson gson = new Gson();
+                // 解析从微信服务器获得的openid和session_key;
+                WxSession wsSession = gson.fromJson(sessionData, WxSession.class);
+                if (wsSession == null) {
+                    wsSession = new WxSession();
+                }
+                log.debug(wsSession.getSession_key());
+                return wsSession;
+            }
+        } catch (Exception e) {
+            log.warn("\n\n调用微信 jscode2session 失败（不影响手机验证码登录，仅拿不到 openid）：" + e.getClass().getSimpleName() + " - " + e.getMessage());
         }
-        return null;
+        return new WxSession();
     }
 
     /**
@@ -78,6 +93,10 @@ public class WxLoginController {
     public WxEncrypted getWxUserInfo(String code, String iv, String encryptedData) throws Exception {
         WxSession wsSession = getSessionKeyFromWxByCode(code);
         log.debug(encryptedData);
+        //容错提示：新基础库不再下发 encryptedData/iv，或云端访问不到微信接口时，给出可读提示而不是「系统异常」
+        if (wsSession == null || wsSession.getSession_key() == null || encryptedData == null || iv == null) {
+            throw new StoneCustomerException("获取微信信息失败，请改用手机验证码登录");
+        }
         //通过session_key和encryptedData解密微信用户信息
         String str = WxdecodeUtils.decryptData(encryptedData, wsSession.getSession_key(), iv);
         log.debug(str + "------");

@@ -1,0 +1,170 @@
+#端口配置
+server:
+  port: 9200
+  servlet:
+    context-path: /siam-server
+
+spring:
+  #mysql（微信云托管内置 MySQL 自动注入 MYSQL_ADDRESS/MYSQL_USERNAME/MYSQL_PASSWORD）
+  #allowPublicKeyRetrieval=true：8.0 caching_sha2_password 认证在 useSSL=false 下必需
+  datasource:
+    url: jdbc:mysql://${MYSQL_ADDRESS}/siam_db?useUnicode=true&characterEncoding=utf8&autoReconnect=true&useSSL=false&zeroDateTimeBehavior=convertToNull&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true
+    username: ${MYSQL_USERNAME}
+    password: ${MYSQL_PASSWORD}
+
+  #thymeleaf
+  thymeleaf:
+    mode: LEGACYHTML5
+    encoding: utf-8
+    servlet:
+      content-type: text/html
+    cache: false
+
+  #允许bean重复定义/允许bean覆盖
+  main:
+    allow-bean-definition-overriding: true
+
+  jackson:
+    #时间戳统一转换为指定格式
+    date-format: yyyy/MM/dd HH:mm:ss
+    #时区修改为东8区
+    time-zone: GMT+8
+
+  #服务别名
+  application:
+    name: siam-server
+
+  #配置文件上传大小限制
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 100MB
+
+  #邮件相关配置（MVP 演示不触发发信，仅保持 Bean 装配不报错）
+  mail:
+    host: ${MAIL_HOST:smtp.126.com}
+    password: ${MAIL_PASSWORD:}
+    username: ${MAIL_USERNAME:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          port: 465
+          ssl.enable: true
+          starttls.enable: true
+          timeout: 25000
+          socketFactory.class: javax.net.ssl.SSLSocketFactory
+          socketFactory.port: 465
+
+#会话与 Redis 开关（云托管无 Redis：会话落 DB，进程内缓存兜底；Redisson 不装配）
+siam:
+  session:
+    store: db
+  redis:
+    enabled: false
+
+#阿里云配置
+aliyun:
+  #短信服务
+  dysms:
+    accessKeyId: ${ALIYUN_SMS_KEY:}
+    secret: ${ALIYUN_SMS_SECRET:}
+    signName: 暹罗外卖
+    templateCode: SMS_164681243
+    templateCode_verificationCode: SMS_177547102
+    templateCode_fatalError: SMS_187746991
+    templateCode_pickUpOrderComplete: SMS_193245384
+    templateCode_takeOutOrderDelivery: SMS_193235459
+    templateCode_couponsDistributeReminder: SMS_189032218
+    templateCode_couponsOverdueReminder: SMS_190270439
+
+  #OSS存储
+  oss:
+    accessKeyId: ${ALIYUN_OSS_KEY:}
+    secret: ${ALIYUN_OSS_SECRET:}
+    endpoint: http://oss-cn-hangzhou.aliyuncs.com
+    bucketName: ${ALIYUN_OSS_BUCKET:siam-hangzhou}
+
+  #全国快递物流查询
+  express:
+    appCode: ${ALIYUN_EXPRESS_APPCODE:}
+
+#微信支付（MVP 不演示支付，保持占位）
+wxpay:
+  appId: ${WXPAY_APPID:}
+  mchId: ${WXPAY_MCHID:}
+  mchKey: ${WXPAY_MCHKEY:}
+  signType: MD5
+  tradeType: JSAPI
+  payUrl: https://api.mch.weixin.qq.com/pay/unifiedorder
+  notifyUrl: ${WXPAY_NOTIFY_URL:}
+  refundUrl: https://api.mch.weixin.qq.com/secapi/pay/refund
+  refundSuccessNotifyUrl: ${WXPAY_REFUND_NOTIFY_URL:}
+  payToBalanceUrl: https://api.mch.weixin.qq.com/mmpaymkttransfers/promotion/transfers
+
+wxlogin:
+  appId: ${WXLOGIN_APPID:}
+  secret: ${WXLOGIN_SECRET:}
+
+wxPublicPlatform:
+  appId: ${WXPUB_APPID:}
+  secret: ${WXPUB_SECRET:}
+
+#百度地图
+baidu:
+  map:
+    ak: ${BAIDU_MAP_AK:}
+
+#mybatis-plus
+mybatis-plus:
+  mapper-locations: classpath*:com/siam/**/*Mapper.xml
+  configuration:
+    map-underscore-to-camel-case: true
+
+#rocketmq配置
+rocketmq:
+  #mq开关，关闭则启动时不加载rocketmq
+  switch: false
+  name-server: 127.0.0.1:9876
+  producer:
+    group: orderProducerGroup
+
+#actuator（供云托管健康观测/排障）
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+        exclude: "shutdown"
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: ALWAYS
+  health:
+    rabbit:
+      enabled: false
+    mongo:
+      enabled: false
+    elasticsearch:
+      enabled: false
+    mail:
+      enabled: false
+    redis:
+      enabled: false
+
+#芯烨云打印机开放 API相关配置（真值走环境变量，禁止入库源码）
+xinyeyun:
+  user: ${XINYEYUN_USER:}
+  key: ${XINYEYUN_KEY:}
+  domain: https://open.xpyun.net/api/openapi/
+  api_url:
+    addPrinters: ${xinyeyun.domain}/xprinter/addPrinters
+    setVoiceType: ${xinyeyun.domain}/xprinter/setVoiceType
+    print: ${xinyeyun.domain}/xprinter/print
+
+#日志配置（容器内路径，非持久化——仅排障用）
+logging:
+  file:
+    name: ./logs/${spring.application.name}/log_info.log
+path:
+  log: ./logs/${spring.application.name}/

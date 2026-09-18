@@ -10,7 +10,9 @@ import $http from '../../utils/http'
 var that = '';
 
 // var urlPrefix = 'https://api.siam.shop';
-var urlPrefix = 'https://test-api.siam.shop';
+// var urlPrefix = 'https://test-api.siam.shop';
+//生产：云托管 bar-mvp 公网域名（2026-09-18 部署接入）；拼接 /rest/xxx，必须带 /siam-server
+var urlPrefix = 'https://bar-mvp-315579-12-1488393615.sh.run.tcloudbase.com/siam-server';
 // var urlPrefix = 'http://localhost:8060/siam-multi-brand-server';
 
 //默认标识打印成功
@@ -25,8 +27,9 @@ var isOpenOrderAudio = false;
 var isOpenLocalPrint = false;
 
 //PS：用域名访问不行，用ip访问可以 -- 或许是服务器上要对websocket做域名配置
-// var wsUri = "ws://siammultibrandapi.siam.cn/websocket/";
-var wsUri = "ws://121.41.42.84:9601/api-order/websocket/";
+//生产：云托管 wss（HTTPS 页面必须 wss；前端自动拼 user.mobile 到末尾）
+var wsUri = "wss://bar-mvp-315579-12-1488393615.sh.run.tcloudbase.com/siam-server/websocket/";
+// var wsUri = "ws://121.41.42.84:9601/api-order/websocket/";
 // var wsUri = "ws://127.0.0.1:8060/api-order/websocket/";
 var output;
 var websocket;

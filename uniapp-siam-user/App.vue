@@ -9,6 +9,7 @@
 	//var Config = require('./utils/gaode-libs/config');
 	import amapFile from './utils/gaode-libs/amap-wx';
 	import * as Config from './utils/gaode-libs/config';
+	import GlobalConfig from './utils/global-config';
 	// #ifdef H5
 	import AMapLoader from "@amap/amap-jsapi-loader";
 	// #endif
@@ -23,6 +24,16 @@
 			return {};
 		},
 		onLaunch: function() {
+			// 云托管通道初始化（04-deploy-cost/mvp-migration/05；env 留空时自动跳过）
+			// #ifdef MP-WEIXIN
+			if (GlobalConfig.cloud && GlobalConfig.cloud.env) {
+				if (!wx.cloud) {
+					console.warn('当前基础库过低或非微信环境，无法使用 wx.cloud（云托管通道不可用）');
+				} else {
+					wx.cloud.init({ env: GlobalConfig.cloud.env, traceUser: false });
+				}
+			}
+			// #endif
 			// 展示本地存储能力
 			// var logs = wx.getStorageSync('logs') || []
 			// logs.unshift(Date.now())

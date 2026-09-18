@@ -6,13 +6,39 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 import redis.clients.jedis.Jedis;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * 缓存工具：Redis 可用时走 Redis；不可用（云托管无 Redis，siam.redis.enabled!=true）时
+ * 自动退化为进程内缓存（单实例语义，重启即失——对开关/菜单缓存等场景语义可接受）。
+ * 见 04-deploy-cost/mvp-migration/02
+ */
 @Component
 public class RedisUtils {
 
-    @Autowired
+    /**mvp/无Redis环境时为 null，各方法自动走进程内兜底*/
+    @Autowired(required = false)
     private RedisTemplate redisTemplate;
+
+    /**进程内兜底存储：key -> value*/
+    private final Map<String, Object> localStore = new ConcurrentHashMap<String, Object>();
+
+    /**进程内兜底过期时间戳：key -> expireAtMillis*/
+    private final Map<String, Long> localExpireAt = new ConcurrentHashMap<String, Long>();
+
+    private boolean redisAvailable() {
+        return redisTemplate != null;
+    }
+
+    private void cleanIfExpired(String key) {
+        Long expireAt = localExpireAt.get(key);
+        if (expireAt != null && System.currentTimeMillis() > expireAt) {
+            localStore.remove(key);
+            localExpireAt.remove(key);
+        }
+    }
 
     /**
      * 指定缓存过期时间
@@ -22,7 +48,14 @@ public class RedisUtils {
      * @return
      */
     public void expire(String key, long time){
-        redisTemplate.expire(key, time, TimeUnit.SECONDS);
+        if (redisAvailable()) {
+            redisTemplate.expire(key, time, TimeUnit.SECONDS);
+            return;
+        }
+        Long expireAt = localExpireAt.get(key);
+        if (expireAt != null) {
+            localExpireAt.put(key, System.currentTimeMillis() + time * 1000L);
+        }
     }
 
     /**
@@ -30,7 +63,16 @@ public class RedisUtils {
      * @return 时间(秒) 返回0代表为永久有效
      */
     public long getExpire(String key){
-        return redisTemplate.getExpire(key);
+        if (redisAvailable()) {
+            return redisTemplate.getExpire(key);
+        }
+        cleanIfExpired(key);
+        Long expireAt = localExpireAt.get(key);
+        if (expireAt == null) {
+            return 0L;
+        }
+        long leftSeconds = (expireAt - System.currentTimeMillis()) / 1000L;
+        return leftSeconds > 0 ? leftSeconds : 0L;
     }
 
     /**
@@ -38,7 +80,11 @@ public class RedisUtils {
      * @return
      */
     public boolean hasKey(String key){
-        return redisTemplate.hasKey(key);
+        if (redisAvailable()) {
+            return redisTemplate.hasKey(key);
+        }
+        cleanIfExpired(key);
+        return localStore.containsKey(key);
     }
 
     /**
@@ -47,7 +93,14 @@ public class RedisUtils {
      */
     public void delete(String... key){
         if(key!=null && key.length>0){
-            redisTemplate.delete(CollectionUtils.arrayToList(key));
+            if (redisAvailable()) {
+                redisTemplate.delete(CollectionUtils.arrayToList(key));
+                return;
+            }
+            for (String k : key) {
+                localStore.remove(k);
+                localExpireAt.remove(k);
+            }
         }
     }
 
@@ -56,7 +109,11 @@ public class RedisUtils {
      * @return
      */
     public Object get(String key){
-        return redisTemplate.opsForValue().get(key);
+        if (redisAvailable()) {
+            return redisTemplate.opsForValue().get(key);
+        }
+        cleanIfExpired(key);
+        return localStore.get(key);
     }
 
     /**
@@ -64,7 +121,12 @@ public class RedisUtils {
      * @return
      */
     public void set(String key, Object value){
-        redisTemplate.opsForValue().set(key, value);
+        if (redisAvailable()) {
+            redisTemplate.opsForValue().set(key, value);
+            return;
+        }
+        localStore.put(key, value);
+        localExpireAt.remove(key);
     }
 
     /**
@@ -74,7 +136,16 @@ public class RedisUtils {
      * @return
      */
     public void set(String key, Object value, long time){
-        redisTemplate.opsForValue().set(key, value, time, TimeUnit.SECONDS);
+        if (redisAvailable()) {
+            redisTemplate.opsForValue().set(key, value, time, TimeUnit.SECONDS);
+            return;
+        }
+        localStore.put(key, value);
+        if (time > 0) {
+            localExpireAt.put(key, System.currentTimeMillis() + time * 1000L);
+        } else {
+            localExpireAt.remove(key);
+        }
     }
 
     /**

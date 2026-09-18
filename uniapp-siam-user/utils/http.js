@@ -109,49 +109,68 @@ export default class WXHttp {
         return new Promise((fulfill, reject) => {
             initHeaders(headers).then((headersObj) => {
                 var errObj = {};
+                //统一响应处理：callContainer 与 uni.request 的 success/fail 结构一致（res.data=resBody）
+                const onSuccess = (res) => {
+                    const body = res.data;
+                    try {
+                        if (body && !body.success) {
+                            errObj.code = res.statusCode ? res.statusCode : 101;
+                            errObj.message = res.data.message;
+                            if (res.data.code == 2) {
+                                authService.deleteToken();
+                                authService.deleteOpenId();
+                                authService.deletePhoneNumber();
+                            }
+                            if (res.data.code != 2) {
+                                handleError(errObj);
+                                reject(errObj);
+                                fulfill(body);
+                            }
+                        }
+                        fulfill(body); //返回数据，在调用函数后面加.then
+                    } catch (ex) {
+                        console.log('CatchClause', ex);
+                        console.log('CatchClause', ex);
+                        errObj.code = res.statusCode ? res.statusCode : 101;
+                        errObj.message = res.errMsg;
+                        handleError(errObj);
+                        reject(errObj);
+                    } finally {
+                        fulfill(body); //返回数据，在调用函数后面加.then
+                    }
+                };
+                const onFail = (err) => {
+                    console.log(err);
+                    errObj.code = err.statusCode ? err.statusCode : 101;
+                    errObj.message = err.errMsg && err.errMsg.split ? err.errMsg.split(' ')[1] : (err.errMsg || '网络异常');
+                    handleError(err);
+                    reject(errObj);
+                };
+                //云托管通道：微信小程序且已配置云环境时走 wx.cloud.callContainer（免备案）
+                //见 04-deploy-cost/mvp-migration/05；回滚开关=global-config.js 清空 cloud.env
+                // #ifdef MP-WEIXIN
+                if (GlobalConfig.cloud && GlobalConfig.cloud.env) {
+                    wx.cloud.callContainer({
+                        config: { env: GlobalConfig.cloud.env },
+                        path: GlobalConfig.cloud.basePath + url,
+                        data: JSON.stringify(postData),
+                        method: 'POST',
+                        dataType: 'json',
+                        header: Object.assign({}, headersObj, { 'X-WX-SERVICE': GlobalConfig.cloud.service }),
+                        success: onSuccess,
+                        fail: onFail
+                    });
+                    return;
+                }
+                // #endif
                 uni.request({
                     url: GlobalConfig.baseUrl + url,
                     data: JSON.stringify(postData),
                     method: 'POST',
                     dataType: 'json',
                     header: headersObj,
-                    success: (res) => {
-                        const body = res.data;
-                        try {
-                            if (body && !body.success) {
-                                errObj.code = res.statusCode ? res.statusCode : 101;
-                                errObj.message = res.data.message;
-								if (res.data.code == 2) {
-									authService.deleteToken();
-									authService.deleteOpenId();
-									authService.deletePhoneNumber();
-								}
-                                if (res.data.code != 2) {
-                                    handleError(errObj);
-                                    reject(errObj);
-                                    fulfill(body);
-                                }
-                            }
-                            fulfill(body); //返回数据，在调用函数后面加.then
-                        } catch (ex) {
-                            console.log('CatchClause', ex);
-                            console.log('CatchClause', ex);
-                            errObj.code = res.statusCode ? res.statusCode : 101;
-                            errObj.message = res.errMsg;
-                            handleError(errObj);
-                            reject(errObj);
-                        } finally {
-                            fulfill(body); //返回数据，在调用函数后面加.then
-                        }
-                    },
-
-                    fail: (err) => {
-                        console.log(err);
-                        errObj.code = err.statusCode ? err.statusCode : 101;
-                        errObj.message = err.errMsg.split(' ')[1];
-                        handleError(err);
-                        reject(errObj);
-                    }
+                    success: onSuccess,
+                    fail: onFail
                 });
             });
         });
@@ -170,6 +189,14 @@ export default class WXHttp {
      */
     static uploadFile(options) {
         return new Promise((fulfill, reject) => {
+            //云托管通道下 callContainer 不支持 multipart 上传（评估§5.3 A级：MVP演示不做上传）
+            // #ifdef MP-WEIXIN
+            if (GlobalConfig.cloud && GlobalConfig.cloud.env) {
+                uni.showToast({ title: '演示版暂不支持上传图片', icon: 'none', duration: 2500 });
+                reject({ code: 601, message: '演示版暂不支持上传' });
+                return;
+            }
+            // #endif
             initHeaders(options.headers).then((headersObj) => {
                 uni.showActionSheet({
                     //获取底部菜单

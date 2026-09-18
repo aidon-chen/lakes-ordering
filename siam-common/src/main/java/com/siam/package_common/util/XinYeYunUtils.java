@@ -8,6 +8,7 @@ import org.junit.Test;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.PostConstruct;
 import java.util.*;
 
 /**
@@ -18,20 +19,30 @@ import java.util.*;
 @Component
 public class XinYeYunUtils {
 
-    @Value("${xinyeyun.user:siam1026@163.com}")
+    @Value("${xinyeyun.user:}")
     private String user;
-    @Value("${xinyeyun.key:siam1026@163.com}")
+    @Value("${xinyeyun.key:}")
     private String key;
     @Value("${xinyeyun.api_url.print:siam1026@163.com}")
     private String print;
     @Value("${xinyeyun.api_url.setVoiceType:siam1026@163.com}")
     private String setVoiceType;
 
+    /**凭据静态快照：commonParams 为静态方法，启动时从 @Value 字段拷贝（mvp 走环境变量注入，源码禁止硬编码真实密钥——见 04-deploy-cost/mvp-migration/03）*/
+    private static String STATIC_USER = "";
+    private static String STATIC_KEY = "";
+
+    @PostConstruct
+    public void initStaticCredentials() {
+        STATIC_USER = this.user;
+        STATIC_KEY = this.key;
+    }
+
     public static JSONObject commonParams(JSONObject params) {
         JSONObject signParams = new JSONObject();
 
-        signParams.put("user", "210005441@qq.com");
-        signParams.put("key", "1130259797874a119035b5665b016dca");
+        signParams.put("user", STATIC_USER);
+        signParams.put("key", STATIC_KEY);
         signParams.put("timestamp", System.currentTimeMillis());
 
         JSONObject commonParams = new JSONObject();

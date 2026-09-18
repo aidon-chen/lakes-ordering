@@ -35,9 +35,9 @@ CREATE TABLE `tb_admin_token` (
   `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键id',
   `admin_id` int(11) NOT NULL COMMENT '管理员id',
   `username` varchar(50) DEFAULT NULL COMMENT '管理员用户名',
-  `token` varchar(128) NOT NULL COMMENT 'token',
+  `token` varchar(512) NOT NULL COMMENT 'token',
   `type` varchar(5) DEFAULT NULL COMMENT '登陆方式 wap',
-  `login_time` datetime NOT NULL COMMENT '创建时间',
+  `create_time` datetime NOT NULL COMMENT '创建时间',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1226 DEFAULT CHARSET=utf8 COMMENT='管理员登陆token表';
 
@@ -54,9 +54,12 @@ CREATE TABLE `tb_advertisement` (
   `image_name` varchar(50) DEFAULT NULL COMMENT '轮播图名称',
   `image_path` varchar(256) DEFAULT NULL COMMENT '轮播图路径',
   `description` varchar(50) DEFAULT NULL COMMENT '说明',
-  `type` int(2) DEFAULT '1' COMMENT '轮播图类型 1=首页轮播图 2=菜单页轮播图 3=积分商城页面轮播图 4=分享页面生成美图',
+  `type` int(2) DEFAULT '1' COMMENT '轮播图类型 1=首页轮播图 2=菜单页轮播图 3=积分商城页面轮播图 4=分享页面生成美图 5=首页活动弹窗',
   `sort_number` int(11) DEFAULT NULL COMMENT '排序号',
   `image_link_url` varchar(256) DEFAULT NULL COMMENT '点击轮播图跳转的链接',
+  `start_time` datetime DEFAULT NULL COMMENT '生效开始时间',
+  `end_time` datetime DEFAULT NULL COMMENT '生效结束时间',
+  `popup_frequency` int(2) DEFAULT 1 COMMENT '展示频次 1=每次进入 2=每天一次 3=仅一次',
   `create_time` datetime DEFAULT NULL COMMENT '创建时间',
   `update_time` datetime DEFAULT NULL COMMENT '修改时间',
   PRIMARY KEY (`id`)
@@ -686,6 +689,8 @@ CREATE TABLE `tb_goods` (
   `product_time` decimal(10,2) DEFAULT '0.00' COMMENT '制作时长(分钟)',
   `exchange_points` int(10) DEFAULT NULL COMMENT '兑换商品所需积分数量',
   `sort_number` int(11) DEFAULT NULL COMMENT '排序号',
+  `printer_id` int(11) DEFAULT NULL COMMENT '打印机id',
+  `print_num` int(11) DEFAULT NULL COMMENT '打印份数',
   `create_time` datetime DEFAULT NULL COMMENT '创建时间',
   `update_time` datetime DEFAULT NULL COMMENT '修改时间',
   PRIMARY KEY (`id`)
@@ -3314,7 +3319,7 @@ CREATE TABLE `tb_member_token` (
   `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键id',
   `member_id` int(11) NOT NULL COMMENT '用户id',
   `username` varchar(100) CHARACTER SET utf8mb4 DEFAULT NULL COMMENT '用户名',
-  `token` varchar(128) NOT NULL COMMENT '登录令牌',
+  `token` varchar(512) NOT NULL COMMENT '登录令牌',
   `type` varchar(5) DEFAULT NULL COMMENT '登录方式 wap',
   `create_time` datetime NOT NULL COMMENT '创建时间',
   PRIMARY KEY (`id`)
@@ -3807,7 +3812,7 @@ CREATE TABLE `tb_merchant_token` (
   `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键id',
   `merchant_id` int(11) NOT NULL COMMENT '商家id',
   `username` varchar(50) DEFAULT NULL COMMENT '商家用户名',
-  `token` varchar(128) NOT NULL COMMENT '登录令牌',
+  `token` varchar(512) NOT NULL COMMENT '登录令牌',
   `type` varchar(5) DEFAULT NULL COMMENT '登录方式 wap',
   `create_time` datetime NOT NULL COMMENT '创建时间',
   PRIMARY KEY (`id`)
@@ -3955,6 +3960,14 @@ CREATE TABLE `tb_order` (
   `contact_longitude` decimal(18,6) DEFAULT NULL COMMENT '经度',
   `contact_latitude` decimal(18,6) DEFAULT NULL COMMENT '纬度',
   `shop_logo_img` varchar(128) DEFAULT NULL COMMENT '接单门店logo',
+  `checkout_mode` int(2) DEFAULT '1' COMMENT '结账模式 1=先付款后就餐 2=先就餐后付款',
+  `table_id` bigint(11) DEFAULT NULL COMMENT '台位id（tb_dining_table.id）',
+  `table_no` varchar(50) DEFAULT NULL COMMENT '餐桌编号(快照)',
+  `table_name` varchar(50) DEFAULT NULL COMMENT '餐桌名称(快照)',
+  `dining_num` int(11) DEFAULT 0 COMMENT '就餐人数(堂食)',
+  `dining_session_id` int(11) DEFAULT NULL COMMENT '开台会话id',
+  `order_scene` int(2) DEFAULT 1 COMMENT '订单场景 1=堂食 2=外带自提',
+  `is_payment` tinyint(1) DEFAULT '0' COMMENT '是否已支付',
   `create_time` datetime DEFAULT NULL COMMENT '下单时间',
   `update_time` datetime DEFAULT NULL COMMENT '修改时间',
   PRIMARY KEY (`id`)
@@ -3982,6 +3995,7 @@ CREATE TABLE `tb_order_detail` (
   `is_used_coupons` tinyint(1) DEFAULT '0' COMMENT '该商品是否使用了优惠券 0=否 1=是',
   `coupons_discount_price` decimal(10,2) DEFAULT '0.00' COMMENT '优惠券折扣金额/优惠券优惠金额',
   `after_coupons_discount_price` decimal(10,2) DEFAULT '0.00' COMMENT '优惠券折扣之后的商品价格',
+  `remark` varchar(200) DEFAULT NULL COMMENT '单品备注',
   `is_deleted` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否删除 0=正常 1=删除',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=4531 DEFAULT CHARSET=utf8 COMMENT='订单商品详情表';
@@ -4799,6 +4813,8 @@ CREATE TABLE `tb_shop` (
   `is_open_order_audio` tinyint(1) DEFAULT '1' COMMENT '是否开启订单语音提醒',
   `is_open_local_print` tinyint(1) DEFAULT '1' COMMENT '是否开启本地自动打印',
   `is_open_cloud_print` tinyint(1) DEFAULT '1' COMMENT '是否开启云打印',
+  `kitchen_total_order_printer_id` int(11) DEFAULT NULL COMMENT '后厨总单打印机id',
+  `checkout_printer_id` int(11) DEFAULT NULL COMMENT '收银打印机id',
   `first_poster` varchar(128) DEFAULT NULL COMMENT '店铺详情页第一栏海报',
   `house_number` varchar(100) DEFAULT NULL COMMENT '门牌号',
   `longitude` decimal(18,6) DEFAULT NULL COMMENT '经度',
@@ -5116,5 +5132,217 @@ CREATE TABLE `tb_goods_rawmaterial_relation` (
   `update_time` datetime DEFAULT NULL COMMENT '修改时间',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=45 DEFAULT CHARSET=utf8 COMMENT='原料配比表/商品原料关联表';
+
+-- ----------------------------
+-- 乐章点餐一期新增表（2026-09-18，与 update.sql 同源；设计见《客户端缺失功能设计方案-C02-03-04-10-14-15-16-v1.0.md》）
+-- ----------------------------
+
+-- ----------------------------
+-- Table structure for tb_dining_table
+-- ----------------------------
+DROP TABLE IF EXISTS `tb_dining_table`;
+CREATE TABLE `tb_dining_table` (
+  `id` bigint(11) NOT NULL AUTO_INCREMENT COMMENT '主键id',
+  `shop_id` int(11) DEFAULT NULL COMMENT '店铺id',
+  `table_no` varchar(50) DEFAULT NULL COMMENT '餐桌编号',
+  `table_name` varchar(50) NOT NULL COMMENT '餐桌名称',
+  `type_id` int(11) DEFAULT NULL COMMENT '台位类型id（tb_table_type.id）',
+  `capacity` int(11) DEFAULT 4 COMMENT '容纳人数',
+  `status` int(2) DEFAULT 1 COMMENT '状态 1=空闲 2=占用 3=停用（2=占用态随收银端启用，一期不流转）',
+  `qr_scene` varchar(64) DEFAULT NULL COMMENT '桌码scene快照 shopId,tableNo',
+  `qr_code_url` varchar(500) DEFAULT NULL COMMENT '桌码图片(OSS)',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime DEFAULT NULL COMMENT '修改时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_shop_table_no` (`shop_id`,`table_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC COMMENT='餐桌/台位表';
+
+-- ----------------------------
+-- Table structure for tb_table_type
+-- ----------------------------
+DROP TABLE IF EXISTS `tb_table_type`;
+CREATE TABLE `tb_table_type` (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键id',
+  `shop_id` int(11) NOT NULL COMMENT '门店id',
+  `name` varchar(50) NOT NULL COMMENT '类型名 散台/卡座',
+  `min_consume` decimal(10,2) DEFAULT '0.00' COMMENT '低消(元)',
+  `description` varchar(200) DEFAULT NULL COMMENT '说明',
+  `sort_number` int(11) DEFAULT 1 COMMENT '排序号',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime DEFAULT NULL COMMENT '修改时间',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='台位类型表';
+
+-- ----------------------------
+-- Table structure for tb_dining_session
+-- ----------------------------
+DROP TABLE IF EXISTS `tb_dining_session`;
+CREATE TABLE `tb_dining_session` (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键id',
+  `shop_id` int(11) NOT NULL COMMENT '门店id',
+  `table_id` bigint(11) NOT NULL COMMENT '台位id（tb_dining_table.id）',
+  `member_id` int(11) NOT NULL COMMENT '开台会员id',
+  `member_num` int(11) DEFAULT 1 COMMENT '就餐人数',
+  `status` int(2) DEFAULT 1 COMMENT '状态 1=进行中 2=已结台 3=已失效',
+  `open_time` datetime DEFAULT NULL COMMENT '开台时间',
+  `close_time` datetime DEFAULT NULL COMMENT '结台时间',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime DEFAULT NULL COMMENT '修改时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_table_status` (`table_id`,`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='开台会话表';
+
+-- ----------------------------
+-- Table structure for tb_mall_goods
+-- ----------------------------
+DROP TABLE IF EXISTS `tb_mall_goods`;
+CREATE TABLE `tb_mall_goods` (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键id',
+  `shop_id` int(11) NOT NULL COMMENT '门店id',
+  `name` varchar(100) NOT NULL COMMENT '商品名称',
+  `main_image` varchar(128) DEFAULT NULL COMMENT '商品主图',
+  `sub_images` varchar(1024) DEFAULT NULL COMMENT '副图 JSON',
+  `goods_type` int(2) DEFAULT 1 COMMENT '商品类型 1=礼盒 2=整瓶外带',
+  `price` decimal(10,2) NOT NULL COMMENT '售价',
+  `stock` int(11) DEFAULT 0 COMMENT '库存',
+  `net_content` varchar(50) DEFAULT NULL COMMENT '净含量',
+  `detail` text COMMENT '图文详情',
+  `is_sale` tinyint(1) DEFAULT 1 COMMENT '是否上架 0=下架 1=上架',
+  `sort_number` int(11) DEFAULT 1 COMMENT '排序号',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime DEFAULT NULL COMMENT '修改时间',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='外带商城商品表';
+
+-- ----------------------------
+-- Table structure for tb_mall_order
+-- ----------------------------
+DROP TABLE IF EXISTS `tb_mall_order`;
+CREATE TABLE `tb_mall_order` (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键id',
+  `member_id` int(11) NOT NULL COMMENT '用户id',
+  `shop_id` int(11) NOT NULL COMMENT '自提门店id',
+  `shop_name` varchar(100) DEFAULT NULL COMMENT '自提门店名称(快照)',
+  `order_no` varchar(50) NOT NULL COMMENT '订单编号',
+  `goods_total_price` decimal(10,2) DEFAULT '0.00' COMMENT '预估金额(到店支付)',
+  `goods_total_quantity` int(11) DEFAULT 0 COMMENT '商品总数量',
+  `contact_name` varchar(50) DEFAULT NULL COMMENT '联系人',
+  `contact_phone` varchar(11) DEFAULT NULL COMMENT '联系电话',
+  `pickup_code` varchar(16) NOT NULL COMMENT '自提码(唯一)',
+  `pickup_deadline` datetime DEFAULT NULL COMMENT '取货截止时间',
+  `status` int(2) DEFAULT 1 COMMENT '状态 1=待自提 2=已完成(已核销) 3=已取消 4=已过期',
+  `verify_time` datetime DEFAULT NULL COMMENT '核销时间',
+  `verifier_id` int(11) DEFAULT NULL COMMENT '核销人id(商家端)',
+  `cancel_reason` varchar(200) DEFAULT NULL COMMENT '取消原因',
+  `is_printed` tinyint(1) DEFAULT 0 COMMENT '是否已打印 0=否 1=是',
+  `create_time` datetime DEFAULT NULL COMMENT '下单时间',
+  `update_time` datetime DEFAULT NULL COMMENT '修改时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_pickup_code` (`pickup_code`),
+  KEY `idx_member_status` (`member_id`,`status`),
+  KEY `idx_shop_status` (`shop_id`,`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='外带自提订单表';
+
+-- ----------------------------
+-- Table structure for tb_mall_order_item
+-- ----------------------------
+DROP TABLE IF EXISTS `tb_mall_order_item`;
+CREATE TABLE `tb_mall_order_item` (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键id',
+  `order_id` int(11) NOT NULL COMMENT '外带订单id',
+  `goods_id` int(11) NOT NULL COMMENT '外带商品id',
+  `goods_name` varchar(100) NOT NULL COMMENT '商品名称(快照)',
+  `goods_type` int(2) DEFAULT 1 COMMENT '商品类型 1=礼盒 2=整瓶外带(快照)',
+  `main_image` varchar(128) DEFAULT NULL COMMENT '商品主图(快照)',
+  `spec_text` varchar(200) DEFAULT NULL COMMENT '规格说明',
+  `price` decimal(10,2) DEFAULT '0.00' COMMENT '单价',
+  `number` int(11) DEFAULT 1 COMMENT '数量',
+  `subtotal` decimal(10,2) DEFAULT '0.00' COMMENT '小计',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_order` (`order_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='外带自提订单明细表';
+
+-- ----------------------------
+-- Table structure for tb_invoice_apply
+-- ----------------------------
+DROP TABLE IF EXISTS `tb_invoice_apply`;
+CREATE TABLE `tb_invoice_apply` (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键id',
+  `member_id` int(11) NOT NULL COMMENT '用户id',
+  `order_id` int(11) NOT NULL COMMENT '订单id',
+  `order_no` varchar(50) DEFAULT NULL COMMENT '订单编号(快照)',
+  `amount` decimal(10,2) DEFAULT '0.00' COMMENT '开票金额(=订单实付)',
+  `title_type` int(2) DEFAULT 1 COMMENT '抬头类型 1=个人 2=企业',
+  `title` varchar(100) NOT NULL COMMENT '发票抬头',
+  `tax_no` varchar(50) DEFAULT NULL COMMENT '税号(企业抬头必填)',
+  `email` varchar(64) NOT NULL COMMENT '接收邮箱',
+  `status` int(2) DEFAULT 1 COMMENT '状态 1=待处理 2=已开具 3=已驳回',
+  `remark` varchar(200) DEFAULT NULL COMMENT '驳回原因/备注',
+  `apply_time` datetime DEFAULT NULL COMMENT '申请时间',
+  `finish_time` datetime DEFAULT NULL COMMENT '处理完成时间',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime DEFAULT NULL COMMENT '修改时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_member_status` (`member_id`,`status`),
+  KEY `idx_order` (`order_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='发票申请表';
+
+-- ----------------------------
+-- Table structure for tb_wine_storage
+-- ----------------------------
+DROP TABLE IF EXISTS `tb_wine_storage`;
+CREATE TABLE `tb_wine_storage` (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键id',
+  `member_id` int(11) NOT NULL COMMENT '会员id',
+  `shop_id` int(11) NOT NULL COMMENT '存入门店id',
+  `goods_name` varchar(100) NOT NULL COMMENT '品名',
+  `bottle_count` int(11) NOT NULL COMMENT '存入瓶数',
+  `remain_count` int(11) NOT NULL COMMENT '剩余瓶数',
+  `storage_code` varchar(16) NOT NULL COMMENT '存酒码(唯一)',
+  `storage_date` date NOT NULL COMMENT '存入日期',
+  `expire_date` date NOT NULL COMMENT '有效期截止日期',
+  `status` int(2) DEFAULT 1 COMMENT '状态 1=在存 2=已取完 3=已过期',
+  `remark` varchar(200) DEFAULT NULL COMMENT '备注',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime DEFAULT NULL COMMENT '修改时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_storage_code` (`storage_code`),
+  KEY `idx_member_status` (`member_id`,`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='存酒记录表';
+
+-- ----------------------------
+-- Table structure for tb_wine_storage_record
+-- ----------------------------
+DROP TABLE IF EXISTS `tb_wine_storage_record`;
+CREATE TABLE `tb_wine_storage_record` (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键id',
+  `storage_id` int(11) NOT NULL COMMENT '存酒记录id',
+  `take_count` int(11) NOT NULL COMMENT '本次取酒瓶数',
+  `operator_id` int(11) DEFAULT NULL COMMENT '操作人id(商家端)',
+  `remark` varchar(200) DEFAULT NULL COMMENT '备注',
+  `take_time` datetime DEFAULT NULL COMMENT '取酒时间',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_storage` (`storage_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='取酒记录表';
+
+-- ----------------------------
+-- Table structure for tb_notice
+-- ----------------------------
+DROP TABLE IF EXISTS `tb_notice`;
+CREATE TABLE `tb_notice` (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键id',
+  `shop_id` int(11) DEFAULT NULL COMMENT '门店id NULL=全店通用',
+  `title` varchar(100) NOT NULL COMMENT '公告标题',
+  `content` text COMMENT '公告内容(富文本)',
+  `is_top` tinyint(1) DEFAULT 0 COMMENT '是否置顶 0=否 1=是',
+  `status` tinyint(1) DEFAULT 1 COMMENT '状态 0=下线 1=发布',
+  `publish_time` datetime DEFAULT NULL COMMENT '发布时间',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime DEFAULT NULL COMMENT '修改时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_shop_status` (`shop_id`,`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='公告表';
 
 

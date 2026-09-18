@@ -10,6 +10,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+
+import javax.servlet.http.HttpServletRequest;
 
 /**
  * 用户模块相关接口
@@ -26,6 +30,26 @@ public class MemberController {
     private MemberService memberService;
 
     /**
+     * 读取 callContainer 自动注入的微信用户信息（x-wx-openid 等 header）。
+     * 云托管文档：小程序经 callContainer 调用时 header 自动携带 openid/unionid，
+     * 无需再用 wx.login 的 code 调 jscode2session 置换（本地/公网调用时无此 header，跳过）。
+     */
+    private void applyWxHeaders(MemberParam param) {
+        try {
+            if (param.getOpenId() == null || param.getOpenId().isEmpty()) {
+                HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
+                String openid = request.getHeader("x-wx-openid");
+                if (openid != null && !openid.isEmpty()) {
+                    param.setOpenId(openid);
+                    log.debug("已从 callContainer header 读取 openid：{}", openid);
+                }
+            }
+        } catch (Exception e) {
+            log.debug("读取 x-wx-openid 失败（本地调用时正常现象）：{}", e.getMessage());
+        }
+    }
+
+    /**
      * 登录-账号密码
      *
      * @author 暹罗
@@ -33,6 +57,7 @@ public class MemberController {
 
     @PostMapping(value = "/login")
     public BasicResult login(@RequestBody @Validated(value = {}) MemberParam param) {
+        this.applyWxHeaders(param);
         MemberResult result = memberService.login(param);
         return BasicResult.success(result);
     }
@@ -44,6 +69,7 @@ public class MemberController {
      */
     @PostMapping(value = "/verification/login")
     public BasicResult verificationLogin(@RequestBody @Validated(value = {}) MemberParam param) {
+        this.applyWxHeaders(param);
         MemberResult result = memberService.verificationLogin(param);
         return BasicResult.success(result);
     }
@@ -55,6 +81,7 @@ public class MemberController {
      */
     @PostMapping(value = "/weChat/login")
     public BasicResult wxLogin(@RequestBody @Validated(value = {}) MemberParam param) {
+        this.applyWxHeaders(param);
         MemberResult result = memberService.wxLogin(param);
         return BasicResult.success(result);
     }

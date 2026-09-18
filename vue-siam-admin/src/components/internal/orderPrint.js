@@ -9,7 +9,9 @@ import $http from '../../utils/http'
 
 var that = '';
 
-var urlPrefix = 'https://api.show.siamit.cn';
+// var urlPrefix = 'https://api.show.siamit.cn';
+//生产：云托管 bar-mvp 公网域名（2026-09-18 部署接入）；拼接 /rest/xxx，必须带 /siam-server
+var urlPrefix = 'https://bar-mvp-315579-12-1488393615.sh.run.tcloudbase.com/siam-server';
 
 //默认标识打印成功
 var printIsSuccess = true;
