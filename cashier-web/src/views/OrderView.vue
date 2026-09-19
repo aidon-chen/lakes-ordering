@@ -40,7 +40,7 @@
           :class="g.status === 4 ? 'opacity-50' : ''"
           style="border-color: var(--tc-line); background: #fff"
           :disabled="g.status === 4"
-          @click="pos.pickGoods(g.id, g.name, Number(g.salePrice || g.price || 0))"
+          @click="pos.pickGoodsWithSpec(g)"
         >
           <div class="w-full h-[72px] rounded flex items-center justify-center overflow-hidden" style="background: var(--pl)">
             <img v-if="g.mainImage" :src="g.mainImage" class="w-full h-full object-cover" />
@@ -96,6 +96,43 @@
       </div>
     </div>
   </div>
+  <!-- 规格选择弹窗（点商品带规格时弹出，每组单选） -->
+  <Teleport to="body">
+    <div v-if="pos.specGoods" class="fixed inset-0 z-50 flex items-center justify-center" style="background: rgba(23,28,15,.45)" @click.self="pos.cancelSpec()">
+      <div class="w-[420px] max-h-[80vh] overflow-auto rounded-xl bg-white p-6 shadow-xl">
+        <div class="flex items-baseline justify-between">
+          <span class="text-[18px] font-bold" style="color: var(--tc-title)">{{ pos.specGoods.name }}</span>
+          <span class="text-[12px]" style="color: var(--tc-sub)">选择规格</span>
+        </div>
+
+        <div v-for="(opts, specName) in pos.specGroups" :key="specName" class="mt-4">
+          <div class="text-[13px] font-medium mb-2" style="color: var(--tc-title)">{{ specName }}</div>
+          <div class="flex flex-wrap gap-2">
+            <button
+              v-for="o in opts"
+              :key="o.id"
+              class="h-9 px-4 rounded-lg border text-[13px]"
+              :class="o.stock === 2 ? 'opacity-40' : ''"
+              :style="pos.specSelected[specName] === o.name
+                ? 'background: var(--p); border-color: var(--p); color: #fff'
+                : 'border-color: var(--tc-line); color: var(--tc-gray); background: #fff'"
+              :disabled="o.stock === 2"
+              @click="pos.selectSpecOption(specName, o.name)"
+            >{{ o.name }}{{ Number(o.price) > 0 ? ` +¥${o.price}` : '' }}</button>
+          </div>
+        </div>
+
+        <div class="mt-6 flex gap-3 justify-end">
+          <button class="h-[36px] px-4 rounded border text-[13px]" style="border-color: var(--tc-line); color: var(--tc-gray)" @click="pos.cancelSpec()">
+            取消
+          </button>
+          <button class="h-[36px] px-5 rounded text-[13px] font-medium text-white" style="background: var(--p)" @click="pos.confirmSpec()">
+            加入购物车
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">

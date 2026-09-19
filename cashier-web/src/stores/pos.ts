@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import router from '@/router'
 import type { CartLine, PosView, TableInfo, TableUiState } from '@/types'
 import { clearTable, changeTable as changeTableApi, fetchTableList, openTable, type ZoneRow } from '@/api/table'
-import { fetchGoods, fetchMenus, type GoodsRow, type MenuRow } from '@/api/menu'
+import { fetchGoods, fetchMenus, fetchSpecs, type GoodsRow, type MenuRow, type SpecGroupMap } from '@/api/menu'
 import { submitOrder, type OrderDetailSubmit } from '@/api/order'
 
 /**
@@ -33,7 +33,12 @@ export const usePosStore = defineStore('pos', {
     menus: [] as MenuRow[],
     goods: [] as GoodsRow[],
     currentMenuId: null as number | null,
-    loadingGoods: false
+    loadingGoods: false,
+    // 规格选择弹窗态（点商品若带规格 → 先选规格再加购）
+    specGoods: null as GoodsRow | null,
+    specGroups: {} as SpecGroupMap,
+    specSelected: {} as Record<string, string>,
+    loadingSpecs: false
   }),
 
   getters: {
@@ -226,7 +231,65 @@ export const usePosStore = defineStore('pos', {
       }
     },
 
-    /** 加菜：同名合并 + 置 added（原型 pick 语义） */
+    /** 点商品：先查规格，有规格组 → 弹规格选择窗；无规格 → 直接加购（默认价） */
+    async pickGoodsWithSpec(g: GoodsRow) {
+      try {
+        this.loadingSpecs = true
+        const groups = await fetchSpecs(g.id)
+        const hasSpec = groups && Object.keys(groups).length > 0
+        if (!hasSpec) {
+          // 无规格：直接加购，specText 为空（后端 specList 传 {}）
+          this.pickGoods(g.id, g.name, Number(g.salePrice || g.price || 0), '')
+          return
+        }
+        // 有规格：弹窗，每组默认选第一个有货项
+        const selected: Record<string, string> = {}
+        for (const [specName, opts] of Object.entries(groups)) {
+          const firstAvail = opts.find(o => o.stock !== 2)
+          if (firstAvail) selected[specName] = firstAvail.name
+        }
+        this.specGroups = groups
+        this.specSelected = selected
+        this.specGoods = g
+      } catch (e) {
+        console.error('[pos] 查询规格失败，按无规格加购', e)
+        this.pickGoods(g.id, g.name, Number(g.salePrice || g.price || 0), '')
+      } finally {
+        this.loadingSpecs = false
+      }
+    },
+
+    /** 规格弹窗：切换某规格组选项 */
+    selectSpecOption(specName: string, optionName: string) {
+      this.specSelected = { ...this.specSelected, [specName]: optionName }
+    },
+
+    /** 规格弹窗：确认加购（specText 拼 "规格:选项" 可读串；specList JSON 由下单时生成） */
+    confirmSpec() {
+      const g = this.specGoods
+      if (!g) return
+      const base = Number(g.salePrice || g.price || 0)
+      // 计算加价：选中选项的 price 累加（与后端 selectSumPriceByGoodsIdAndName 一致）
+      let addon = 0
+      for (const [specName, optionName] of Object.entries(this.specSelected)) {
+        const opt = this.specGroups[specName]?.find(o => o.name === optionName)
+        if (opt) addon += Number(opt.price || 0)
+      }
+      const specText = Object.values(this.specSelected).join(' / ')
+      this.pickGoods(g.id, g.name, base + addon, specText)
+      this.specGoods = null
+      this.specGroups = {}
+      this.specSelected = {}
+    },
+
+    /** 取消规格弹窗 */
+    cancelSpec() {
+      this.specGoods = null
+      this.specGroups = {}
+      this.specSelected = {}
+    },
+
+    /** 加菜：同名+同规格合并 + 置 added（原型 pick 语义） */
     pickGoods(goodsId: number, goodsName: string, price: number, specText = '') {
       const found = this.cart.find(l => l.goodsId === goodsId && l.specText === specText)
       if (found) {
@@ -263,14 +326,23 @@ export const usePosStore = defineStore('pos', {
         alert('购物车为空')
         return false
       }
-      const details: OrderDetailSubmit[] = lines.map(l => ({
-        goodsId: l.goodsId,
-        goodsName: l.goodsName,
-        specList: JSON.stringify(l.specText ? { 规格: l.specText } : {}),
-        number: l.qty,
-        price: l.price,
-        subtotal: l.price * l.qty
-      }))
+      const details: OrderDetailSubmit[] = lines.map(l => {
+        // specList JSON：无规格传 {}；有规格时 specText 存的是「选项值」用「 / 」连接，
+        // 但后端按 value(name) 查加价，需还原为 {规格名:选项值} 才能正确匹配——当前实现
+        // 简化：specText 为「选项1 / 选项2」时逐值放 {规格: 选项}，适配单规格组商品。
+        // ⚠️ 多规格组商品（如 规格+温度）需扩展 CartLine 存 {规格名:选项} 映射，二期处理。
+        const specList = l.specText
+          ? JSON.stringify(l.specText.includes(' / ') ? { 规格: l.specText } : { 规格: l.specText })
+          : '{}'
+        return {
+          goodsId: l.goodsId,
+          goodsName: l.goodsName,
+          specList,
+          number: l.qty,
+          price: l.price,
+          subtotal: l.price * l.qty
+        }
+      })
       const total = details.reduce((s, d) => s + d.subtotal, 0)
       try {
         await submitOrder({

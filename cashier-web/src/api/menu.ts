@@ -44,3 +44,19 @@ export const fetchGoods = (menuId?: number) =>
     menuId,
     status: 2
   })
+
+/** 规格选项（/rest/goodsSpecificationOption/selectByGoodsId 返回 LinkedHashMap<规格名, 选项列表>） */
+export interface SpecOption {
+  id: number
+  name: string
+  /** 加价金额 */
+  price: number
+  /** 1=有货 2=无货 */
+  stock: number
+}
+
+export type SpecGroupMap = Record<string, SpecOption[]>
+
+/** 查询商品规格组（无规格时返回空对象） */
+export const fetchSpecs = (goodsId: number) =>
+  http.post<unknown, SpecGroupMap>('/rest/goodsSpecificationOption/selectByGoodsId', { goodsId })
