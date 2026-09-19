@@ -1,110 +1,112 @@
 <template>
 	<view>
 		<scroll-view :scroll-y="true" :style="'height:' + winHeight + 'px;'">
-			<checkbox-group class="weui-slidecells" @change="checkboxChange">
-				<view class="page__bd">
-
-					<view class="weui-slidecells" v-for="(item, index) in items" :key="index">
+			<checkbox-group class="cart-group" @change="checkboxChange">
+				<view class="cart-list">
+					<view class="cart-cell" v-for="(item, index) in items" :key="index">
 						<van-swipe-cell :right-width="65">
-							<view :class="'weui-slidecell ' + (item.disable ? 'isDisable' : '')">
-								<label class="checkbox-group-label">
-									<!-- <checkbox :value="index" :index="index" class="theme-color theme-border-color"
-										:checked="item.checked" :disabled="item.disable" iconColor="#FFFFFF"
-										style="transform:scale(0.7);" /> -->
+							<view :class="'cart-item ' + (item.disable ? 'cart-item-disabled' : '')">
+								<view class="cart-check">
 									<checkbox :value="index" :index="index" class="theme-color theme-border-color"
 										:checked="item.checked" :disabled="item.disable" iconColor="#FFFFFF" />
-									<view class="commdity-item">
-										<image
-											:src="item.mainImage ? item.mainImage : '/static/assets/common/load-image.png'"
-											mode="aspectFill" class="commodity-icon"></image>
-										<view class="sell-out out-store" v-if="item.goodsStatus == 1">未上架</view>
-										<view class="sell-out out-store" v-else-if="item.goodsStatus == 3">已下架</view>
-										<view class="sell-out out-store" v-else-if="item.goodsStatus == 4">已售罄</view>
-										<view class="commdity-types">
-											<view class="commodity-name-type">
-												<view class="commdity-name out_of_range one_row">{{ item.goodsName }}
-												</view>
-												<view class="types">{{ item.restructure }}</view>
-											</view>
-											<view class="commdity-money">￥{{ item.price }}</view>
-										</view>
+								</view>
+
+								<image v-if="item.mainImage" :src="item.mainImage" mode="aspectFill" class="cart-img"
+									@tap="commodityDetailTap" :data-id="item.goodsId"></image>
+								<view v-else class="cart-img cart-img-empty" @tap="commodityDetailTap"
+									:data-id="item.goodsId"></view>
+
+								<view class="cart-info">
+									<view
+										:class="'cart-name out_of_range one_row ' + (item.disable ? 'cart-name-disabled' : '')">
+										{{ item.goodsName }}
 									</view>
-								</label>
-								<view class="stepper">
-									<view class="flex_center car_reduce_add reduce-class" @tap="bindMinus"
-										:data-num="index + ',' + item.number">－</view>
-									<input disabled type="number" :value="item.number" class="radd-reduce-input" />
-									<view @tap="bindPlus" class="flex_center car_reduce_add add-class"
-										:data-num="index + ',' + item.number">＋</view>
+									<view class="cart-spec out_of_range one_row" v-if="item.restructure">{{ item.restructure }}
+									</view>
+									<view class="cart-bottom">
+										<view :class="'cart-price ' + (item.disable ? 'cart-price-disabled' : '')">
+											<text class="price-symbol">￥</text>
+											<text class="price-value">{{ item.price }}</text>
+										</view>
+										<block v-if="!item.disable">
+											<view class="cart-stepper">
+												<view class="step-btn flex_center" @tap.stop.prevent="changeNumber(index, -1)">－
+												</view>
+												<text class="step-num">{{ item.number }}</text>
+												<view class="step-btn flex_center" @tap.stop.prevent="changeNumber(index, 1)">＋
+												</view>
+											</view>
+										</block>
+										<view class="cart-sold-out" v-else>已售罄</view>
+									</view>
 								</view>
 							</view>
+
 							// #ifdef APP-PLUS||H5
 							<template #right>
-								<view style="height: 100%;" class="flex_center">
-									<view class="flvan-swipe-cell__right flex_between" :data-checkboxIndex="index"
-										@tap="slideButtonTap($event, { checkboxIndex: index })">
-										<van-icon name="delete-o" />
-									</view>
+								<view class="swipe-del flex_center"
+									@tap="slideButtonTap($event, { checkboxIndex: index })">
+									<van-icon name="delete-o" class="swipe-del-icon" />
+									<text class="swipe-del-text">删除</text>
 								</view>
 							</template>
 							// #endif
 							// #ifdef MP-WEIXIN||MP-ALIPAY
-							<view slot="right" class="flvan-swipe-cell__right flex_between" :data-checkboxIndex="index"
+							<view slot="right" class="swipe-del flex_center" :data-checkboxIndex="index"
 								@tap="slideButtonTap($event, { checkboxIndex: index })">
-								<van-icon name="delete-o" />
+								<van-icon name="delete-o" class="swipe-del-icon" />
+								<text class="swipe-del-text">删除</text>
 							</view>
 							// #endif
 						</van-swipe-cell>
 					</view>
 				</view>
 			</checkbox-group>
+
 			<van-empty v-if="items.length <= 0" description="您的购物车有点寂寞"></van-empty>
 			<view class="gotogg theme-bg" @tap="goToDrink" v-if="items.length <= 0">去逛逛</view>
+
+			<!-- 猜你喜欢：画板 B-03 为 3 列小卡（111.67×144） -->
 			<view class="like-list-view" v-if="likeList.length > 0">
 				<view class="title-like-view theme-color">
 					<view class="title-view">猜你喜欢</view>
 				</view>
 				<view class="like-items">
-					<block v-for="(item, index) in likeList" :key="index">
-						<view class="like-item" v-if="index < 6" @tap="commodityDetailTap" :data-id="item.id">
-							<view class="like-detail-view">
-								<image :src="item.mainImage" mode="aspectFill" class="icon-like-class"></image>
-								<view class="fullname-class out_of_range one_row">{{ item.name }}</view>
-								<view class="engname-class out_of_range one_row">{{ item.detailmainImage }}</view>
+					<view class="like-card" v-for="(item, index) in likeList" :key="index" @tap="commodityDetailTap"
+						:data-id="item.id">
+						<image v-if="item.mainImage" :src="item.mainImage" mode="aspectFill" class="like-card-img"></image>
+						<view v-else class="like-card-img like-card-img-empty"></view>
+						<view class="like-card-name out_of_range one_row">{{ item.name }}</view>
+						<view class="like-card-sub out_of_range one_row">{{ item.detail }}</view>
+						<view class="like-card-bottom">
+							<view class="like-card-price">
+								<text class="price-symbol">￥</text>
+								<text class="like-card-price-value">{{ item.price }}</text>
 							</view>
-
-							<view class="like-money-view">
-								<view class="like-money">
-									<text>￥</text>
-									<text>{{ item.price }}</text>
-								</view>
-								<view class="plus-view theme-bg">+</view>
-							</view>
+							<view class="like-card-add theme-bg">+</view>
 						</view>
-					</block>
-
-					<van-empty v-if="likeList.length <= 0" description="暂无数据"></van-empty>
+					</view>
 				</view>
 			</view>
 		</scroll-view>
+
+		<!-- 结算栏：全选 + 合计 + 去结算(件数)（画板 B-03） -->
 		<view class="settlement-view" v-if="items.length > 0">
-			<view class="total-payable-view">
-				<view class="total-payable">
-					<text class="title-text">应付合计</text>
-					<view class="total-payable-money-view">
-						<text class="sign-icon">￥</text>
-						<text class="total-payable-money">{{ totalPrice }}</text>
-					</view>
+			<view class="settle-left" @tap="toggleSelectAll">
+				<view :class="'settle-check ' + (isAllChecked ? 'theme-bg' : 'settle-check-plain')">
+					<van-icon name="success" v-if="isAllChecked" class="settle-check-icon" />
 				</view>
-				<view class="baozhuangfei-class">
-					<text :decode="true">运费 ￥0&nbsp;&nbsp;</text>
-					<text class="theme-color-border full-reduction-view"
-						v-if="fullPriceReductionIsHidden">{{ fullReductionRuleName }}</text>
-				</view>
+				<text class="settle-all-text">全选</text>
 			</view>
-			<view class="to-pay-view theme-bg" v-if="(items.length>0&&fullPriceReduction>=0&&totalPrice>0)"
-				hover-class="hover-class-public" @tap="goToPay">
-				去结算(￥{{ fullPriceReductionIsHidden ? fullPriceReduction : totalPrice }})
+			<view class="settle-right">
+				<view class="settle-total">
+					<text class="settle-total-label">合计</text>
+					<text class="settle-total-symbol">￥</text>
+					<text class="settle-total-money">{{ totalPrice }}</text>
+				</view>
+				<view class="to-pay-view theme-bg" hover-class="hover-class-public" @tap="goToPay">
+					去结算({{ checkedNum }})
+				</view>
 			</view>
 		</view>
 	</view>
@@ -117,26 +119,29 @@
 	import toastService from '../../../../utils/toast.service';
 	let app = null;
 	var winHeight = 0;
-	var totalPrice = 0;
-	var totalNum = 0;
 	export default {
 		data() {
 			return {
-				slideButtons: [{
-					src: '/static/assets/common/icon-del.svg' // icon的路径
-				}],
 				items: [],
-				minusStatus: 'disable',
-				disabled: '',
-				totalPrice: '',
+				totalPrice: '0.00',
 				winHeight: '',
+				packingCharges: 0,
 				fullPriceReduction: '',
-				packingCharges: '',
 				fullReductionRuleName: '',
-				fullPriceReductionIsHidden: '',
-				likeList: '',
-				imageTip: ''
+				fullPriceReductionIsHidden: false,
+				likeList: []
 			};
+		},
+		computed: {
+			// 选中件数（结算按钮「去结算(N)」）
+			checkedNum() {
+				return (this.items || []).reduce((sum, it) => sum + (it.checked ? it.number : 0), 0);
+			},
+			// 是否全选（失效商品不参与判定）
+			isAllChecked() {
+				const valid = (this.items || []).filter((it) => !it.disable);
+				return valid.length > 0 && valid.every((it) => it.checked);
+			}
 		},
 		onLoad: function(option) {
 
@@ -151,256 +156,148 @@
 					return;
 				}
 				toastService.hideLoading();
-				this.setData({
-					items: []
-				});
-				this.initData();
+				this.items = [];
+				this.totalPrice = '0.00';
 				app.globalData.checkIsAuth('scope.userInfo');
 			});
-			console.log(this);
 		},
 		methods: {
-			initData() {
-				const items = this.items;
-				totalNum = 0;
-				totalPrice = 0;
-				for (let i = 0; i < items.length; i++) {
-					items[i].checked = true;
-					if (items[i].disable) {
-						items[i].checked = false;
+			/**
+			 * 统一重算：金额 / 包装费 / 角标 / 满减。
+			 * C-10 批次6：原实现把这段逻辑散在 initData / checkboxChange / 点击减号 / 点击加号 四处，
+			 * 极易算错；且 vue3 运行时未挂载小程序数据刷新方法（调用即抛错并中断后续语句）→ 统一为响应式赋值。
+			 */
+			recalc(skipFullReduction) {
+				let total = 0;
+				let packing = 0;
+				let num = 0;
+				(this.items || []).forEach((it) => {
+					if (it.checked) {
+						total += it.price * it.number;
+						packing += (it.packingCharges || 0) * it.number;
+						num += it.number;
 					}
-					if (items[i].checked) {
-						totalPrice += items[i].price * items[i].number; //初始化被选中的商品的总金额
-					}
-
-					totalNum = totalNum + items[i].number;
-				}
-				this.setTabBarBadge(totalNum);
-				this.setData({
-					items: items,
-					totalPrice: totalPrice
 				});
-				this.getFullReductionRule();
+				this.totalPrice = total.toFixed(2);
+				this.packingCharges = packing;
+				this.setTabBarBadge(num);
+				this.items = this.items.slice();
+				if (!skipFullReduction) {
+					this.getFullReductionRule(total, packing);
+				}
+			},
+
+			/** 初始化：默认全选（失效商品不可选） */
+			initData() {
+				(this.items || []).forEach((it) => {
+					it.checked = !it.disable;
+				});
+				this.recalc();
 				this.getAutoHeight();
 			},
 
 			getAutoHeight() {
-				//获取用户手机系统信息
 				var _this = this;
 				uni.getSystemInfo({
 					success: function(res) {
-						var winHeight = res.windowHeight; //获取高度
+						var h = res.windowHeight;
 						var height = 0;
-						//console.log(winHeight)
-						//获取class为settlement-view并减去这个高度，自适应scrollview的高度
 						setTimeout(function timeout() {
 							uni.createSelectorQuery()
 								.in(_this)
 								.selectAll('.settlement-view')
 								.boundingClientRect(function(rects) {
-									console.log(".settlement-view", rects)
 									rects.forEach(function(rect, index) {
 										height = height + rect.height;
 									});
 									if (rects.length > 0) {
-										winHeight = winHeight - (height);
+										h = h - height;
 									}
-									_this.setData({
-										winHeight: winHeight
-									});
+									_this.winHeight = h;
 								}).exec();
 						}, 500);
 					}
 				});
 			},
 
-			slideButtonTap(e, _dataset) {
-				/* ---处理dataset begin--- */
-				this.handleDataset(e, _dataset);
-				/* ---处理dataset end--- */
-				//console.log('slide button tap', e)
+			/** 全选 / 取消全选 */
+			toggleSelectAll() {
+				const next = !this.isAllChecked;
+				(this.items || []).forEach((it) => {
+					if (!it.disable) {
+						it.checked = next;
+					}
+				});
+				this.recalc();
+			},
+
+			/** 左滑删除 */
+			slideButtonTap(e) {
 				var that = this;
-				let items = that.items;
-				let cheakedBoxIndex = e.currentTarget.dataset.checkboxindex; //商品下标
-				let number = items[cheakedBoxIndex].number; //该商品的数量
-				let id = items[cheakedBoxIndex].id; //该商品的id
-				if (items[cheakedBoxIndex].disable) {
-					that.updateNumber(id, number, 0, function callback() {
-						items.splice(cheakedBoxIndex, 1); //删除商品
-						that.setData({
-							items: items
-						});
-						totalNum -= number;
-						that.setTabBarBadge(totalNum);
-					});
+				const idx = e.currentTarget.dataset.checkboxindex;
+				const item = this.items[idx];
+				if (!item) {
 					return;
 				}
-				toastService.showModal(
-					null,
-					'确定不要这个了吗？',
-					function confirm() {
-						that.updateNumber(id, number, 0, function callback() {
-							totalPrice = totalPrice - items[cheakedBoxIndex].price * number; //总价格减去当前商品数量总和
-							items.splice(cheakedBoxIndex, 1); //删除商品
-							that.setData({
-								items: items,
-								totalPrice: totalPrice
-							});
-							that.getAutoHeight();
-							that.getFullReductionRule();
-							console.log(number);
-							totalNum -= number;
-							console.log(totalNum);
-							that.setTabBarBadge(totalNum);
-						});
-					},
-					null
-				);
+				toastService.showModal(null, '确定不要这个了吗？', function confirm() {
+					that.updateNumber(item.id, item.number, 0, function callback() {
+						that.items.splice(idx, 1);
+						that.recalc();
+						that.getAutoHeight();
+					});
+				}, null);
 			},
 
 			checkboxChange(e) {
-				//console.log('checkbox发生change事件，携带value值为：', e)
-				const items = this.items; //获取该用户的所有商品列表
-				const values = e.detail.value; //获取点击选中或取消选中的下标值
-
-				//遍历分类信息给第一级分类为false，提交的时候对应各级分类
-				for (var j in items) {
-					items[j].checked = false;
-				}
-				totalPrice = 0;
-				let totalNum = 0;
-				let fullPriceReduction = 0;
-				let packingCharges = 0;
-				for (var i in values) {
-					items[values[i]].checked = true; //给选中的第二级分类的checked设置为true
-					//console.log(items[values[i]].price + "------------" + items[values[i]].number)
-					totalPrice = totalPrice + items[values[i]].price * items[values[i]].number;
-					fullPriceReduction = fullPriceReduction + items[values[i]].price * items[values[i]].number;
-					totalNum = totalNum + items[values[i]].number;
-					packingCharges = packingCharges + items[values[i]].packingCharges * items[values[i]].number;
-				}
-				this.setTabBarBadge(totalNum); //设置角标
-				this.setData({
-					items,
-					totalPrice: totalPrice,
-					fullPriceReduction: fullPriceReduction,
-					packingCharges: packingCharges
+				const values = e.detail.value;
+				(this.items || []).forEach((it, i) => {
+					it.checked = values.indexOf(String(i)) > -1;
 				});
-				this.getFullReductionRule();
+				this.recalc();
 			},
 
-			//事件处理函数
-			/*点击减号*/
-			bindMinus: function(e) {
-				var that = this;
-				let numList = e.currentTarget.dataset.num.split(','); //获取购物车的列表下表和商品数量
-				let items = this.items; //获取购物车列表信息
-				//点击减号后则当前商品的数量-1,如果这个商品不能被操作则return
-				if (items[numList[0]].disable) {
+			/** 步进器：加 / 减（原「点击减号/加号」两个方法合并，减到 0 时确认删除） */
+			changeNumber(index, delta) {
+				const item = this.items[index];
+				if (!item || item.disable) {
 					return;
 				}
-				if (!items[numList[0]].checked) {
+				if (!item.checked) {
 					toastService.showToast('未选择商品');
 					return;
 				}
-
-				//点击减号后,当前商品的数量小于1,就进行删除该商品
-				// items[numList[0]].number = Number(numList[1]) - 1;
-				let number = items[numList[0]].number - 1;
-				//重新计算被选中的商品的总金额
-				totalPrice = 0;
-				let packingCharges = items[numList[0]].packingCharges; //获取该点击的商品的包装费
-				for (let i = 0; i < items.length; i++) {
-					if (items[i].checked) {
-						//如果被选中则进行总额计算（已经计算出的价格+商品价格*商品的数量)
-						if (numList[0] == i) {
-							//console.log(number)
-							totalPrice = totalPrice + items[i].price * number;
-						} else {
-							//console.log(items[i].price * items[i].number)
-							totalPrice = totalPrice + items[i].price * items[i].number;
-						}
-					}
-				}
-				if (numList[1] == 1) {
+				if (delta < 0 && item.number <= 1) {
+					var that = this;
 					toastService.showModal(null, '确定不要这个了吗？', function confirm() {
-						that.updateNumber(items[numList[0]].id, 1, 0, function callback() {
-							items.splice(Number(numList[0]), 1); //列表减一
-							totalNum--;
-							that.setData({
-								items: items,
-								totalPrice: totalPrice,
-								packingCharges: that.packingCharges - packingCharges
-							});
-							that.setTabBarBadge(totalNum);
-							that.getFullReductionRule();
+						that.updateNumber(item.id, 1, 0, function callback() {
+							that.items.splice(index, 1);
+							that.recalc();
 							that.getAutoHeight();
 						});
-					});
+					}, null);
 					return;
 				}
-				//点击减号后,当前商品的数量小于1,就进行删除该商品
-				items[numList[0]].number = Number(numList[1]) - 1;
-				this.updateNumber(items[numList[0]].id, 1, 0, function callback() {
-					totalNum--;
-					that.setTabBarBadge(totalNum);
-					that.setData({
-						items: items,
-						totalPrice: totalPrice,
-						packingCharges: that.packingCharges - packingCharges //所有商品包装费减去当前点击的商品的包装费
-					});
-
-					that.getFullReductionRule();
-				});
-			},
-
-			/*点击加号*/
-			bindPlus: function(e) {
-				var that = this;
-				let numList = e.currentTarget.dataset.num.split(',');
-				let items = this.items;
-				totalPrice = 0;
-				if (items[numList[0]].disable) {
-					return;
-				}
-				if (!items[numList[0]].checked) {
-					toastService.showToast('未选择商品');
-					return;
-				}
-				items[numList[0]].number = Number(numList[1]) + 1; //当前商品的数量+1
-				let packingCharges = items[numList[0]].packingCharges; //获取该点击的商品的包装费;
-				this.updateNumber(items[numList[0]].id, 1, 1, function callback() {
-					//重新计算被选中的商品的总金额
-					for (let i = 0; i < items.length; i++) {
-						if (items[i].checked) {
-							//如果被选中则进行总额计算（已经计算出的价格+商品价格*商品的数量)
-							totalPrice = totalPrice + items[i].price * items[i].number;
-						}
-					}
-					totalNum++;
-					that.setTabBarBadge(totalNum);
-					that.setData({
-						items: items,
-						totalPrice: totalPrice,
-						packingCharges: that.packingCharges + packingCharges
-					});
-					that.getFullReductionRule();
+				const next = item.number + delta;
+				item.number = next;
+				this.updateNumber(item.id, Math.abs(delta), delta > 0 ? 1 : 0, () => {
+					this.recalc();
 				});
 			},
 
 			setTabBarBadge(num) {
-				app.globalData.setTabBarBadge(num);
+				if (app && app.globalData && app.globalData.setTabBarBadge) {
+					app.globalData.setTabBarBadge(num);
+				}
 			},
 
 			goToPay() {
-				//判断店铺是否打烊
-				var list = this.items;
-				var orderDetail = {};
+				const list = this.items;
+				const orderDetail = {};
 				orderDetail.actualPrice = this.totalPrice;
 				orderDetail.packingCharges = this.packingCharges;
 				orderDetail.orderDetailList = [];
-				var isTap = false;
-				for (var key in list) {
+				let isTap = false;
+				for (let key in list) {
 					if (list[key].checked) {
 						isTap = true;
 						orderDetail.orderDetailList.push({
@@ -437,109 +334,97 @@
 			},
 
 			getShoppingCartList() {
-				https
-					.request('/rest/member/pointsMall/shoppingCart/list', {
-						pageNo: -1,
-						pageSize: 20
-					})
-					.then((result) => {
-						if (result.success) {
-							var packingCharges = 0;
-							result.data.records.forEach((result) => {
-								if (result.mainImage) {
-									result.mainImage = GlobalConfig.ossUrl + result.mainImage;
-								}
-								let specList = '';
-								for (var key in JSON.parse(result.specList)) {
-									specList = (specList ? specList + '/' : specList) + JSON.parse(result
-										.specList)[key];
-								}
-								console.log(result);
-								result.restructure = specList;
-								result.disable = result.goodsStatus == 1 || result.goodsStatus == 3 || result
-									.goodsStatus == 4 ? true : false;
-								packingCharges =
-									result.goodsStatus == 1 || result.goodsStatus == 3 || result.goodsStatus ==
-									4 ?
-									packingCharges :
-									packingCharges + result.packingCharges * result.number;
-							});
-							//console.log(result.data.records)
-							this.setData({
-								items: result.data.records,
-								packingCharges: packingCharges
-							});
-							//if (result.data.records.length > 0) {
-							this.initData();
-							//}
-						}
-					});
+				https.request('/rest/member/pointsMall/shoppingCart/list', {
+					pageNo: -1,
+					pageSize: 20
+				}, authService.getToken()).then((result) => {
+					if (result.success) {
+						const records = (result.data && result.data.records) || [];
+						records.forEach((item) => {
+							// 种子商品 main_image 可能为空 → 交给模板渲染灰底占位
+							if (item.mainImage) {
+								item.mainImage = GlobalConfig.ossUrl + item.mainImage;
+							}
+							let specList = '';
+							let specMap = {};
+							try {
+								specMap = JSON.parse(item.specList) || {};
+							} catch (e) {
+								specMap = {};
+							}
+							for (let key in specMap) {
+								specList = (specList ? specList + '/' : specList) + specMap[key];
+							}
+							item.restructure = specList;
+							item.disable = item.goodsStatus == 1 || item.goodsStatus == 3 || item.goodsStatus == 4;
+						});
+						this.items = records;
+						this.initData();
+					}
+				});
 			},
 
-			//获取满减规则
-			getFullReductionRule() {
-				toastService.showLoading('正在加载...', true);
-				https
-					.request('/rest/pointsMall/fullReductionRule/list', {
-						pageNo: -1,
-						pageSize: 1
-					})
-					.then((result) => {
-						toastService.hideLoading();
-						if (result.success) {
-							let fullPriceReduction = 0;
-							let fullReductionRuleName = '';
-							let fullPriceReductionIsHidden = false;
-							let limitedPrice = 0;
-							for (let i = 0; i < result.data.records.length; i++) {
-								if (totalPrice + this.packingCharges >= result.data.records[i].limitedPrice) {
-									if (result.data.records[i].limitedPrice > limitedPrice) {
-										limitedPrice = result.data.records[i].limitedPrice;
-										fullPriceReduction = totalPrice - result.data.records[i].reducedPrice;
-										fullReductionRuleName = result.data.records[i].name;
-										fullPriceReductionIsHidden = true;
-									}
+			/** 满减规则（金额口径沿用工程现状：totalPrice + packingCharges 达门槛） */
+			getFullReductionRule(total, packing) {
+				const totalPrice = total === undefined ? Number(this.totalPrice) : total;
+				const packingCharges = packing === undefined ? this.packingCharges : packing;
+				https.request('/rest/pointsMall/fullReductionRule/list', {
+					pageNo: -1,
+					pageSize: 1
+				}).then((result) => {
+					if (result.success) {
+						let fullPriceReduction = 0;
+						let fullReductionRuleName = '';
+						let fullPriceReductionIsHidden = false;
+						let limitedPrice = 0;
+						for (let i = 0; i < result.data.records.length; i++) {
+							if (totalPrice + packingCharges >= result.data.records[i].limitedPrice) {
+								if (result.data.records[i].limitedPrice > limitedPrice) {
+									limitedPrice = result.data.records[i].limitedPrice;
+									fullPriceReduction = totalPrice - result.data.records[i].reducedPrice;
+									fullReductionRuleName = result.data.records[i].name;
+									fullPriceReductionIsHidden = true;
 								}
 							}
-							this.setData({
-								fullPriceReduction: fullPriceReduction,
-								fullReductionRuleName: fullReductionRuleName,
-								fullPriceReductionIsHidden: fullPriceReductionIsHidden
-							});
 						}
-					});
+						this.fullPriceReduction = fullPriceReduction;
+						this.fullReductionRuleName = fullReductionRuleName;
+						this.fullPriceReductionIsHidden = fullPriceReductionIsHidden;
+					}
+				});
 			},
 
+			/** 猜你喜欢（画板为 3 列小卡，取前 6 条） */
 			getLoveIt() {
 				toastService.showLoading();
 				https.request('/rest/pointsMall/goods/guessLikeGoodsList', {}).then((result) => {
 					toastService.hideLoading();
 					if (result.success) {
-						//console.log(result.data)
-						if (result.success) {
-							result.data.forEach(function(item, index) {
+						const list = (result.data || []).slice(0, 6);
+						list.forEach(function(item) {
+							if (item.mainImage) {
 								item.mainImage = GlobalConfig.ossUrl + item.mainImage;
-							});
-							this.setData({
-								likeList: result.data
-							});
-						}
+							}
+						});
+						this.likeList = list;
 					}
 				});
 			},
 
 			updateNumber(id, number, type, callbak) {
-				https
-					.request('/rest/member/pointsMall/shoppingCart/updateNumber', {
-						id: id,
-						number: number,
-						type: type
-					})
-					.then((result) => {
-						if (result.success) {
+				https.request('/rest/member/pointsMall/shoppingCart/updateNumber', {
+					id: id,
+					number: number,
+					type: type
+				}, authService.getToken()).then((result) => {
+					if (result.success) {
+						if (callbak) {
 							callbak();
 						}
-					});
+					} else {
+						toastService.showToast(result.message || '操作失败');
+					}
+				});
 			},
 
 			goToTap() {
@@ -864,4 +749,318 @@
 	.settlement-view {
 		bottom: calc(var(--window-bottom));
 	}
+
+	/* ==========================================================================
+	   C-10 批次 6：购物车条目卡 351×88 + 3 列猜你喜欢 + 结算栏（画板 B-03）
+	   追加覆盖式：原 style 段保留，仅覆盖必要类
+	   ========================================================================== */
+	.cart-list {
+		padding: 20rpx 0 10rpx 0;
+	}
+
+	.cart-cell {
+		margin: 0 24rpx 20rpx 24rpx;
+		border-radius: 24rpx;
+		overflow: hidden;
+		background-color: #ffffff;
+	}
+
+	.cart-item {
+		display: flex;
+		align-items: center;
+		height: 176rpx;
+		padding: 0 16rpx;
+		box-sizing: border-box;
+		background-color: #ffffff;
+	}
+
+	.cart-item-disabled {
+		background-color: #fafafa;
+	}
+
+	.cart-check {
+		flex-shrink: 0;
+		width: 48rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.cart-check checkbox {
+		transform: scale(0.6);
+	}
+
+	.cart-img {
+		width: 144rpx;
+		height: 144rpx;
+		border-radius: 16rpx;
+		flex-shrink: 0;
+	}
+
+	.cart-img-empty {
+		background-color: #f2f2f2;
+	}
+
+	.cart-info {
+		flex: 1;
+		min-width: 0;
+		padding-left: 20rpx;
+	}
+
+	.cart-name {
+		font-size: 30rpx;
+		color: #202020;
+		line-height: 42rpx;
+	}
+
+	.cart-name-disabled {
+		color: #999999;
+	}
+
+	.cart-spec {
+		font-size: 26rpx;
+		color: #999999;
+		line-height: 36rpx;
+		margin-top: 2rpx;
+	}
+
+	.cart-bottom {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-top: 6rpx;
+	}
+
+	.cart-price {
+		display: flex;
+		align-items: baseline;
+	}
+
+	.cart-price-disabled {
+		color: #999999;
+	}
+
+	.cart-price .price-symbol {
+		font-size: 22rpx;
+		font-weight: bold;
+	}
+
+	.cart-price .price-value {
+		font-size: 30rpx;
+		font-weight: bold;
+	}
+
+	.cart-price-disabled .price-symbol,
+	.cart-price-disabled .price-value {
+		color: #999999;
+	}
+
+	.cart-sold-out {
+		font-size: 20rpx;
+		color: #999999;
+		background-color: #efefef;
+		border-radius: 8rpx;
+		padding: 4rpx 12rpx;
+	}
+
+	.cart-stepper {
+		display: flex;
+		align-items: center;
+	}
+
+	.cart-stepper .step-btn {
+		width: 52rpx;
+		height: 52rpx;
+		line-height: 52rpx;
+		text-align: center;
+		border: 1rpx solid #ededed;
+		border-radius: 8rpx;
+		font-size: 26rpx;
+		color: #333333;
+	}
+
+	.cart-stepper .step-num {
+		width: 72rpx;
+		text-align: center;
+		font-size: 28rpx;
+		font-weight: 500;
+		color: #202020;
+	}
+
+	/* 左滑删除区：65×88 红底 + 垃圾桶 + 「删除」 */
+	.swipe-del {
+		width: 130rpx;
+		height: 176rpx;
+		background-color: #ee0a24;
+		flex-direction: column;
+		color: #ffffff;
+	}
+
+	.swipe-del-icon {
+		font-size: 40rpx;
+		color: #ffffff;
+	}
+
+	.swipe-del-text {
+		font-size: 22rpx;
+		color: #ffffff;
+		margin-top: 6rpx;
+	}
+
+	/* 猜你喜欢：3 列小卡（111.67×144） */
+	.like-items {
+		display: grid;
+		grid-template-columns: 1fr 1fr 1fr;
+		grid-column-gap: 12rpx;
+		grid-row-gap: 16rpx;
+		padding: 0 24rpx 20rpx 24rpx;
+	}
+
+	.like-card {
+		background-color: #ffffff;
+		border-radius: 24rpx;
+		padding-bottom: 16rpx;
+		overflow: hidden;
+	}
+
+	.like-card-img {
+		width: 100%;
+		height: 172rpx;
+	}
+
+	.like-card-img-empty {
+		background-color: #f2f2f2;
+	}
+
+	.like-card-name {
+		font-size: 28rpx;
+		color: #202020;
+		padding: 10rpx 16rpx 0 16rpx;
+	}
+
+	.like-card-sub {
+		font-size: 24rpx;
+		color: #999999;
+		padding: 2rpx 16rpx 0 16rpx;
+	}
+
+	.like-card-bottom {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 8rpx 16rpx 0 16rpx;
+	}
+
+	.like-card-price {
+		display: flex;
+		align-items: baseline;
+	}
+
+	.like-card-price .price-symbol {
+		font-size: 20rpx;
+		font-weight: bold;
+	}
+
+	.like-card-price-value {
+		font-size: 28rpx;
+		font-weight: bold;
+		color: #202020;
+	}
+
+	.like-card-add {
+		width: 48rpx;
+		height: 48rpx;
+		border-radius: 50%;
+		color: #ffffff;
+		font-size: 30rpx;
+		line-height: 48rpx;
+		text-align: center;
+	}
+
+	/* 结算栏：全选 + 合计 + 去结算(件数) */
+	.settlement-view {
+		position: fixed;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		width: 100%;
+		height: 100rpx;
+		padding: 0 24rpx;
+		box-sizing: border-box;
+		background-color: #ffffff;
+		border-top: 1rpx solid #f7f7f7;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.settle-left {
+		display: flex;
+		align-items: center;
+	}
+
+	.settle-check {
+		width: 40rpx;
+		height: 40rpx;
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.settle-check-plain {
+		border: 1rpx solid #ededed;
+		background-color: #ffffff;
+	}
+
+	.settle-check-icon {
+		font-size: 24rpx;
+		color: #ffffff;
+	}
+
+	.settle-all-text {
+		font-size: 28rpx;
+		color: #202020;
+		margin-left: 12rpx;
+	}
+
+	.settle-right {
+		display: flex;
+		align-items: center;
+	}
+
+	.settle-total {
+		display: flex;
+		align-items: baseline;
+		margin-right: 20rpx;
+	}
+
+	.settle-total-label {
+		font-size: 26rpx;
+		color: #666666;
+		margin-right: 8rpx;
+	}
+
+	.settle-total-symbol {
+		font-size: 22rpx;
+		font-weight: bold;
+		color: #202020;
+	}
+
+	.settle-total-money {
+		font-size: 32rpx;
+		font-weight: bold;
+		color: #202020;
+	}
+
+	.to-pay-view {
+		width: 214rpx;
+		height: 80rpx;
+		border-radius: 40rpx;
+		color: #ffffff;
+		font-size: 30rpx;
+		line-height: 80rpx;
+		text-align: center;
+	}
+
 </style>

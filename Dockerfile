@@ -45,11 +45,15 @@ RUN mvn -q -pl siam-system/system-provider -am package -DskipTests \
 # ---------- 运行阶段：JRE8 ----------
 # 云端拉取失败时的备选：ccr.ccs.tencentyun.com/library/openjdk:8-jre
 FROM eclipse-temurin:8-jre
+# 桌码图服务端合成（Java2D 绘制桌号文字）依赖 fontconfig + 基础字体；缺失会导致 AWT 画字抛错
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends fontconfig fonts-dejavu-core \
+ && rm -rf /var/lib/apt/lists/*
 # SPRING_PROFILES_ACTIVE 默认 mvp：容器开箱即用；控制台环境变量可覆盖
 # （01:5x 事故复盘：未配该变量时容器以 local profile 启动，数据源指向容器内 127.0.0.1，假健康）
 ENV TZ=Asia/Shanghai \
     SPRING_PROFILES_ACTIVE=mvp \
-    JAVA_OPTS="-XX:MaxRAMPercentage=70.0 -XX:+HeapDumpOnOutOfMemoryError -Duser.timezone=Asia/Shanghai"
+    JAVA_OPTS="-XX:MaxRAMPercentage=70.0 -XX:+HeapDumpOnOutOfMemoryError -Duser.timezone=Asia/Shanghai -Djava.awt.headless=true"
 WORKDIR /app
 COPY --from=builder /build/app.jar /app/app.jar
 EXPOSE 9200

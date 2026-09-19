@@ -56,6 +56,28 @@ public class WineStorageServiceImpl implements WineStorageService {
         put(CODE_WARNING, "将过期");
     }};
 
+    /**
+     * 列表展示顺序（原型 298:53 自上而下）：存续中 → 将过期 → 已过期 → 已取完。
+     * <p>
+     * 不能直接按 statusCode 升序排：CODE_EXPIRED=3 小于 CODE_WARNING=4，
+     * 升序会把「已过期」排在「将过期」前面，与原型行序正好相反。
+     * 状态码是接口契约（前端 wineTagClass 依赖 1/2/3/4），故在此单独映射展示序，不改状态码取值。
+     */
+    private static int displayRank(int statusCode) {
+        switch (statusCode) {
+            case CODE_ACTIVE:
+                return 1;   // 存续中
+            case CODE_WARNING:
+                return 2;   // 将过期
+            case CODE_EXPIRED:
+                return 3;   // 已过期
+            case CODE_TAKEN:
+                return 4;   // 已取完
+            default:
+                return 99;
+        }
+    }
+
     @Autowired
     private WineStorageMapper wineStorageMapper;
 
@@ -83,8 +105,9 @@ public class WineStorageServiceImpl implements WineStorageService {
         for (WineStorage ws : list) {
             vos.add(toVo(ws, shopNames));
         }
-        // 存续中 → 将过期 → 已过期 → 已取完；同组内 expire_date 升序（DB 已按 expire_date 排好，稳定排序保序）
-        vos.sort(Comparator.comparingInt(WineStorageVo::getStatusCode));
+        // 展示序：存续中 → 将过期 → 已过期 → 已取完；同组内保 expire_date 升序
+        // （DB 已按 expire_date 排好 + List.sort 稳定排序，故同组保序）
+        vos.sort(Comparator.comparingInt((WineStorageVo vo) -> displayRank(vo.getStatusCode())));
         return vos;
     }
 

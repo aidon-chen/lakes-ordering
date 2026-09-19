@@ -1,10 +1,9 @@
 package com.siam.system.modular.package_dining.service_impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.siam.package_common.constant.BusinessType;
 import com.siam.package_common.exception.StoneCustomerException;
-import com.siam.package_common.util.OSSUtils;
 import com.siam.package_weixin_basic.util.WxQrCodeUtils;
 import com.siam.system.modular.package_dining.entity.DiningTable;
 import com.siam.system.modular.package_dining.entity.TableType;
@@ -23,18 +22,18 @@ import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -49,6 +48,12 @@ public class TableManageServiceImpl implements TableManageService {
     /** 扫码开台页（getwxacodeunlimit 的 page 参数，需客户端已发布） */
     private static final String QR_PAGE = "pages/menu/scan-table/scan-table";
 
+    /**
+     * 桌码图内存缓存（tableNo → PNG 字节）
+     * 不落对象存储（本期未采购 OSS）：微信小程序码永久有效、可无限重建，容器重启后按 qr_scene 现场重建
+     */
+    private static final Map<String, byte[]> QR_CACHE = new ConcurrentHashMap<>();
+
     @Autowired
     private DiningTableMapper diningTableMapper;
 
@@ -60,9 +65,6 @@ public class TableManageServiceImpl implements TableManageService {
 
     @Autowired
     private WxQrCodeUtils wxQrCodeUtils;
-
-    @Autowired
-    private OSSUtils ossUtils;
 
     /* ==================== 台位档案 ==================== */
 
@@ -249,41 +251,88 @@ public class TableManageServiceImpl implements TableManageService {
     }
 
     /**
-     * 单个台位码生成：微信码 → 白底叠加桌号文字 → 上传 OSS → 回写 qr_scene/qr_code_url
+     * 单个台位码生成：微信码 → 白底叠加桌号文字 → 缓存内存 → 回写 qr_scene
+     * 说明：不落对象存储（本期未采购 OSS）。微信小程序码永久有效、数量不限，可随时按需重建，
+     * 故内存缓存即可满足缩略图/下载；容器重启缓存丢失后，首次取图自动重建。
      */
     private void generateOneQrcode(Integer shopId, DiningTable table) {
         String scene = "tid=" + table.getTableNo();
         try {
-            // 1. 调微信 getwxacodeunlimit 生成小程序码（返回图片流）
-            InputStream qrIn = fetchWxSunCode(QR_PAGE, scene);
-            // 2. 白底合成 + 桌号文字（打印贴桌直观）
-            BufferedImage composed = composeWithTableNo(qrIn, table.getTableNo());
-            ByteArrayOutputStream os = new ByteArrayOutputStream();
-            ImageIO.write(composed, "png", os);
-            // 3. 上传 OSS（objectName 即下载文件名 {table_no}.png）
-            String objectName = "dining/qrcode/shop" + shopId + "/" + table.getTableNo() + ".png";
-            ossUtils.uploadImage(new ByteArrayInputStream(os.toByteArray()), objectName);
-            // 4. 回写
-            DiningTable upd = new DiningTable();
-            upd.setId(table.getId());
-            upd.setQrScene(scene);
-            upd.setQrCodeUrl(BusinessType.OSS_PREFIX + objectName);
-            upd.setUpdateTime(new Date());
-            diningTableMapper.updateById(upd);
+            byte[] png = fetchAndCompose(table.getTableNo(), scene);
+            QR_CACHE.put(table.getTableNo(), png);
+            // qr_scene 即"已生成且有效"标记；同时清掉历史 OSS 地址（用 UpdateWrapper 以支持显式 set null）
+            diningTableMapper.update(null, new LambdaUpdateWrapper<DiningTable>()
+                    .eq(DiningTable::getId, table.getId())
+                    .set(DiningTable::getQrScene, scene)
+                    .set(DiningTable::getQrCodeUrl, null)
+                    .set(DiningTable::getUpdateTime, new Date()));
         } catch (Exception e) {
             log.error("生成台位二维码失败 tableNo={}", table.getTableNo(), e);
             throw new StoneCustomerException("桌码生成失败（" + table.getTableNo() + "）：" + e.getMessage());
         }
     }
 
+    /** 拉取微信小程序码并合成桌号文字，返回 PNG 字节 */
+    private byte[] fetchAndCompose(String tableNo, String scene) throws Exception {
+        InputStream qrIn = fetchWxSunCode(QR_PAGE, scene);
+        BufferedImage composed = composeWithTableNo(qrIn, tableNo);
+        ByteArrayOutputStream os = new ByteArrayOutputStream();
+        ImageIO.write(composed, "png", os);
+        return os.toByteArray();
+    }
+
+    /**
+     * 取微信 access_token（GET cgi-bin/token）
+     * 与 WxQrCodeUtils.getToken 的区别：失败时抛出微信原始返回/网络异常，便于定位 TLS、凭据、白名单问题（此前静默返回 null 难以排查）
+     */
+    private String fetchAccessToken() throws Exception {
+        String appId = wxQrCodeUtils.getAppId();
+        String secret = wxQrCodeUtils.getSecret();
+        if (appId == null || appId.trim().isEmpty() || secret == null || secret.trim().isEmpty()) {
+            throw new StoneCustomerException("wxlogin 配置为空，请检查 WXLOGIN_APPID / WXLOGIN_SECRET 环境变量");
+        }
+        String tokenUrl = "https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid="
+                + appId.trim() + "&secret=" + secret.trim();
+        String body;
+        try {
+            HttpURLConnection conn = (HttpURLConnection) new URL(tokenUrl).openConnection();
+            conn.setRequestMethod("GET");
+            conn.setConnectTimeout(10000);
+            conn.setReadTimeout(20000);
+            body = readBody(conn);
+        } catch (Exception e) {
+            // 网络/证书类异常（如云托管云调用自签名证书导致的 PKIX 失败）在这里显性化
+            throw new StoneCustomerException("调用微信接口失败（网络或证书）：" + e.getMessage());
+        }
+        com.alibaba.fastjson.JSONObject json = com.alibaba.fastjson.JSONObject.parseObject(body);
+        String token = json == null ? null : json.getString("access_token");
+        if (token == null || token.isEmpty()) {
+            throw new StoneCustomerException("微信 access_token 获取失败，微信返回：" + body);
+        }
+        return token;
+    }
+
+    /** 读取 HTTP 响应体（4xx/5xx 走 errorStream） */
+    private String readBody(HttpURLConnection conn) throws Exception {
+        InputStream is = conn.getResponseCode() >= 400 ? conn.getErrorStream() : conn.getInputStream();
+        if (is == null) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(is, "UTF-8"))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                sb.append(line);
+            }
+        }
+        return sb.toString();
+    }
+
     /**
      * 调微信接口获取小程序码图片流（page 须为已发布页面，未发布会返回错误 JSON）
      */
     private InputStream fetchWxSunCode(String page, String scene) throws Exception {
-        String token = wxQrCodeUtils.getToken();
-        if (token == null || token.isEmpty()) {
-            throw new StoneCustomerException("微信 access_token 获取失败，请检查 wxlogin 配置");
-        }
+        String token = fetchAccessToken();
         URL url = new URL("https://api.weixin.qq.com/wxa/getwxacodeunlimit?access_token=" + token);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("POST");
@@ -295,6 +344,9 @@ public class TableManageServiceImpl implements TableManageService {
         paramJson.put("scene", scene);
         paramJson.put("page", page);
         paramJson.put("width", 430);
+        // check_path=false：允许 page 页面尚未发布时生成码（联调期必需，否则报 41030）
+        // 注意：扫码要真正打开该页面，仍需小程序发布含该页面的版本
+        paramJson.put("check_path", false);
         try (OutputStream os = conn.getOutputStream()) {
             os.write(paramJson.toJSONString().getBytes("UTF-8"));
         }
@@ -328,8 +380,8 @@ public class TableManageServiceImpl implements TableManageService {
         g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
         // 码居中偏上
         g.drawImage(qr, (W - qrSize) / 2, 50, qrSize, qrSize, null);
-        // 桌号文字（居中）
-        g.setFont(new Font("PingFang SC", Font.BOLD, 46));
+        // 桌号文字（居中）；用逻辑字体 SANS_SERIF 保证跨平台（本地 macOS / 容器 Linux 经 fontconfig 映射）
+        g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 46));
         g.setColor(Color.BLACK);
         String text = tableNo;
         int tw = g.getFontMetrics().stringWidth(text);
@@ -344,26 +396,43 @@ public class TableManageServiceImpl implements TableManageService {
         if (exist == null || !shopId.equals(exist.getShopId())) {
             throw new StoneCustomerException("台位不存在");
         }
-        DiningTable upd = new DiningTable();
-        upd.setId(id);
-        upd.setQrScene(null);
-        upd.setQrCodeUrl(null);
-        upd.setUpdateTime(new Date());
-        diningTableMapper.updateById(upd);
+        // 必须用 UpdateWrapper 显式 set null：MyBatis-Plus updateById 默认忽略 null 字段（FieldStrategy.NOT_NULL），
+        // 直接用实体 setQrScene(null) 不会清空旧值
+        diningTableMapper.update(null, new LambdaUpdateWrapper<DiningTable>()
+                .eq(DiningTable::getId, id)
+                .set(DiningTable::getQrScene, null)
+                .set(DiningTable::getQrCodeUrl, null)
+                .set(DiningTable::getUpdateTime, new Date()));
+        // 同步清缓存，避免作废后仍能取到旧码图
+        QR_CACHE.remove(exist.getTableNo());
     }
 
+    /**
+     * 取桌码图（base64 data URL，供管理端缩略图/下载）
+     * 缓存命中直出；容器重启后缓存丢失时按库中 qr_scene 现场重建（微信码永久有效，可重复获取）
+     */
     @Override
-    public String getQrcodeUrl(Integer shopId, String tableNo) {
+    public String getQrcodeImageBase64(Integer shopId, String tableNo) {
         DiningTable table = diningTableMapper.selectOne(new LambdaQueryWrapper<DiningTable>()
                 .eq(DiningTable::getShopId, shopId)
                 .eq(DiningTable::getTableNo, tableNo));
         if (table == null) {
             throw new StoneCustomerException("台位不存在");
         }
-        if (table.getQrCodeUrl() == null || table.getQrCodeUrl().isEmpty()) {
+        if (table.getQrScene() == null || table.getQrScene().isEmpty()) {
             throw new StoneCustomerException("该台位尚未生成桌码");
         }
-        return table.getQrCodeUrl();
+        byte[] png = QR_CACHE.get(table.getTableNo());
+        if (png == null) {
+            try {
+                png = fetchAndCompose(table.getTableNo(), table.getQrScene());
+                QR_CACHE.put(table.getTableNo(), png);
+            } catch (Exception e) {
+                log.error("台位桌码重建失败 tableNo={}", table.getTableNo(), e);
+                throw new StoneCustomerException("桌码获取失败：" + e.getMessage());
+            }
+        }
+        return "data:image/png;base64," + Base64.getEncoder().encodeToString(png);
     }
 
     /* ==================== 台位类型 ==================== */

@@ -1,118 +1,68 @@
 <template>
-	<view>
-		<view v-if="menuList.length > 0" class="mp-vtabs-view">
-			<van-config-provider :theme-vars="themeVars" :themeVars="themeVars" theme-vars-scope="global">
-				<van-tree-select v-model:main-active-index="activeTab" height="100vh" :items="menuList">
-					// #ifdef APP-PLUS||H5
-					<template #content>
-						<block v-for="(menu, menuIndex) in menuList" :key="menuIndex">
-							<view
-								:class="'vtabs-content-item ' + (menuList.length - 1 == menuIndex ? 'is-end-item' : '')">
-								<block v-for="(chil, goodsIndex) in menu.goodsList" :key="goodsIndex">
-									<view :class="'commodity-item ' + (chil.goodsStatus == 4 ? 'isEnd' : '')"
-										:hover-class="chil.goodsStatus == 4 ? '' : 'hover-class-public'">
-										<view class="commodity-name-view"
-											@tap="parseEventDynamicCode($event, chil.goodsStatus == 4 ? '' : 'commodityDetailTap')"
-											:data-id="chil.goodsId">
-											<image
-												:src="chil.mainImage ? chil.mainImage : '/static/assets/common/load-image.png'"
-												mode="aspectFill" class="commodity-image"></image>
-											<view class="sell-out" v-if="chil.goodsStatus == 4">售罄</view>
-											<view class="commodity-name-english-view">
-												<view class="commodity-name out_of_range two_row">{{ chil.goodsName }}
-												</view>
-												<view class="commodity-english"><text></text></view>
-												<view class="money-view">￥{{ chil.goodsPrice }}</view>
-											</view>
-										</view>
-										<view class="money-insert-view">
-											<view class="stepper" v-if="chil.number > 0">
-												<block>
-													<text class="reduce-class" @tap="bindMinus"
-														:data-cartId="chil.cartId" :data-number="chil.number">－</text>
-													<input disabled type="number" :value="chil.number"
-														class="reduce-class" />
-													<text class="add-class" :data-goodsId="chil.goodsId"
-														@tap.stop.prevent="parseEventDynamicCode($event, chil.goodsStatus != 4 ? 'openSpecifications' : '')">
-														＋
-													</text>
-												</block>
-											</view>
-											<block v-else>
-												<view
-													:class="'insert-view theme-bg ' + (chil.goodsStatus == 4 ? 'isEnd' : '')"
-													:data-goodsId="chil.goodsId"
-													@tap="parseEventDynamicCode($event, chil.goodsStatus != 4 ? 'openSpecifications' : '')">
-													＋
-												</view>
-											</block>
-										</view>
-									</view>
+	<view class="mall-menu-page">
+		<!-- 左分类栏：92rpx 宽（画板 B-02）｜「全部」为前端虚拟项，其余为后端分类 -->
+		<scroll-view scroll-y class="cate-bar">
+			<view v-for="(item, index) in cateList" :key="index"
+				:class="'cate-item ' + (activeCateIndex === index ? 'cate-item-active' : '')"
+				hover-class="hover-class-public" @tap="switchCate(index)">
+				<view class="cate-line theme-bg" v-if="activeCateIndex === index"></view>
+				<text :class="'cate-text ' + (activeCateIndex === index ? 'theme-color cate-text-active' : '')">{{ item.name }}</text>
+			</view>
+		</scroll-view>
 
+		<!-- 右商品区：283rpx 宽，组标题 + 96rpx 商品行（步进器 / 加购钮 / 售罄 三态） -->
+		<scroll-view scroll-y class="goods-panel">
+			<block v-for="(group, groupIndex) in visibleGroups" :key="groupIndex">
+				<view class="group-title">{{ group.name }}</view>
 
-								</block>
+				<view class="goods-row" v-for="(chil, goodsIndex) in group.goodsList" :key="goodsIndex">
+					<view class="goods-row-main" hover-class="hover-class-public"
+						@tap="parseEventDynamicCode($event, chil.goodsStatus == 4 ? '' : 'commodityDetailTap')"
+						:data-id="chil.goodsId">
+						<image v-if="chil.mainImage" :src="chil.mainImage" mode="aspectFill" class="goods-row-img"></image>
+						<view v-else class="goods-row-img goods-row-img-empty"></view>
+
+						<view class="goods-row-info">
+							<text :class="'goods-row-name out_of_range one_row ' + (chil.goodsStatus == 4 ? 'goods-row-name-disabled' : '')">{{ chil.goodsName }}</text>
+							<view class="goods-row-price" v-if="chil.goodsStatus != 4">
+								<text class="price-symbol">￥</text>
+								<text class="price-value">{{ chil.goodsPrice }}</text>
 							</view>
-						</block>
-					</template>
-					// #endif
-					// #ifdef MP-WEIXIN||MP-ALIPAY
-					<view slot="content" class="flvan-swipe-cell__right flex_between" :data-checkboxIndex="index">
-						<block v-for="(menu, menuIndex) in menuList" :key="menuIndex">
-							<view
-								:class="'vtabs-content-item ' + (menuList.length - 1 == menuIndex ? 'is-end-item' : '')">
-								<block v-for="(chil, goodsIndex) in menu.goodsList" :key="goodsIndex">
-									<view :class="'commodity-item ' + (chil.goodsStatus == 4 ? 'isEnd' : '')"
-										:hover-class="chil.goodsStatus == 4 ? '' : 'hover-class-public'">
-										<view class="commodity-name-view"
-											@tap="parseEventDynamicCode($event, chil.goodsStatus == 4 ? '' : 'commodityDetailTap')"
-											:data-id="chil.goodsId">
-											<image
-												:src="chil.mainImage ? chil.mainImage : '/static/assets/common/load-image.png'"
-												mode="aspectFill" class="commodity-image"></image>
-											<view class="sell-out" v-if="chil.goodsStatus == 4">售罄</view>
-											<view class="commodity-name-english-view">
-												<view class="commodity-name out_of_range two_row">{{ chil.goodsName }}
-												</view>
-												<view class="commodity-english"><text></text></view>
-												<view class="money-view">￥{{ chil.goodsPrice }}</view>
-											</view>
-										</view>
-									</view>
-
-									<view class="money-insert-view" style="right: 5%;">
-										<view class="stepper" v-if="chil.number > 0">
-											<block>
-												<text class="reduce-class" @tap="bindMinus" :data-cartId="chil.cartId"
-													:data-number="chil.number">－</text>
-												<input disabled type="number" :value="chil.number"
-													class="reduce-class" />
-												<text class="add-class" :data-goodsId="chil.goodsId"
-													@tap.stop.prevent="parseEventDynamicCode($event, chil.goodsStatus != 4 ? 'openSpecifications' : '')">
-													＋
-												</text>
-											</block>
-										</view>
-										<block v-else>
-											<view
-												:class="'insert-view theme-bg ' + (chil.goodsStatus == 4 ? 'isEnd' : '')"
-												:data-goodsId="chil.goodsId"
-												@tap="parseEventDynamicCode($event, chil.goodsStatus != 4 ? 'openSpecifications' : '')">
-												＋
-											</view>
-										</block>
-									</view>
-								</block>
-							</view>
-						</block>
+							<view class="sell-out-tag" v-if="chil.goodsStatus == 4">已售罄</view>
+						</view>
 					</view>
-					// #endif
-				</van-tree-select>
-			</van-config-provider>
+
+					<view class="goods-row-action">
+						<view class="stepper" v-if="chil.goodsStatus != 4 && chil.number > 0">
+							<text class="step-btn" @tap.stop.prevent="changeNumber(chil, -1)">－</text>
+							<text class="step-num">{{ chil.number }}</text>
+							<text class="step-btn" @tap.stop.prevent="changeNumber(chil, 1)">＋</text>
+						</view>
+						<view v-else-if="chil.goodsStatus != 4" class="add-btn theme-bg"
+							@tap.stop.prevent="openSpecifications" :data-goods-id="chil.goodsId">＋</view>
+					</view>
+				</view>
+			</block>
+
+			<view class="goods-empty" v-if="visibleGroups.length === 0">该分类暂无商品</view>
+		</scroll-view>
+
+		<!-- 底部购物车悬浮栏：画板 B-02 未画入口，但"点单 → 加购 → 结算"必须可达（工程补充，已在计划登记） -->
+		<view class="cart-float" v-if="cartCount > 0" hover-class="hover-class-public" @tap="goToCart">
+			<view class="cart-float-icon theme-bg">
+				<van-icon name="shopping-cart-o" class="cart-float-icon-inner" />
+				<view class="cart-float-badge">{{ cartCount }}</view>
+			</view>
+			<text class="cart-float-text">已选 {{ cartCount }} 件</text>
+			<view class="cart-float-btn theme-bg">去结算</view>
 		</view>
+
+		<!-- SKU 选择弹层（沿用原结构，仅去掉重复的商品名行） -->
 		<van-action-sheet :show="specificationsDialog" title="选择规格" @close="close" @cancel="close">
 			<view class="content_box">
 				<view class="goods-info-view">
-					<image :src="goodsInfo.mainImage" mode="aspectFill" class="commodity-image"></image>
+					<image v-if="goodsInfo.mainImage" :src="goodsInfo.mainImage" mode="aspectFill" class="commodity-image"></image>
+					<view v-else class="commodity-image commodity-image-empty"></view>
 					<view>
 						<view class="goods-info-name out_of_range one_row">{{ goodsInfo.name }}</view>
 						<view class="goods-info-specListString">已选：{{ specListString }}</view>
@@ -121,8 +71,6 @@
 				</view>
 				<scroll-view scroll-y style="height: 50vh">
 					<view class="commdity-name-type-view">
-						<view class="commdity-name">{{ data.name }}</view>
-						<view class="commdity-engname">{{ data.name }}</view>
 						<view class="commdity-type-item" v-for="(item, key) in specList" :key="key">
 							<view class="commdity-type-name">{{ key }}</view>
 
@@ -156,52 +104,39 @@
 	import GlobalConfig from '../../../../utils/global-config';
 	import https from '../../../../utils/http';
 	import authService from '../../../../utils/auth';
-	import {
-		Base64
-	} from 'js-base64';
 	import toastService from '../../../../utils/toast.service';
-	import systemStatus from '../../../../utils/system-status';
-	import dateHelper from '../../../../utils/date-helper';
-	import utilHelper from '../../../../utils/util';
-	var menuList = [];
 	let app = null;
 	export default {
 		data() {
 			return {
-				specificationsDialog: false,
+				// 后端返回的分类（12 个实体分类，每个含 goodsList）
 				menuList: [],
-				goodsId: '',
+				// 左栏列表：「全部」+ 各实体分类（画板 B-02 共 13 项）
+				cateList: [],
+				// 0 = 全部，1..n = menuList[activeCateIndex - 1]
+				activeCateIndex: 0,
+				specificationsDialog: false,
 				goodsInfo: {
+					id: '',
 					mainImage: '',
-					name: ''
+					name: '',
+					price: ''
 				},
 				priceAfter: '',
 				specListString: '',
-				specList: '',
-				shoppingCartDialog: false,
-				activeTab: '',
-				menuIndex: 0,
-				menu: {
-					name: '',
-					goodsList: []
-				},
-				goodsIndex: 0,
-				chil: {
-					goodsStatus: 0,
-					goodsId: '',
-					mainImage: false,
-					goodsName: '',
-					goodsPrice: '',
-					number: 0,
-					cartId: ''
-				},
-				data: {
-					name: ''
-				},
-				themeVars:{
-					primaryColor: '#5f7d22'
-				}
+				specList: [],
+				cartCount: 0
 			};
+		},
+		computed: {
+			// 右栏分组：全部 → 所有分类各自成组（组标题＝分类名）；选中分类 → 仅该组
+			visibleGroups() {
+				if (this.activeCateIndex === 0) {
+					return this.menuList;
+				}
+				const group = this.menuList[this.activeCateIndex - 1];
+				return group ? [group] : [];
+			}
 		},
 		/**
 		 * 生命周期函数--监听页面加载
@@ -210,203 +145,215 @@
 			app = getApp();
 			this.getMenuList();
 		},
-		/**
-		 * 生命周期函数--监听页面初次渲染完成
-		 */
 		onReady: function() {},
 		/**
-		 * 生命周期函数--监听页面显示
+		 * 生命周期函数--监听页面显示：回显购物车数量（原页面缺失此步 → 进页面看不到已加购数量）
 		 */
-		onShow: function() {},
-		/**
-		 * 生命周期函数--监听页面隐藏
-		 */
+		onShow: function() {
+			if (this.menuList.length > 0) {
+				this.refreshCart();
+			}
+		},
 		onHide: function() {},
-		/**
-		 * 生命周期函数--监听页面卸载
-		 */
 		onUnload: function() {},
-		/**
-		 * 页面相关事件处理函数--监听用户下拉动作
-		 */
 		onPullDownRefresh: function() {},
-		/**
-		 * 页面上拉触底事件的处理函数
-		 */
 		onReachBottom: function() {},
-		/**
-		 * 用户点击右上角分享
-		 */
 		onShareAppMessage: function() {},
 		methods: {
+			/** 加载分类 + 商品（C-10 批次6：原 van-tree-select 改为自绘左右栏） */
 			getMenuList() {
 				toastService.showLoading();
-				var self = this;
 				https.request('/rest/pointsMall/menu/listWithGoods', {}).then((result) => {
 					toastService.hideLoading();
 					if (result.success && result.data) {
-						//console.log(result.data)
-						result.data.forEach((aitem, index) => {
-							aitem.text = aitem.name;
-							aitem.goodsList.forEach((bitem) => {
-								bitem.isShopCart = false;
-								bitem.mainImage = GlobalConfig.ossUrl + bitem.mainImage;
+						const list = result.data;
+						list.forEach((menu) => {
+							menu.title = menu.name;
+							(menu.goodsList || []).forEach((g) => {
+								g.number = 0;
+								g.cartId = '';
+								// 种子商品 main_image 可能为空 → 交给模板渲染灰底占位
+								if (g.mainImage) {
+									g.mainImage = GlobalConfig.ossUrl + g.mainImage;
+								}
 							});
 						});
-						menuList = result.data;
-						this.menuList = menuList;
+						this.menuList = list;
+						this.cateList = [{
+							name: '全部'
+						}].concat(list.map((m) => ({
+							name: m.name
+						})));
+						this.refreshCart();
 					}
+				}).catch(() => {
+					toastService.hideLoading();
+					toastService.showToast('加载商品失败，请下拉重试');
 				});
 			},
 
-			openSpecifications(e) {
-				toastService.showLoading();
-				this.setData({
-					specificationsDialog: true,
-					goodsId: e.currentTarget.dataset.goodsid
+			/** 切换左栏分类 */
+			switchCate(index) {
+				this.activeCateIndex = index;
+			},
+
+			/**
+			 * 回显购物车：把每件商品的已加购数量与 cartId 写回 menuList，并刷新 tabBar 角标。
+			 * 加购 / 加减 / 进页面 后都调用 —— 这是 B-02 主链路的关键（原实现完全没有回显）。
+			 */
+			refreshCart() {
+				return authService.checkIsLogin().then((logged) => {
+					if (!logged) {
+						return;
+					}
+					return https.request('/rest/member/pointsMall/shoppingCart/list', {
+						pageNo: 1,
+						pageSize: 200
+					}, authService.getToken()).then((result) => {
+						if (!result.success) {
+							return;
+						}
+						const records = (result.data && result.data.records) || [];
+						const byGoods = {};
+						records.forEach((r) => {
+							const gid = r.goodsId;
+							if (!byGoods[gid]) {
+								byGoods[gid] = {
+									number: 0,
+									cartId: r.id
+								};
+							}
+							byGoods[gid].number += (r.number || 0);
+						});
+						let total = 0;
+						this.menuList.forEach((menu) => {
+							(menu.goodsList || []).forEach((g) => {
+								const hit = byGoods[g.goodsId];
+								g.number = hit ? hit.number : 0;
+								g.cartId = hit ? hit.cartId : '';
+								total += g.number;
+							});
+						});
+						this.menuList = this.menuList.slice();
+						this.cartCount = total;
+						if (app && app.globalData && app.globalData.setTabBarBadge) {
+							app.globalData.setTabBarBadge(total);
+						}
+					}).catch(() => {});
 				});
-				this.getCommodityDetails(e.currentTarget.dataset.goodsid);
+			},
+
+			/** 点击 ＋ 打开 SKU 弹层 */
+			openSpecifications(e) {
+				const goodsId = e.currentTarget.dataset.goodsId;
+				if (!goodsId) {
+					return;
+				}
+				toastService.showLoading();
+				this.specificationsDialog = true;
+				this.goodsInfo.id = goodsId;
+				this.getCommodityDetails(goodsId);
 			},
 
 			getCommodityDetails(id) {
-				https
-					.request('/rest/pointsMall/goods/selectById', {
-						id: id,
-						pageNo: -1,
-						pageSize: 20
-					})
-					.then((result) => {
-						toastService.hideLoading();
-						if (result.success && result.data) {
-							//获取商品的详细图片，转换以轮播图的数据格式
-							//console.log(result.data)
-							result.data.mainImage = GlobalConfig.ossUrl + result.data.mainImage;
-							this.setData({
-								goodsInfo: result.data,
-								priceAfter: result.data.price
-							});
-							this.selectByGoodsId(id);
+				https.request('/rest/pointsMall/goods/selectById', {
+					id: id,
+					pageNo: -1,
+					pageSize: 20
+				}).then((result) => {
+					toastService.hideLoading();
+					if (result.success && result.data) {
+						const detail = result.data;
+						if (detail.mainImage) {
+							detail.mainImage = GlobalConfig.ossUrl + detail.mainImage;
 						}
-					});
+						this.goodsInfo = detail;
+						this.priceAfter = detail.price;
+						this.selectByGoodsId(id);
+					}
+				}).catch(() => {
+					toastService.hideLoading();
+				});
 			},
 
 			commodityDetailTap(e) {
-				console.log(e.currentTarget.dataset.id);
 				uni.navigateTo({
 					url: '../detail/detail?id=' + e.currentTarget.dataset.id
 				});
 			},
 
 			selectByGoodsId(goodsId) {
-				console.log(this);
-				https
-					.request('/rest/pointsMall/goodsSpecificationOption/selectByGoodsId', {
-						goodsId: goodsId
-					})
-					.then((result) => {
-						if (result.success && result.data) {
-							//重新设置商品的规格等数据的格式
-							//let goodsSpecs = {};
-							let specList = result.data;
-							let price = 0;
-							let specListString = '';
-							for (let key in specList) {
-								let isChecked = true;
-								for (let keyof in specList[key]) {
-									//拼接查询规格等的json数据格式，查询商品规格等对应的价格
-									specList[key][keyof].checked = false;
-									//设置每个规格的第一个选项为选中，当库存为0时则选中下一个
-									if (specList[key][keyof].stock == 1 && isChecked) {
-										specList[key][keyof].checked = true;
-										//选中的规格价钱在商品价钱的基础上累加
-										price = price + specList[key][keyof].price;
-										specListString = (specListString ? specListString + '/' : specListString) +
-											specList[key][keyof].name;
-										isChecked = false;
-									}
+				https.request('/rest/pointsMall/goodsSpecificationOption/selectByGoodsId', {
+					goodsId: goodsId
+				}).then((result) => {
+					if (result.success && result.data) {
+						const specList = result.data;
+						let price = 0;
+						let specListString = '';
+						for (let key in specList) {
+							let isChecked = true;
+							for (let keyof in specList[key]) {
+								specList[key][keyof].checked = false;
+								// 每个规格默认选中第一个有库存的选项
+								if (specList[key][keyof].stock == 1 && isChecked) {
+									specList[key][keyof].checked = true;
+									price = price + specList[key][keyof].price;
+									specListString = (specListString ? specListString + '/' : specListString) +
+										specList[key][keyof].name;
+									isChecked = false;
 								}
 							}
-							this.setData({
-								specListString: specListString ? specListString : '暂无规格',
-								specList: JSON.stringify(specList) == '{}' ? [] : specList
-							});
 						}
-					});
-			},
-
-			//事件处理函数
-			/*点击减号*/
-			bindMinus: function(e) {
-				toastService.showLoading();
-				var that = this;
-				let cartId = e.currentTarget.dataset.cartid;
-				let number = e.currentTarget.dataset.number;
-				//点击减号后,当前商品的数量小于1,就进行删除该商品
-				//重新计算被选中的商品的总金额
-				totalPrice = 0;
-				if (number == 1) {
+						this.specListString = specListString ? specListString : '暂无规格';
+						this.specList = JSON.stringify(specList) == '{}' ? [] : specList;
+					}
+				}).catch(() => {
 					toastService.hideLoading();
-					toastService.showModal(null, '确定不要这个了吗？', function confirm() {
-						toastService.showLoading();
-						that.updateNumber(cartId, 1, 0, function callback() {
-							totalNum--;
-							if (that.shoppingCartList.length == 1) {
-								that.setData({
-									shoppingCartDialog: false
-								});
-							}
-							that.getShoppingCartList();
-						});
-					});
-					return;
-				}
-				this.updateNumber(cartId, 1, 0, function callback() {
-					totalNum--;
-					that.getShoppingCartList();
 				});
 			},
 
-			/*点击加号*/
-			bindPlus: function(e) {
-				toastService.showLoading();
-				var that = this;
-				let numList = e.currentTarget.dataset.num.split(',');
-				let items = this.shoppingCartList;
-				totalPrice = 0;
-				items[numList[0]].number = Number(numList[1]) + 1; //当前商品的数量+1
-				if (items[numList[0]].disable) {
+			/** 步进器：加/减（C-10 批次6 重写，原 bindMinus/bindPlus 引用了本页不存在的 shoppingCartList，必报错） */
+			changeNumber(goods, delta) {
+				if (goods.goodsStatus == 4) {
 					return;
 				}
-				this.updateNumber(items[numList[0]].id, 1, 1, function callback() {
-					//重新计算被选中的商品的总金额
-					totalNum++;
-					that.getShoppingCartList();
+				if (!goods.cartId) {
+					return;
+				}
+				if (delta < 0 && goods.number <= 1) {
+					// 减到 0 由后端自动删除（updateNumber 内 actualNumber==0 时删除）
+				}
+				toastService.showLoading();
+				https.request('/rest/member/pointsMall/shoppingCart/updateNumber', {
+					id: goods.cartId,
+					type: delta > 0 ? 1 : 0,
+					number: Math.abs(delta)
+				}, authService.getToken()).then((result) => {
+					toastService.hideLoading();
+					if (result.success) {
+						this.refreshCart();
+					} else {
+						toastService.showToast(result.message || '操作失败');
+					}
+				}).catch(() => {
+					toastService.hideLoading();
+					toastService.showToast('操作失败，请重试');
 				});
 			},
 
 			radioChange(e) {
-				//获取复选框选中的下标值
-				var checkValue = e.detail.value;
-				//获取第一级分类的下标值
-				let firstIndex = e.currentTarget.dataset.firstindex;
-				//获取所有分类信息
-				let specList = this.specList;
-				//console.log(specList)
-				//遍历分类信息给第一级分类为false，提交的时候对应各级分类
-				for (var j in specList[firstIndex]) {
+				const checkValue = e.detail.value;
+				const firstIndex = e.currentTarget.dataset.firstindex;
+				const specList = this.specList;
+				for (let j in specList[firstIndex]) {
 					specList[firstIndex][j].checked = false;
 				}
-				//给选中的第二级分类的checked设置为true
-				for (var i in checkValue) {
-					specList[firstIndex][checkValue[i]].checked = true;
-					//console.log(specList[firstIndex][checkValue[i]])
-				}
+				specList[firstIndex][checkValue].checked = true;
 
 				let price = this.goodsInfo.price;
 				let specListString = '';
 				for (let key in specList) {
 					for (let keyof in specList[key]) {
-						//console.log(specList[key][keyof].price)
 						if (specList[key][keyof].checked) {
 							price = price + specList[key][keyof].price;
 							specListString = (specListString ? specListString + '/' : specListString) + specList[key][
@@ -415,88 +362,64 @@
 						}
 					}
 				}
-				// let totalPrice = price * this.data.commodityNum;
-				// let fullPriceReduction = 0,
-				//    fullReductionRuleName = "",
-				//    fullPriceReductionIsHidden = false,
-				//    limitedPrice = 0;
-				// //console.log(this.data.fullReductionRuleList)
-				// for (let i = 0; i < this.data.shopInfo.fullReductionRuleList.length; i++) {
-				//    //console.log(this.data.fullReductionRuleList[i].limitedPrice)
-				//    if (totalPrice >= this.data.shopInfo.fullReductionRuleList[i].limitedPrice) {
-				//       if (this.data.shopInfo.fullReductionRuleList[i].limitedPrice > limitedPrice) {
-				//          limitedPrice = this.data.shopInfo.fullReductionRuleList[i].limitedPrice;
-				//          fullPriceReduction = (totalPrice + this.data.data.packingCharges) - this.data.shopInfo.fullReductionRuleList[i].reducedPrice;
-				//          fullReductionRuleName = this.data.shopInfo.fullReductionRuleList[i].name;
-				//          fullPriceReductionIsHidden = true;
-				//       }
-				//    }
-				// }
-
-				// for (var key in specList) {
-				//   console.log(specList[key])
-				//   specListString = (specListString ? specListString + "/" : specListString) + specList[key];
-				// }
-				//console.log(specList)
-				this.setData({
-					specList: specList,
-					specListString: specListString,
-					priceAfter: price
-					// totalPrice: utilHelper.toFixed(totalPrice, 2),
-					// fullPriceReduction: utilHelper.toFixed(fullPriceReduction, 2),
-					// fullPriceReductionIsHidden: fullPriceReductionIsHidden,
-					// fullReductionRuleName: fullReductionRuleName
-				});
+				this.specList = specList;
+				this.specListString = specListString;
+				this.priceAfter = price;
 			},
 
+			/** 加入购物车（C-10 批次6：补 token + 成功后回显数量与角标） */
 			insertShoppingCart(e) {
-				// if(!goodsSpecs){
-				//   toastService.showToast("请选择规格");
-				//   return
-				// }
 				authService.checkIsLogin().then((result) => {
-					toastService.showLoading();
-					if (result) {
-						let goodsSpecs = {};
-						let specList = this.specList;
-						for (let key in specList) {
-							for (let keyof in specList[key]) {
-								//拼接查询规格等的json数据格式，查询商品规格等对应的价格
-								if (specList[key][keyof].checked) {
-									goodsSpecs[key] = specList[key][keyof].name;
-								}
-							}
-						}
-						//console.log(goodsSpecs)
-						let data = {
-							goodsId: this.goodsInfo.id,
-							specList: JSON.stringify(goodsSpecs)
-						};
-						https.request('/rest/member/pointsMall/shoppingCart/insert', data).then((result) => {
-							if (result.success) {
-								toastService.showToast('加入购物车成功');
-								this.setData({
-									specificationsDialog: false
-								});
-							}
-						});
+					if (!result) {
+						app.globalData.checkIsAuth('scope.userInfo');
 						return;
 					}
-					app.globalData.checkIsAuth('scope.userInfo');
+					toastService.showLoading();
+					const goodsSpecs = {};
+					const specList = this.specList;
+					for (let key in specList) {
+						for (let keyof in specList[key]) {
+							// 拼接查询规格等的json数据格式，查询商品规格等对应的价格
+							if (specList[key][keyof].checked) {
+								goodsSpecs[key] = specList[key][keyof].name;
+							}
+						}
+					}
+					https.request('/rest/member/pointsMall/shoppingCart/insert', {
+						goodsId: this.goodsInfo.id,
+						specList: JSON.stringify(goodsSpecs)
+					}, authService.getToken()).then((res) => {
+						toastService.hideLoading();
+						if (res.success) {
+							toastService.showToast('加入购物车成功');
+							this.specificationsDialog = false;
+							this.refreshCart();
+						} else {
+							toastService.showToast(res.message || '加入购物车失败');
+						}
+					}).catch(() => {
+						toastService.hideLoading();
+						toastService.showToast('加入购物车失败，请重试');
+					});
 				});
 			},
 
-			onTabCLick() {
-				console.log('占位：函数 onTabCLick 未声明');
+			close() {
+				this.specificationsDialog = false;
 			},
 
-			onChange() {
-				console.log('占位：函数 onChange 未声明');
-			},
-			close() {
-				this.setData({
-					specificationsDialog: false
-				})
+			/** 去购物车（底部悬浮栏入口） */
+			goToCart() {
+				if (this._navigating) {
+					return;
+				}
+				this._navigating = true;
+				uni.navigateTo({
+					url: '../car/car',
+					complete: () => {
+						this._navigating = false;
+					}
+				});
 			}
 		}
 	};
@@ -1645,4 +1568,280 @@
 	.van-sidebar-item--selected {
 		background-color: var(--sidebar-selected-border-color, #5f7d22);
 	}
+
+	/* ==========================================================================
+	   C-10 批次 6：自绘左右栏 + 96rpx 商品行（画板 B-02）
+	   追加覆盖式：原 style 段保留不动，仅以更高特异性覆盖必要类
+	   ========================================================================== */
+	page {
+		height: 100%;
+	}
+
+	.mall-menu-page {
+		display: flex;
+		width: 100%;
+		height: 100%;
+		overflow: hidden;
+		background-color: #ffffff;
+	}
+
+	/* ---- 左分类栏 92px = 184rpx ---- */
+	.cate-bar {
+		width: 184rpx;
+		height: 100%;
+		background-color: #f5f5f5;
+		flex-shrink: 0;
+	}
+
+	.cate-item {
+		position: relative;
+		width: 184rpx;
+		height: 96rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.cate-item-active {
+		background-color: #ffffff;
+	}
+
+	.cate-line {
+		position: absolute;
+		left: 0;
+		top: 0;
+		width: 8rpx;
+		height: 96rpx;
+	}
+
+	.cate-text {
+		font-size: 28rpx;
+		color: #666666;
+	}
+
+	.cate-text-active {
+		font-weight: 500;
+	}
+
+	/* ---- 右商品区 283px ---- */
+	.goods-panel {
+		flex: 1;
+		height: 100%;
+		background-color: #ffffff;
+	}
+
+	.group-title {
+		padding: 24rpx 24rpx 12rpx 24rpx;
+		font-size: 28rpx;
+		font-weight: bold;
+		color: #333333;
+	}
+
+	.goods-row {
+		position: relative;
+		height: 192rpx;
+		padding: 16rpx 24rpx;
+		box-sizing: border-box;
+		display: flex;
+		align-items: center;
+	}
+
+	.goods-row-main {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		align-items: center;
+	}
+
+	.goods-row-img {
+		width: 160rpx;
+		height: 160rpx;
+		border-radius: 16rpx;
+		flex-shrink: 0;
+	}
+
+	.goods-row-img-empty {
+		background-color: #f2f2f2;
+	}
+
+	.goods-row-info {
+		flex: 1;
+		min-width: 0;
+		padding-left: 24rpx;
+	}
+
+	.goods-row-name {
+		font-size: 30rpx;
+		color: #202020;
+		line-height: 42rpx;
+	}
+
+	.goods-row-name-disabled {
+		color: #999999;
+	}
+
+	.goods-row-price {
+		margin-top: 12rpx;
+		display: flex;
+		align-items: baseline;
+	}
+
+	.goods-row .price-symbol {
+		font-size: 22rpx;
+		font-weight: bold;
+		color: #333333;
+	}
+
+	.goods-row .price-value {
+		font-size: 36rpx;
+		font-weight: bold;
+		color: #333333;
+	}
+
+	.sell-out-tag {
+		margin-top: 12rpx;
+		width: 88rpx;
+		height: 40rpx;
+		line-height: 40rpx;
+		text-align: center;
+		background-color: #efefef;
+		color: #999999;
+		font-size: 20rpx;
+		border-radius: 8rpx;
+	}
+
+	/* ---- 右侧操作区：加购钮 / 步进器（覆盖旧 .stepper text 的方形样式）---- */
+	.goods-row-action {
+		flex-shrink: 0;
+		margin-left: 16rpx;
+	}
+
+	.add-btn {
+		width: 56rpx;
+		height: 56rpx;
+		border-radius: 50%;
+		color: #ffffff;
+		font-size: 34rpx;
+		line-height: 56rpx;
+		text-align: center;
+	}
+
+	.goods-row .stepper {
+		margin-left: 0;
+		display: flex;
+		align-items: center;
+	}
+
+	.goods-row .stepper text {
+		width: auto;
+		height: auto;
+		line-height: 1;
+		font-size: 28rpx;
+		color: #333333;
+	}
+
+	.goods-row .step-btn {
+		width: 52rpx;
+		height: 52rpx;
+		line-height: 52rpx;
+		text-align: center;
+		border: 1rpx solid #ededed;
+		border-radius: 8rpx;
+		font-size: 28rpx;
+	}
+
+	.goods-row .step-num {
+		width: 72rpx;
+		text-align: center;
+		font-size: 28rpx;
+		font-weight: 500;
+	}
+
+	.goods-empty {
+		padding: 80rpx 0;
+		text-align: center;
+		font-size: 26rpx;
+		color: #999999;
+	}
+
+	.commodity-image-empty {
+		background-color: #f2f2f2;
+	}
+
+
+	/* 底部购物车悬浮栏（工程补充入口） */
+	.mall-menu-page {
+		padding-bottom: 0;
+	}
+
+	.cart-float {
+		position: fixed;
+		left: 24rpx;
+		right: 24rpx;
+		bottom: 24rpx;
+		height: 104rpx;
+		background-color: #ffffff;
+		border-radius: 52rpx;
+		box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.12);
+		display: flex;
+		align-items: center;
+		padding: 0 12rpx 0 20rpx;
+		box-sizing: border-box;
+		z-index: 20;
+	}
+
+	.cart-float-icon {
+		position: relative;
+		width: 72rpx;
+		height: 72rpx;
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+	}
+
+	.cart-float-icon-inner {
+		font-size: 40rpx;
+		color: #ffffff;
+	}
+
+	.cart-float-badge {
+		position: absolute;
+		top: -8rpx;
+		right: -8rpx;
+		min-width: 32rpx;
+		height: 32rpx;
+		line-height: 32rpx;
+		text-align: center;
+		padding: 0 6rpx;
+		border-radius: 16rpx;
+		background-color: #ee0a24;
+		color: #ffffff;
+		font-size: 20rpx;
+	}
+
+	.cart-float-text {
+		flex: 1;
+		margin-left: 20rpx;
+		font-size: 28rpx;
+		color: #202020;
+	}
+
+	.cart-float-btn {
+		width: 168rpx;
+		height: 80rpx;
+		border-radius: 40rpx;
+		color: #ffffff;
+		font-size: 28rpx;
+		line-height: 80rpx;
+		text-align: center;
+		flex-shrink: 0;
+	}
+
+	/* 悬浮栏出现时，给右商品区留出底部空间，避免最后一条商品被遮挡 */
+	.goods-panel {
+		padding-bottom: 140rpx;
+	}
+
 </style>

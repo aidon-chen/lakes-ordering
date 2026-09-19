@@ -99,10 +99,10 @@ public class MerchantTableManageController {
     }
 
     /**
-     * 下载二维码（返回 OSS 完整 URL，文件名为 {table_no}.png）
+     * 获取桌码图（返回 base64 data URL）：管理端用于预览与下载（文件名 {table_no}.png）
      */
     @PostMapping(value = "/downloadQrcode")
     public BasicResult downloadQrcode(@RequestBody DiningTableParam param) {
-        return BasicResult.success(tableManageService.getQrcodeUrl(shopId(), param.getTableNo()));
+        return BasicResult.success(tableManageService.getQrcodeImageBase64(shopId(), param.getTableNo()));
     }
 }

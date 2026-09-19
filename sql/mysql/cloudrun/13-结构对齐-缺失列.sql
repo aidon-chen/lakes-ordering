@@ -86,3 +86,12 @@ SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = D
 SET @ddl = IF(@c = 0, 'ALTER TABLE `tb_order` ADD `order_scene` int NULL DEFAULT ''1'' COMMENT ''订单场景 1=堂食 2=外带自提'' AFTER `dining_session_id`', 'SELECT 1');
 PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
+-- ---------------------------------------------------------------------------
+-- 索引对齐：tb_dining_table 缺唯一键 uk_shop_table_no(shop_id, table_no)
+-- （云库该表是旧结构；本地为 UNIQUE。先查重，有重复则跳过并告警）
+-- ---------------------------------------------------------------------------
+SET @dup = (SELECT COUNT(*) FROM (SELECT `shop_id`,`table_no` FROM `tb_dining_table` GROUP BY `shop_id`,`table_no` HAVING COUNT(*) > 1) d);
+SET @has = (SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tb_dining_table' AND INDEX_NAME = 'uk_shop_table_no');
+SET @ddl = IF(@dup > 0, 'SELECT ''SKIP: tb_dining_table 存在重复(shop_id,table_no)，请先去重''',
+              IF(@has > 0, 'SELECT 1', 'ALTER TABLE `tb_dining_table` ADD UNIQUE KEY `uk_shop_table_no` (`shop_id`,`table_no`)'));
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;

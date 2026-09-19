@@ -1,20 +1,16 @@
 -- ============================================================================
--- 云端补表脚本：批次 5（公告 C-14 / 发票 C-15 / 存酒 C-16）+ 堂食台位作业
--- 背景：2026-09-19 对比发现云库（74 表）比本地库（84 表）少 10 张：
---       · 本文件负责 7 张：tb_notice / tb_invoice_apply / tb_wine_storage(+record)
---                        / tb_dining_session / tb_table_zone / tb_table_type
---       · 另 3 张 tb_mall_goods / tb_mall_order / tb_mall_order_item 按裁决**不启用**，不在本文件
--- 生成方式：**DDL 从本地库 SHOW CREATE TABLE 直接导出**（与本地结构完全一致），
---           非从 update.sql 拼装 —— 避免漏表（§2/§10.1 此前就不在拼装范围内）
--- 特性：★全幂等 —— 建表用 CREATE TABLE IF NOT EXISTS（不 DROP、不动既有数据）；
---       §9 的 13 列存量表 ALTER 走 information_schema 判断；测试数据先清 shop_id=13 再插
--- 注意：末尾会写入 shop_id=13（商家 siam）的 3 区域 + 3 类型 + 18 桌面测试数据
--- 执行方式：见同目录 README.md
+-- 云端补表脚本（一）：缺失的 7 张表建表 + 台位测试数据
+-- 背景：云库（74 表）比本地（84 表）少 10 张；本文件负责 7 张，tb_mall_* 三张不启用
+-- 生成：DDL 从本地库 SHOW CREATE TABLE 导出（与本地一致）
+-- 修订(2026-09-19 10:5x)：修正两处导出的旧结构 —— ①tb_invoice_apply 的 KEY idx_order → UNIQUE KEY uk_order；
+--                        ②tb_wine_storage 补 location 列（存放柜位）。此后本文件不再依赖 13- 兜底
+-- 特性：★全幂等 —— CREATE TABLE IF NOT EXISTS（不 DROP）；测试数据先清 shop_id=13 再插
+-- 分工：**列差异由 13-结构对齐-缺失列.sql 负责**，本文件不含 ALTER，避免转义踩坑
+-- 执行顺序：先执行 13-，再执行本文件（否则 tb_dining_table 缺列会导致测试数据插入失败）
 -- ============================================================================
 
-
 -- ---------------------------------------------------------------------------
--- 一、缺失表建表（IF NOT EXISTS，可重复执行）
+-- 一、缺失表建表
 -- ---------------------------------------------------------------------------
 
 -- tb_invoice_apply
@@ -36,7 +32,7 @@ CREATE TABLE IF NOT EXISTS `tb_invoice_apply` (
   `update_time` datetime DEFAULT NULL COMMENT '修改时间',
   PRIMARY KEY (`id`),
   KEY `idx_member_status` (`member_id`,`status`),
-  KEY `idx_order` (`order_id`)
+  UNIQUE KEY `uk_order` (`order_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COMMENT='发票申请表';
 
 -- tb_notice
@@ -63,6 +59,7 @@ CREATE TABLE IF NOT EXISTS `tb_wine_storage` (
   `bottle_count` int NOT NULL COMMENT '存入瓶数',
   `remain_count` int NOT NULL COMMENT '剩余瓶数',
   `storage_code` varchar(16) NOT NULL COMMENT '存酒码(唯一)',
+  `location` varchar(50) DEFAULT NULL COMMENT '存放柜位，如 B 区 03 号柜（批次5新增）',
   `storage_date` date NOT NULL COMMENT '存入日期',
   `expire_date` date NOT NULL COMMENT '有效期截止日期',
   `status` int DEFAULT '1' COMMENT '状态 1=在存 2=已取完 3=已过期',
@@ -130,7 +127,7 @@ CREATE TABLE IF NOT EXISTS `tb_table_type` (
 
 
 -- ---------------------------------------------------------------------------
--- 二、台位测试数据（shop_id=13 = 商家 siam；先清后插，幂等）
+-- 二、台位测试数据（shop_id=13 = 商家 siam；先清后插）
 -- ---------------------------------------------------------------------------
 
 -- tb_table_zone
@@ -166,74 +163,3 @@ INSERT INTO `tb_dining_table` (`id`,`shop_id`,`table_no`,`table_name`,`type_id`,
 INSERT INTO `tb_dining_table` (`id`,`shop_id`,`table_no`,`table_name`,`type_id`,`zone_id`,`capacity`,`status`,`qr_scene`,`qr_code_url`,`create_time`,`update_time`) VALUES (17,13,'V01','V区·V01',3,3,10,1,NULL,NULL,NULL,NULL);
 INSERT INTO `tb_dining_table` (`id`,`shop_id`,`table_no`,`table_name`,`type_id`,`zone_id`,`capacity`,`status`,`qr_scene`,`qr_code_url`,`create_time`,`update_time`) VALUES (18,13,'V02','V区·V02',3,3,10,1,NULL,NULL,NULL,NULL);
 INSERT INTO `tb_dining_table` (`id`,`shop_id`,`table_no`,`table_name`,`type_id`,`zone_id`,`capacity`,`status`,`qr_scene`,`qr_code_url`,`create_time`,`update_time`) VALUES (19,13,'A13','A区·A13',1,1,4,1,NULL,NULL,'2026-09-19 05:29:58','2026-09-19 05:29:58');
-
-
--- ---------------------------------------------------------------------------
--- 三、存量表补列（update.sql §9：原段为直接 ADD COLUMN，云库重复执行会报
---     Duplicate column → 此处**逐列幂等化**，共 13 列）
--- ---------------------------------------------------------------------------
-
--- tb_order.checkout_mode
-SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tb_order' AND COLUMN_NAME = 'checkout_mode');
-SET @ddl = IF(@c = 0, 'ALTER TABLE `tb_order` ADD `checkout_mode` int(2) DEFAULT ''1'' COMMENT ''''结账模式 1=先付款后就餐 2=先就餐后付款'''' AFTER `shop_logo_img`', 'SELECT 1');
-PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- tb_order.table_id
-SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tb_order' AND COLUMN_NAME = 'table_id');
-SET @ddl = IF(@c = 0, 'ALTER TABLE `tb_order` ADD `table_id` bigint(11) DEFAULT NULL COMMENT ''''台位id（tb_dining_table.id）'''' AFTER `checkout_mode`', 'SELECT 1');
-PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- tb_order.table_no
-SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tb_order' AND COLUMN_NAME = 'table_no');
-SET @ddl = IF(@c = 0, 'ALTER TABLE `tb_order` ADD `table_no` varchar(50) DEFAULT NULL COMMENT ''''餐桌编号(快照)'''' AFTER `table_id`', 'SELECT 1');
-PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- tb_order.table_name
-SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tb_order' AND COLUMN_NAME = 'table_name');
-SET @ddl = IF(@c = 0, 'ALTER TABLE `tb_order` ADD `table_name` varchar(50) DEFAULT NULL COMMENT ''''餐桌名称(快照)'''' AFTER `table_no`', 'SELECT 1');
-PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- tb_order.dining_num
-SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tb_order' AND COLUMN_NAME = 'dining_num');
-SET @ddl = IF(@c = 0, 'ALTER TABLE `tb_order` ADD `dining_num` int(11) DEFAULT 0 COMMENT ''''就餐人数(堂食)'''' AFTER `table_name`', 'SELECT 1');
-PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- tb_order.dining_session_id
-SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tb_order' AND COLUMN_NAME = 'dining_session_id');
-SET @ddl = IF(@c = 0, 'ALTER TABLE `tb_order` ADD `dining_session_id` int(11) DEFAULT NULL COMMENT ''''开台会话id'''' AFTER `dining_num`', 'SELECT 1');
-PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- tb_order.order_scene
-SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tb_order' AND COLUMN_NAME = 'order_scene');
-SET @ddl = IF(@c = 0, 'ALTER TABLE `tb_order` ADD `order_scene` int(2) DEFAULT 1 COMMENT ''''订单场景 1=堂食 2=外带自提'''' AFTER `dining_session_id`', 'SELECT 1');
-PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- tb_order.is_payment
-SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tb_order' AND COLUMN_NAME = 'is_payment');
-SET @ddl = IF(@c = 0, 'ALTER TABLE `tb_order` ADD `is_payment` tinyint(1) DEFAULT ''0'' COMMENT ''''是否已支付'''' AFTER `order_scene`', 'SELECT 1');
-PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- tb_shop.checkout_mode
-SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tb_shop' AND COLUMN_NAME = 'checkout_mode');
-SET @ddl = IF(@c = 0, 'ALTER TABLE `tb_shop` ADD `checkout_mode` int(2) DEFAULT ''1'' COMMENT ''''结账模式 1=先付款后就餐 2=先就餐后付款'''' AFTER `latitude`', 'SELECT 1');
-PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- tb_advertisement.start_time
-SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tb_advertisement' AND COLUMN_NAME = 'start_time');
-SET @ddl = IF(@c = 0, 'ALTER TABLE `tb_advertisement` ADD `start_time` datetime DEFAULT NULL COMMENT ''''生效开始时间'''' AFTER `image_link_url`', 'SELECT 1');
-PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- tb_advertisement.end_time
-SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tb_advertisement' AND COLUMN_NAME = 'end_time');
-SET @ddl = IF(@c = 0, 'ALTER TABLE `tb_advertisement` ADD `end_time` datetime DEFAULT NULL COMMENT ''''生效结束时间'''' AFTER `start_time`', 'SELECT 1');
-PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- tb_advertisement.popup_frequency
-SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tb_advertisement' AND COLUMN_NAME = 'popup_frequency');
-SET @ddl = IF(@c = 0, 'ALTER TABLE `tb_advertisement` ADD `popup_frequency` int(2) DEFAULT 1 COMMENT ''''展示频次 1=每次进入 2=每天一次 3=仅一次'''' AFTER `end_time`', 'SELECT 1');
-PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- tb_order_detail.remark
-SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tb_order_detail' AND COLUMN_NAME = 'remark');
-SET @ddl = IF(@c = 0, 'ALTER TABLE `tb_order_detail` ADD `remark` varchar(200) DEFAULT NULL COMMENT ''''单品备注'''' AFTER `after_coupons_discount_price`', 'SELECT 1');
-PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;

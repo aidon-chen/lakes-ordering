@@ -1,76 +1,93 @@
 # 云托管库执行批次 6 增量 —— 操作说明
 
-> 目的：把 `update.sql §11`（酒水商城 C-10 的自提码/核销/退款单号字段 + 乐器周边种子数据）执行到**云托管库**。
+> 目的：把商城 C-10 的自提码/核销/退款单号字段与种子数据，以及批次 5（公告/发票/存酒）+ 台位作业的缺失表，执行到**云托管库**。
 > 环境：EnvId `prod-d6gd6a2twe27f592a`、服务 `bar-mvp`、库名 `siam_db`。
-> 前提：本地开发机**连不上云库内网地址**（这也是为什么需要下面两条路径之一）。
+> 前提：本地开发机**连不上云库内网地址**，需按下面两条路径之一（或已开启外网时直接用脚本）。
 
 ---
 
-## 路径 A：控制台网页控制台（推荐，最快，无需开外网）
+## 0. 脚本清单与执行顺序（★ 顺序不能反）
 
-1. 打开 **微信云托管控制台** → 选择环境 `prod-d6gd6a2twe27f592a`
-2. 左侧菜单进入 **「MySQL」** 页
-3. 点击 **「数据库管理」** 按钮 → 页面跳转到数据库管理页并**自动带入实例信息**
-4. 输入数据库密码登录 → 进入网页版 MySQL 管理台 → 找到 **SQL 执行 / 命令窗口**
-5. 把 `11-酒水商城C10-增量.sql` **全文粘贴**进去执行
+| 顺序 | 文件 | 作用 | 幂等 |
+|---|---|---|---|
+| 1 | `11-酒水商城C10-增量.sql` | **商城 C-10 结构与种子数据**：`tb_points_mall_order` 补 4 列 + 唯一索引、`tb_points_mall_order_refund` 补 `refund_no`；分类/商品/规格/满减**重灌为乐器周边** | ✅ 全幂等 |
+| 2 | `13-结构对齐-缺失列.sql` | **存量表补列 + 补索引**：3 张表共 15 列（`tb_order` 缺 `merchant_id`/`order_channel` 等 6 列、`tb_dining_table` 6 列、`tb_advertisement` 3 列）+ `tb_dining_table` 唯一键 `uk_shop_table_no` | ✅ 逐列/逐索引判断 |
+| 3 | `12-批次5与台位-补表.sql` | **补 7 张缺失表**（`tb_notice`/`tb_invoice_apply`/`tb_wine_storage(+record)`/`tb_dining_session`/`tb_table_zone`/`tb_table_type`）+ 台位测试数据（区域 3 / 类型 3 / 桌台 19，`shop_id=13`） | ✅ 建表 `IF NOT EXISTS`、数据先清后插 |
+| 4 | `13-批次5结构对齐-uk_order与location.sql` | **批次 5 两处结构细节**：`tb_invoice_apply` 的 `idx_order`(普通) → `uk_order`(唯一)；`tb_wine_storage` 补 `location`(存放柜位)；顺带 `tb_order_detail.remark` | ✅ 全幂等（含查重守卫） |
+| 5 | `14-批次5联调种子数据.sql` | **联调灌数**：公告 4 条（含 1 条下线用于验证过滤）+ 存酒 3 条（存续中/将过期/已过期三态）+ 可开票订单 2 张（`status=6 & is_invoice=0`，¥94.00 对齐画板 C-15 / ¥186.00）+ 明细 5 行 | ✅ 先 DELETE 再按显式 id INSERT |
 
-**两个已知坑**：
-- 云 MySQL 是 **Serverless** 架构，**首次登录常报错**（实例未活跃）→ 这是正常的，**等 10~30 秒重试一次即可成功**。
-- 网页控制台对**一次提交多条语句**可能有限制：若报错，就按分号**逐段执行**（本文件共 **46 条**：前 35 条是 ALTER/索引，后 11 条是数据；ALTER 段有 `SET/PREPARE/EXECUTE` 三连，需**成组执行**）。
+> **`12-` 已修掉两处旧结构 DDL**（2026-09-19 10:52）：`tb_invoice_apply` 建表改为 `UNIQUE KEY uk_order`、`tb_wine_storage` 建表内补 `location` 列。
+> 在此之前这两处要靠第 4 步的 `13-批次5结构对齐` 兜底；现在**新建库一次即正确**（第 4 步仍保留，用于已建库的补齐与复跑校验）。
 
-> 本文件**全段幂等**：ALTER 走 `information_schema` 判断列/索引是否存在；种子数据先 `DELETE` 再按显式 id `INSERT`。**执行失败可直接重跑**。
+> **为什么是这个顺序**
+> - `13-`（补列）必须在 `12-`（建表+台位数据）**之前**：台位测试数据含 `type_id`/`zone_id`，列没补上会报 `Unknown column`。
+> - `13-批次5结构对齐` 必须在 `12-` **之后**：它要改的 `tb_invoice_apply`/`tb_wine_storage` 正是 `12-` 建出来的表。
+> - `14-`（灌数）最后跑：公告/存酒的**业务数据**依赖表已建好；订单灌数让 C-15 发票页有可选订单。
+> - **本地库同样需要跑这两份 13- 与 14-**（本地也缺 `uk_order`/`location`，且联调数据两库都要有）。
+> `tb_mall_goods` / `tb_mall_order` / `tb_mall_order_item`（update.sql §4/§5）按裁决**不启用**，各脚本都不涉及。
 
----
-
-## 路径 B：开启外网访问 + 用脚本执行（可复用，适合以后所有改表）
-
-适合后续还会多次改表的场景（本次之后还有批次 7+）。
-
-1. 控制台 → **MySQL** 页 → **开启「外网访问」** → 复制生成的**外网地址与端口**
-2. 本机执行（脚本已就绪，含连接重试、备份、逐条执行、自动验证）：
+执行脚本（自动重试 / 备份 / 失败回滚 / 验证）：
 
 ```bash
 cd /Volumes/app/project/wechat/siam-server/sql/mysql/cloudrun
+P=/Users/aidon/.workbuddy/binaries/python/envs/default/bin/python
+export MYSQL_PASSWORD='<密码>'        # 不落盘，仅本次进程内使用
+H=<外网域名>; PORT=<端口>
 
-# 先干跑，确认语句数（不连库）
-/Users/aidon/.workbuddy/binaries/python/envs/default/bin/python apply-cloud-sql.py --dry-run
-
-# 正式执行（--backup 会先把将被清空的 6 张种子表导出到 ./backup/）
-/Users/aidon/.workbuddy/binaries/python/envs/default/bin/python apply-cloud-sql.py \
-  --host <外网域名> --port <端口> --user root --password '<密码>' --db siam_db --backup
+$P apply-cloud-sql.py --host $H --port $PORT --user root --db siam_db --file 11-酒水商城C10-增量.sql --backup
+$P apply-cloud-sql.py --host $H --port $PORT --user root --db siam_db --file 13-结构对齐-缺失列.sql
+$P apply-cloud-sql.py --host $H --port $PORT --user root --db siam_db --file 12-批次5与台位-补表.sql
+$P apply-cloud-sql.py --host $H --port $PORT --user root --db siam_db --file 13-批次5结构对齐-uk_order与location.sql
 ```
 
-脚本会自动：
-- **连接重试 5 次**（应对 Serverless 首次未活跃）
-- `--backup` → 导出 `backup/cloud-backup-<时间戳>.sql`（回滚用）
-- 逐条执行，**任一失败即整体回滚**并指出第几条
-- 跑完自动验证 7 项（新列 / 唯一索引 / 分类 12 / 商品 12 / 售罄 1 / 满减名）
-
-**安全建议**：执行完可**关闭外网访问**；若需长期开，建议新建一个**限定来源 IP** 的账号（root 账号主机设为 `%` 风险较高），不要长期用 root + 全网开放。
-
 ---
 
-## 执行前 / 执行后
+## 1. 执行记录（2026-09-19 已实际执行 ✅）
 
-| 阶段 | 动作 |
+| 脚本 | 结果 | 备注 |
+|---|---|---|
+| `11-` | **46/46 条提交**，验证 7/7 全绿 | 执行前备份原美妆 demo 数据 → `backup/cloud-backup-20260919-102514.sql` |
+| `13-缺失列` | **81/81 条提交**（15 列 + 1 索引） | 15 列补齐 + `uk_shop_table_no` |
+| `12-补表` | **35/35 条提交** | 7 张表 + 台位测试数据；执行前备份 → `backup/cloud-prebackup-20260919-102657.sql` |
+| `13-批次5结构` | **18/18 条提交** | `uk_order`(唯一) + `location` 列（云库与**本地库**各执行一次） |
+
+**最终复核（云库 vs 本地）**：
+
+| 维度 | 结果 |
 |---|---|
-| 执行前 | 确认云上没有真实商城订单（当前为演示数据，风险低）；路径 B 建议带 `--backup` |
-| 执行中 | 关注是否有报错；**报错即回滚，可直接重跑** |
-| 执行后 | 脚本已自动验证；另建议在小程序里走一遍「商城首页 → 加购 → 结算 → 下单」，确认下单不再因缺列失败 |
-| 回滚 | 用 `backup/cloud-backup-*.sql` 恢复种子数据；新增列无需回滚（幂等段，留着无害） |
+| 表 | 本地 84 / 云库 81，差异**仅 `tb_mall_*` 三张**（按裁决不启用） |
+| 列 | **差异 0 ✅** |
+| 索引 | **差异 0 ✅** |
+| 关键项 | `tb_invoice_apply.uk_order` ✅ ｜ `tb_wine_storage.location` ✅ ｜ `tb_order.merchant_id/order_channel` ✅ ｜ `tb_points_mall_order.pickup_code` ✅ ｜ 台位 19 桌 / 3 区域 / 3 类型 ✅ ｜ 商城商品 12 条（乐器周边）✅ |
+
+> 期间踩到并修掉的两个坑（写进脚本了）：① 幂等 ALTER 里 `COMMENT`/`DEFAULT` 的**单引号必须双写转义**（`''`），否则 `PREPARE` 报语法错；② 待补列要**按本地实际列顺序**排列，否则 `AFTER` 会指向尚未创建的列。
 
 ---
 
-## 与本段无关、易混淆的两点
+## 2. 路径 A：控制台网页控制台（不装客户端也能执行）
 
-1. **`update.sql §4/§5` 的 `tb_mall_goods` / `tb_mall_order` / `tb_mall_order_item` 不启用**。
-   2026-09-19 05:18 有一次完整的 `update.sql` 执行，**这三张表已被建出来（各 0 行）**，但 Java 侧零代码、前端零页面 → 本项目商城走的是 `tb_points_mall_*` 体系，**本增量与它们无关，也不需要删掉它们**（留着不影响，删掉也无副作用）。
-2. **本增量只动 6 张表 + 2 张表加列**：
-   - 加列：`tb_points_mall_order`（4 列 + 1 唯一索引）、`tb_points_mall_order_refund`（1 列 + 1 唯一索引）
-   - 重灌种子：`tb_points_mall_menu` / `tb_points_mall_goods` / `tb_points_mall_menu_goods_relation` / `tb_points_mall_goods_specification` / `tb_points_mall_goods_specification_option` / `tb_points_mall_full_reduction_rule`
+1. 微信云托管控制台 → 环境 `prod-d6gd6a2twe27f592a` → 左侧 **「MySQL」** → 点 **「数据库管理」**（自动带入实例信息）
+2. 输密码登录网页版管理台 → SQL 窗口 → **按上表顺序**依次粘贴三份 SQL 执行
+
+**两个已知坑**：云 MySQL 是 Serverless，**首次登录常报"实例未活跃"，等 10~30s 重试即可**；一次提交多条语句若被拒，就按分号逐段执行（`ALTER` 的 `SET/PREPARE/EXECUTE` 需成组）。
+
+## 3. 路径 B：开启外网访问（本次即走此路径）
+
+控制台 MySQL 页 → 开启 **「外网访问」** → 复制外网域名与端口 → 用上面第 0 节的命令执行。
+
+**安全建议**：执行完可**关闭外网访问**；若要长期开，建议新建**限定来源 IP** 的账号（不要长期用 root + 全网开放）。
 
 ---
 
-## 附：本地库已完成（无需重复）
+## 4. 回滚
 
-本地 `siam_db`（127.0.0.1:3306）已于 2026-09-19 执行过同一段，**幂等复测 0 错误、验证 7/7 通过**；本地开发/联调可直接用。
+| 场景 | 方式 |
+|---|---|
+| 商城种子数据被误改 | 执行 `backup/cloud-backup-*.sql`（含原美妆 demo 数据） |
+| 台位/门店/广告数据被误改 | 执行 `backup/cloud-prebackup-*.sql` |
+| 新增列/表 | 无需回滚（幂等段，留着不影响业务） |
+
+## 5. 后续上线建议
+
+云库是**早于本地的快照**，曾同时缺表（10 张）与缺列（15 列）。**以后每次上线前都应先做一次"表 + 列"全量差异比对**，只跑增量脚本容易只解决一半。比对方法见技能 `siam-server-add-db-field` 的「云端结构对齐」一节。
+

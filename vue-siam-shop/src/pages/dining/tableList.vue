@@ -59,14 +59,15 @@
           </el-table-column>
           <el-table-column label="桌码" width="90">
             <template scope="scope">
-              <el-image v-if="scope.row.qrCodeUrl" :src="scope.row.qrCodeUrl" fit="contain" style="width:56px;height:56px;"></el-image>
-              <span v-else style="color:#999;">未生成</span>
+              <el-tag v-if="scope.row.qrScene" type="success" size="mini">已生成</el-tag>
+              <el-tag v-else type="info" size="mini">未生成</el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="240">
+          <el-table-column label="操作" width="280">
             <template scope="scope">
               <el-button size="mini" type="text" @click="openEdit(scope.row)">编辑</el-button>
               <el-button size="mini" type="text" @click="generateQrcode(scope.row)">生成码</el-button>
+              <el-button size="mini" type="text" @click="viewQrcode(scope.row)">查看码</el-button>
               <el-button size="mini" type="text" @click="downloadQrcode(scope.row)">下载</el-button>
               <el-button size="mini" type="text" @click="invalidateQrcode(scope.row)">作废</el-button>
               <el-button size="mini" type="text" v-if="scope.row.status === 3" @click="enableTable(scope.row)">启用</el-button>
@@ -153,6 +154,18 @@
         <el-button type="primary" @click="saveType">保存</el-button>
       </div>
     </el-dialog>
+
+    <!-- 桌码预览弹窗（按需取图，不做列表缩略图批量加载） -->
+    <el-dialog :title="'桌码预览 - ' + qrPreview.tableNo" :visible.sync="qrVisible" width="420px">
+      <div style="text-align:center;">
+        <img v-if="qrPreview.image" :src="qrPreview.image" style="width:320px;">
+        <div v-else style="color:#999;padding:20px;">加载中…</div>
+      </div>
+      <div slot="footer">
+        <el-button @click="qrVisible = false">关闭</el-button>
+        <el-button type="primary" @click="downloadQrcode(qrPreview)">下载 PNG</el-button>
+      </div>
+    </el-dialog>
   </section>
 </template>
 
@@ -182,6 +195,9 @@ export default {
       zoneOptions: [], // 区域下拉（取自台位列表数据去重）
       editVisible: false,
       editForm: { id: null, tableNo: '', tableName: '', typeId: null, zoneId: null, capacity: 4 },
+      // ---- 桌码预览 ----
+      qrVisible: false,
+      qrPreview: { tableNo: '', image: '' },
       // ---- 台位类型 ----
       typeList: [],
       typeLoading: false,
@@ -303,14 +319,35 @@ export default {
       });
     },
     downloadQrcode(row) {
-      this.$http.post(this, '/rest/merchant/tableManage/downloadQrcode', { tableNo: row.tableNo },
-        (vue, data) => {
-          // OSS 直链下载，文件名即 {table_no}.png
-          window.open(data.data);
-        },
-        (error, data) => {
-          this.$message.error((data && data.message) || '下载失败');
-        });
+      if (!row.qrScene) { this.$message.warning('该台位尚未生成桌码'); return; }
+      // 预览弹窗里已有图则直接下载，否则按需拉取（后端缓存/重建）
+      if (this.qrPreview.image && this.qrPreview.tableNo === row.tableNo) {
+        this.saveQrcodeFile(row.tableNo, this.qrPreview.image);
+        return;
+      }
+      this.fetchQrcodeImage(row.tableNo, (img) => this.saveQrcodeFile(row.tableNo, img));
+    },
+    // 查看桌码（按需取图：列表不批量加载缩略图，避免冷启动时过多微信调用）
+    viewQrcode(row) {
+      if (!row.qrScene) { this.$message.warning('该台位尚未生成桌码'); return; }
+      this.qrPreview = { tableNo: row.tableNo, image: '' };
+      this.qrVisible = true;
+      this.fetchQrcodeImage(row.tableNo, (img) => { this.qrPreview.image = img; });
+    },
+    // 拉取桌码图（后端返回 base64 data URL）
+    fetchQrcodeImage(tableNo, onOk) {
+      this.$http.post(this, '/rest/merchant/tableManage/downloadQrcode', { tableNo },
+        (vue, data) => { onOk(data.data); },
+        (error, data) => { this.$message.error((data && data.message) || '桌码获取失败'); });
+    },
+    // 保存 PNG 到本地，文件名含桌号（如 A01.png）
+    saveQrcodeFile(tableNo, dataUrl) {
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = tableNo + '.png';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     },
     invalidateQrcode(row) {
       this.$confirm('作废后旧码扫码将失效，可重新生成新码，确认作废？', '提示', { type: 'warning' }).then(() => {

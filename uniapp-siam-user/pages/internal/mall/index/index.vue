@@ -43,6 +43,16 @@
 			</view>
 		</view>
 		<van-divider contentPosition="center" style="padding-bottom: 20px;" v-if="isMore">没有更多啦</van-divider>
+		<!-- 底部购物车悬浮栏：画板 B-01 未画入口，但首页加购后需可达购物车（工程补充，已在计划登记） -->
+		<view class="cart-float" v-if="cartCount > 0" hover-class="hover-class-public" @tap="goToCart">
+			<view class="cart-float-icon theme-bg">
+				<van-icon name="shopping-cart-o" class="cart-float-icon-inner" />
+				<view class="cart-float-badge">{{ cartCount }}</view>
+			</view>
+			<text class="cart-float-text">已选 {{ cartCount }} 件</text>
+			<view class="cart-float-btn theme-bg">去结算</view>
+		</view>
+
 		<van-action-sheet :show="specificationsDialog" @close="close" @cancel="close" title="选择规格">
 			<view class="content_box">
 				<view class="goods-info-view">
@@ -114,6 +124,7 @@
 				priceAfter: '',
 				specListString: '',
 				specificationsDialog: false,
+				cartCount: 0,
 				goods: {
 					mainImage: '',
 					name: '',
@@ -140,6 +151,7 @@
 		onShow: function() {
 			//pageNo=1;
 			app.globalData.getShoppingCarNumber();
+			this.refreshCartCount();
 			// C-10 批次6：分类宫格已移除（分类入口在商城点单页左栏），不再拉取分类
 			//this.getClassifyList();
 			//this.getRecommendGoodsList();
@@ -326,6 +338,7 @@
 									// C-10 批次6：vue3 运行时未挂载小程序数据刷新方法，改响应式赋值（勿改回）
 									this.specificationsDialog = false;
 									app.globalData.getShoppingCarNumber();
+									this.refreshCartCount();
 								}
 							});
 						return;
@@ -375,6 +388,33 @@
 					}
 				});
 			},
+			/** 购物车件数（底部悬浮栏 + 角标联动） */
+			refreshCartCount() {
+				return authService.checkIsLogin().then((logged) => {
+					if (!logged) {
+						this.cartCount = 0;
+						return;
+					}
+					return https.request('/rest/member/pointsMall/shoppingCart/list', {
+						pageNo: 1,
+						pageSize: 200
+					}, authService.getToken()).then((result) => {
+						if (!result.success) {
+							return;
+						}
+						const records = (result.data && result.data.records) || [];
+						this.cartCount = records.reduce((sum, r) => sum + (r.number || 0), 0);
+					});
+				});
+			},
+
+			/** 去购物车（底部悬浮栏入口） */
+			goToCart() {
+				uni.navigateTo({
+					url: '../car/car'
+				});
+			},
+
 			close() {
 				// C-10 批次6：vue3 运行时未挂载小程序数据刷新方法，改响应式赋值（勿改回）
 				this.specificationsDialog = false;
@@ -645,4 +685,71 @@
 	.content_box {
 		padding-top: 0;
 	}
+
+	/* 底部购物车悬浮栏（工程补充入口，与 B-02 同款） */
+	.cart-float {
+		position: fixed;
+		left: 24rpx;
+		right: 24rpx;
+		bottom: 24rpx;
+		height: 104rpx;
+		background-color: #ffffff;
+		border-radius: 52rpx;
+		box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.12);
+		display: flex;
+		align-items: center;
+		padding: 0 12rpx 0 20rpx;
+		box-sizing: border-box;
+		z-index: 20;
+	}
+
+	.cart-float-icon {
+		position: relative;
+		width: 72rpx;
+		height: 72rpx;
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+	}
+
+	.cart-float-icon-inner {
+		font-size: 40rpx;
+		color: #ffffff;
+	}
+
+	.cart-float-badge {
+		position: absolute;
+		top: -8rpx;
+		right: -8rpx;
+		min-width: 32rpx;
+		height: 32rpx;
+		line-height: 32rpx;
+		text-align: center;
+		padding: 0 6rpx;
+		border-radius: 16rpx;
+		background-color: #ee0a24;
+		color: #ffffff;
+		font-size: 20rpx;
+	}
+
+	.cart-float-text {
+		flex: 1;
+		margin-left: 20rpx;
+		font-size: 28rpx;
+		color: #202020;
+	}
+
+	.cart-float-btn {
+		width: 168rpx;
+		height: 80rpx;
+		border-radius: 40rpx;
+		color: #ffffff;
+		font-size: 28rpx;
+		line-height: 80rpx;
+		text-align: center;
+		flex-shrink: 0;
+	}
+
 </style>

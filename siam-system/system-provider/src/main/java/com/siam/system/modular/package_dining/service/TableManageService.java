@@ -44,7 +44,8 @@ public interface TableManageService {
     /* ==================== 桌面二维码 ==================== */
 
     /**
-     * 生成桌面二维码（单个/批量）：scene=tid={tableNo}，page=扫码开台页，码图叠加桌号文字，上传 OSS 回写 qr_code_url/qr_scene
+     * 生成桌面二维码（单个/批量）：scene=tid={tableNo}，page=扫码开台页，码图叠加桌号文字，
+     * 结果缓存在内存并回写 qr_scene（不落对象存储，本期未采购 OSS）
      */
     void generateQrcode(Integer shopId, List<Long> ids);
 
@@ -54,9 +55,10 @@ public interface TableManageService {
     void invalidateQrcode(Integer shopId, Long id);
 
     /**
-     * 下载二维码：返回 OSS 完整 URL（文件名为 {table_no}.png）
+     * 取桌码图：返回 base64 data URL（供管理端展示/下载）
+     * 不落对象存储：缓存命中直出，容器重启后按 qr_scene 现场重建
      */
-    String getQrcodeUrl(Integer shopId, String tableNo);
+    String getQrcodeImageBase64(Integer shopId, String tableNo);
 
     /* ==================== 台位类型 ==================== */
 

@@ -59,8 +59,9 @@
 			</view>
 		</view>
 
-		<!-- 存酒区（无数据整卡隐藏） -->
-		<view class="c01-block" v-if="wineList.length">
+		<!-- 存酒区（C-01 原型 298:53「存酒区」/ 298:54「存酒卡」）：常驻板块，
+		     无数据时给空态而非整卡隐藏 —— 否则接口一次抖动该板块会凭空消失 -->
+		<view class="c01-block">
 			<view class="c01-card">
 				<view class="c01-title-row">
 					<view class="c01-title">我的存酒</view>
@@ -77,6 +78,7 @@
 					<view class="c01-wine-expire" v-if="index === 0 && wine.expireDate">有效期至 {{ wine.expireDate }} ·
 						将过期将短信提醒</view>
 				</block>
+				<view class="c01-wine-empty" v-if="!wineList.length">暂无存酒记录，到店存酒后可在此查看</view>
 				<view class="c01-wine-note">已过期存酒请联系门店处理，将过期将于到期前 3 天短信提醒</view>
 			</view>
 		</view>
@@ -216,7 +218,11 @@
 		onShow() {
 			authService.checkIsLogin().then((result) => {
 				if (result) {
+					// 两个接口互不依赖，并行发起：任一个失败都不影响另一个。
+					// 原先存酒取数嵌在「会员信息成功」分支里，会员接口一次抖动
+					// 就会连带整块存酒区不渲染（表现为「板块没实现」）
 					this.getMemberInfo();
+					this.loadWineList();
 					return;
 				}
 				this.member = {
@@ -232,15 +238,16 @@
 				https.request('/rest/member/getLoginMemberInfo', {}).then((result) => {
 					if (result && result.success && result.data) {
 						this.member = result.data;
-						this.loadWineList();
 					}
 				});
 			},
-			// 存酒区：取前 3 条；表未建/无数据时静默隐藏整卡
+			// 存酒区（C-01 原型 298:53）：取前 3 条；失败或无数据时置空 → 板块走空态而非消失
 			loadWineList() {
 				https.request('/rest/member/wineStorage/list', {}).then((result) => {
 					if (result && result.success && result.data) {
 						this.wineList = result.data.slice(0, 3);
+					} else {
+						this.wineList = [];
 					}
 				});
 			},
@@ -553,6 +560,15 @@
 		font-size: 22rpx;
 		color: #999999;
 		margin-top: 12rpx;
+	}
+
+	/* 空态：与 .c01-wine-row 同 top 间距，保证有数据/无数据两种形态板块高度不跳 */
+	.c01-wine-empty {
+		font-size: 24rpx;
+		color: #B0B0B0;
+		margin-top: 24rpx;
+		padding: 16rpx 0;
+		text-align: center;
 	}
 
 	.c01-wine-note {
