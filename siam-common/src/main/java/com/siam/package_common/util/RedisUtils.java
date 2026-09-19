@@ -1,6 +1,8 @@
 package com.siam.package_common.util;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.connection.RedisConnection;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
@@ -28,8 +30,41 @@ public class RedisUtils {
     /**进程内兜底过期时间戳：key -> expireAtMillis*/
     private final Map<String, Long> localExpireAt = new ConcurrentHashMap<String, Long>();
 
+    /**Redis 可用性探测结果：null=尚未探测，true=可用，false=不可用（走进程内兜底）*/
+    private volatile Boolean redisAvailableCache = null;
+
+    /**
+     * ⚠️ 不能只判 redisTemplate != null。
+     * mvp profile（云托管）没有 Redis，但也没有配置 spring.redis.host，Spring Boot 仍会
+     * 自动装配 RedisTemplate（默认 localhost:6379），于是这里恒为 true —— 进程内兜底永远
+     * 不生效，每次调用都抛 RedisConnectionFailureException，接口统一返回「系统异常，请稍后重试」。
+     * 典型受害接口：/pointsMall/order/createOrderToken、/wxPay/toPay4Applet、/smsLog/sendMobileCode。
+     * 改为首次使用时真实 PING 一次再定档：本地 profile 有 Redis 时行为不变。
+     */
     private boolean redisAvailable() {
-        return redisTemplate != null;
+        if (redisTemplate == null) {
+            return false;
+        }
+        if (redisAvailableCache == null) {
+            synchronized (this) {
+                if (redisAvailableCache == null) {
+                    try {
+                        redisTemplate.execute(new RedisCallback() {
+                            @Override
+                            public Object doInRedis(RedisConnection connection) {
+                                connection.ping();
+                                return null;
+                            }
+                        });
+                        redisAvailableCache = Boolean.TRUE;
+                    } catch (Exception e) {
+                        System.out.println("Redis 不可用，自动降级为进程内缓存：" + e.getMessage());
+                        redisAvailableCache = Boolean.FALSE;
+                    }
+                }
+            }
+        }
+        return redisAvailableCache.booleanValue();
     }
 
     private void cleanIfExpired(String key) {

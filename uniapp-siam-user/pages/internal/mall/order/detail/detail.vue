@@ -427,7 +427,7 @@
 							}
 							console.log(this);
 							uni.navigateTo({
-								url: '../../address/choose/choose?radioIndex=0&pageType=orderDetail&orderNo=' +
+								url: '../../../../address/choose/choose?radioIndex=0&pageType=orderDetail&orderNo=' +
 									this.order.orderNo +
 									'&orderId=' +
 									this.order.id +
@@ -509,7 +509,7 @@
 						console.log('积分支付');
 						if (!_this.userInfo.paymentPassword) {
 							uni.navigateTo({
-								url: '../../mine/security/index/index'
+								url: '../../../../mine/security/index/index'
 							});
 							return;
 						}

@@ -1,56 +1,56 @@
 <template>
-	<view>
-		<view>
-			<view class="userinfo-item">
-				<text class="title-text">头像</text>
-				<!-- <image class="userinfo-avatar" src="{{userInfo.avatarUrl}}" mode="cover"></image> -->
-				<image class="userinfo-avatar"
-					:src="data.headImg ? data.headImg : '/static/assets/images/user-head.png'" mode="cover"></image>
-			</view>
-			<view class="userinfo-item">
-				<text class="title-text">用户名</text>
-				<text class="userinfo-text">{{ data.username }}</text>
-			</view>
-			<view class="userinfo-item">
-				<text class="title-text">绑定手机</text>
-				<text class="userinfo-text">{{ data.mobile }}</text>
-			</view>
-			<view class="userinfo-item" @tap="openRealName">
-				<text class="title-text">真实姓名</text>
-				<view class="input-image">
-					<text
-						:class="data.realName ? 'userinfo-text' : 'placeholder-text'">{{ data.realName ? data.realName : '请输入真实姓名' }}</text>
-					<van-icon name="arrow" />
-				</view>
-			</view>
-			<view class="userinfo-item" @tap="openConfirm">
-				<text class="title-text">性别</text>
-				<view class="input-image">
-					<text class="userinfo-text">{{ data.sex == 1 ? '男' : data.sex == 2 ? '女' : '保密' }}</text>
-					<van-icon name="arrow" />
-				</view>
-			</view>
-			<view class="userinfo-item" @tap="openEmail">
-				<text class="title-text">邮箱</text>
-
-				<view class="input-image">
-					<!-- <input class="userinfo-text input-email" placeholder="请输入邮箱地址" value="{{data.email}}" bindblur="blurEmail"></input> -->
-					<!-- <input placeholder-class="placeholder-email" class="userinfo-text" placeholder="请输入邮箱地址" value="{{data.email}}" disabled="disabled"></input> -->
-					<text
-						:class="data.email ? 'userinfo-text' : 'placeholder-text'">{{ data.email ? data.email : '请输入邮箱地址' }}</text>
-					<van-icon name="arrow" />
-				</view>
-			</view>
-
-			<view class="userinfo-item" @tap="parseEventDynamicCode($event, data.isBindWx ? 'bindWx' : '')"
-				:data-mobile="data.mobile" :data-isBindWx="data.isBindWx">
-				<text class="title-text">绑定微信</text>
-				<view class="bind-wx">
-					<text class="userinfo-text">{{ data.isBindWx ? '已绑定' : '未绑定' }}</text>
-					<van-icon name="arrow" />
-				</view>
+	<view class="c02">
+		<!-- 行序对齐画板 21:191：头像 / 用户名 / 绑定手机 / 性别 / 邮箱 / 绑定微信 / 认证身份 -->
+		<view class="userinfo-item">
+			<text class="title-text">头像</text>
+			<image class="userinfo-avatar"
+				:src="data.headImg ? data.headImg : '/static/assets/images/user-head.png'" mode="cover"></image>
+		</view>
+		<view class="userinfo-item">
+			<text class="title-text">用户名</text>
+			<text class="userinfo-text">{{ data.username }}</text>
+		</view>
+		<view class="userinfo-item">
+			<text class="title-text">绑定手机</text>
+			<text class="userinfo-text">{{ data.mobile }}</text>
+		</view>
+		<view class="userinfo-item" @tap="openConfirm">
+			<text class="title-text">性别</text>
+			<view class="input-image">
+				<text class="userinfo-text">{{ data.sex == 1 ? '男' : data.sex == 2 ? '女' : '保密' }}</text>
+				<van-icon name="arrow" />
 			</view>
 		</view>
+		<view class="userinfo-item" @tap="openEmail">
+			<text class="title-text">邮箱</text>
+			<view class="input-image">
+				<text
+					:class="data.email ? 'userinfo-text' : 'placeholder-text'">{{ data.email ? data.email : '请输入邮箱地址' }}</text>
+				<van-icon name="arrow" />
+			</view>
+		</view>
+		<view class="userinfo-item" @tap="parseEventDynamicCode($event, data.isBindWx ? 'bindWx' : '')"
+			:data-mobile="data.mobile" :data-isBindWx="data.isBindWx">
+			<text class="title-text">绑定微信</text>
+			<view class="bind-wx">
+				<text class="userinfo-text">{{ data.isBindWx ? '已绑定' : '未绑定' }}</text>
+				<van-icon name="arrow" />
+			</view>
+		</view>
+		<!-- 认证身份行：画板 21:191 于本日新增（节点 298:158~167），取代原来的「真实姓名」行。
+		     ⚠️ 画板此行只有「标签 + 箭头」，本页右侧额外给出 已认证/未认证（与 C-03 画板同概念行的写法一致）。
+		     点击进入实名认证弹窗 —— 保留 realName 写入口（/rest/member/update 与提现前置校验仍在用）。 -->
+		<view class="userinfo-item" @tap="openRealName">
+			<text class="title-text">认证身份</text>
+			<view class="input-image">
+				<text
+					:class="data.realName ? 'c02-verified' : 'c02-unverified'">{{ data.realName ? '已认证' : '未认证' }}</text>
+				<van-icon name="arrow" />
+			</view>
+		</view>
+
+		<view class="out-login-btn theme-bg" hover-class="hover-class-public" @tap="bindOutLogTap">退出登录</view>
+
 		<van-action-sheet :show="dialogShow" @close="close" @cancel="close" title="选择性别">
 			<view class="content_box">
 				<scroll-view scroll-y style="height: 52vh">
@@ -58,20 +58,17 @@
 						<label :data-radioIndex="index" class="radio-group-label" v-for="(item, index) in modeList"
 							:key="index">
 							{{ item.name }}
-
 							<radio :value="item.value" class="radio-group-label-radio" :checked="item.checked" />
 						</label>
 					</radio-group>
-
 				</scroll-view>
 				<view class="flex_between">
-					<view class="close-botton good-choice-btn" @tap="close">取消
-					</view>
-					<view class="good-choice-btn theme-bg" @tap="tapdialogButton">确定修改
-					</view>
+					<view class="close-botton good-choice-btn" @tap="close">取消</view>
+					<view class="good-choice-btn theme-bg" @tap="tapdialogButton">确定修改</view>
 				</view>
 			</view>
 		</van-action-sheet>
+
 		<van-action-sheet :show="dialogShowEmail" @close="close" @cancel="close" title="编辑邮箱">
 			<view class="content_box">
 				<scroll-view scroll-y style="height: 52vh">
@@ -80,57 +77,40 @@
 							@input="bindInputEmail" />
 					</view>
 				</scroll-view>
-
 				<view class="flex_between">
-					<view class="close-botton good-choice-btn" @tap="close">取消
-					</view>
-					<view class="good-choice-btn theme-bg" @tap="tapdialogEmailButton">确定修改
-					</view>
+					<view class="close-botton good-choice-btn" @tap="close">取消</view>
+					<view class="good-choice-btn theme-bg" @tap="tapdialogEmailButton">确定修改</view>
 				</view>
 			</view>
 		</van-action-sheet>
-		<van-action-sheet :show="dialogShowRealName" @close="close" @cancel="close" title="确认真实姓名">
+
+		<van-action-sheet :show="dialogShowRealName" @close="close" @cancel="close" title="身份认证">
 			<view class="content_box">
 				<scroll-view scroll-y style="height: 52vh">
 					<view class="title-tip">请于身份证上保持一致，信息有误影响奖励提现</view>
 					<input class="userinfo-text input-email" placeholder="请输入真实姓名" :value="data.realName"
 						@input="bindInputRealName" />
 				</scroll-view>
-
 				<view class="flex_between">
-					<view class="close-botton good-choice-btn" @tap="close">取消
-					</view>
-					<view class="theme-bg good-choice-btn" @tap="tapdialogRealNameButton">确定修改
-					</view>
+					<view class="close-botton good-choice-btn" @tap="close">取消</view>
+					<view class="theme-bg good-choice-btn" @tap="tapdialogRealNameButton">确定修改</view>
 				</view>
 			</view>
 		</van-action-sheet>
-		<view class="out-login-btn theme-bg" hover-class="hover-class-public" @tap="bindOutLogTap">退出登录</view>
 	</view>
 </template>
 
 <script>
-	import GlobalConfig from '../../../utils/global-config';
 	import https from '../../../utils/http';
 	import authService from '../../../utils/auth';
 	import toastService from '../../../utils/toast.service';
 	import utilHelper from '../../../utils/util';
-	import dateHelper from '../../../utils/date-helper'; //获取应用实例
+
 	let app = null;
+
 	export default {
 		data() {
 			return {
-				buttons: [{
-						text: '取消'
-					},
-					{
-						text: '确定'
-					}
-				],
-
-				userInfo: '',
-				hasUserInfo: false,
-
 				data: {
 					isBindWx: false,
 					sex: '',
@@ -140,149 +120,88 @@
 					username: '',
 					mobile: ''
 				},
-
-				dialogShowEmail: false,
-				email: '',
-				dialogShowRealName: false,
-				realName: '',
 				dialogShow: false,
-				maskClosable: '',
-				modeList: [],
-				sex: ''
+				dialogShowEmail: false,
+				dialogShowRealName: false,
+				email: '',
+				realName: '',
+				sex: '',
+				modeList: []
 			};
 		},
-		/**
-		 * 生命周期函数--监听页面加载
-		 */
 		onLoad: function(options) {
 			app = getApp();
-			if (app.globalData.userInfo) {
-				this.userInfo = app.globalData.userInfo;
-				this.hasUserInfo = true;
-			} else if (this.canIUse) {
-				// 由于 getUserInfo 是网络请求，可能会在 Page.onLoad 之后才返回
-				// 所以此处加入 callback 以防止这种情况
-				app.globalData.userInfoReadyCallback = (res) => {
-					this.userInfo = res.userInfo;
-					this.hasUserInfo = true;
-				};
-			} else {
-				// 在没有 open-type=getUserInfo 版本的兼容处理
-				// wx.getUserInfo({
-				//   success: res => {
-				//     app.globalData.userInfo = res.userInfo
-				//     this.setData({
-				//       userInfo: res.userInfo,
-				//       hasUserInfo: true
-				//     })
-				//   }
-				// })
-			}
 		},
-		/**
-		 * 生命周期函数--监听页面初次渲染完成
-		 */
 		onReady: function() {},
-		/**
-		 * 生命周期函数--监听页面显示
-		 */
 		onShow: function() {
 			this.getUserInfo();
 		},
-		/**
-		 * 生命周期函数--监听页面隐藏
-		 */
 		onHide: function() {},
-		/**
-		 * 生命周期函数--监听页面卸载
-		 */
 		onUnload: function() {},
-		/**
-		 * 页面相关事件处理函数--监听用户下拉动作
-		 */
 		onPullDownRefresh: function() {},
-		/**
-		 * 页面上拉触底事件的处理函数
-		 */
 		onReachBottom: function() {},
-		/**
-		 * 用户点击右上角分享
-		 */
 		onShareAppMessage: function() {},
 		methods: {
 			getUserInfo() {
 				https.request('/rest/member/getLoginMemberInfo', {}).then((result) => {
-					if (result.success) {
-						result.data.email = result.data.email ? result.data.email : '';
-						result.data.realName = result.data.realName ? result.data.realName : '';
-						this.setData({
-							data: result.data
-						});
+					if (result && result.success && result.data) {
+						const member = result.data;
+						member.email = member.email ? member.email : '';
+						member.realName = member.realName ? member.realName : '';
+						this.data = member;
 					}
 				});
 			},
 
+			// 仅「已绑定」时才会被 parseEventDynamicCode 派发到这里（解绑）
 			bindWx(e) {
-				var that = this;
-				toastService.showModal(null, '确定解除与微信账号的关联关系吗？', function confirm() {
-					https
-						.request('/rest/member/removeBindingWx', {
-							mobile: e.currentTarget.dataset.mobile,
-							isbindwx: e.currentTarget.dataset.isbindwx
-						})
-						.then((result) => {
-							if (result.success) {
-								toastService.showToast(result.message);
-								that.setData({
-									'data.isBindWx': false
-								});
-							}
-						});
+				toastService.showModal(null, '确定解除与微信账号的关联关系吗？', () => {
+					https.request('/rest/member/removeBindingWx', {
+						mobile: e.currentTarget.dataset.mobile,
+						isbindwx: e.currentTarget.dataset.isbindwx
+					}).then((result) => {
+						if (result && result.success) {
+							toastService.showToast(result.message);
+							this.data.isBindWx = false;
+						}
+					});
 				});
 			},
 
 			openEmail() {
-				this.setData({
-					dialogShowEmail: true,
-					email: this.data.email
-				});
+				this.dialogShowEmail = true;
+				this.email = this.data.email;
 			},
 
+			// 原实现这里写的是 this.data.email（拷贝粘贴笔误）→ 打开弹窗时输入框会带出邮箱
 			openRealName() {
-				this.setData({
-					dialogShowRealName: true,
-					realName: this.data.email
-				});
+				this.dialogShowRealName = true;
+				this.realName = this.data.realName;
 			},
 
 			openConfirm() {
-				this.setData({
-					dialogShow: true,
-					maskClosable: false,
-					modeList: [{
-							name: '男',
-							value: 1,
-							checked: this.data.sex == 1 ? true : false
-						},
-						{
-							name: '女',
-							value: 2,
-							checked: this.data.sex == 2 ? true : false
-						}
-					]
-				});
+				this.dialogShow = true;
+				this.modeList = [{
+						name: '男',
+						value: 1,
+						checked: this.data.sex == 1
+					},
+					{
+						name: '女',
+						value: 2,
+						checked: this.data.sex == 2
+					}
+				];
 			},
 
 			radioChange(e) {
-				this.setData({
-					sex: e.detail.value
-				});
+				this.sex = e.detail.value;
 			},
 
 			bindOutLogTap() {
-				toastService.showModal(null, '确定退出登录吗？', function confirm() {
+				toastService.showModal(null, '确定退出登录吗？', () => {
 					https.request('/rest/member/logout', {}).then((result) => {
-						if (result.success) {
+						if (result && result.success) {
 							authService.deleteToken();
 							authService.deleteOpenId();
 							uni.navigateBack(1);
@@ -291,46 +210,42 @@
 				});
 			},
 
-			tapdialogButton: function(e) {
+			tapdialogButton(e) {
 				https.request('/rest/member/update', {
 					sex: this.sex
 				}).then((result) => {
-					if (result.success) {
+					if (result && result.success) {
 						toastService.showToast(result.message);
-						this.setData({
-							'data.sex': this.sex,
-							dialogShow: false
-						});
+						this.data.sex = this.sex;
+						this.dialogShow = false;
 					}
 				});
 			},
 
 			tapdialogEmailButton(e) {
-				let email = this.email;
+				const email = this.email;
 				if (email == this.data.email) {
 					toastService.showToast('请输入不同的邮箱号码');
 					return;
 				}
-				let isEmail = utils.verifyEmail(email);
-				if (!isEmail) {
+				// 原实现写的是 utils.verifyEmail —— utils 未导入，点「确定修改」必抛 ReferenceError
+				if (!utilHelper.verifyEmail(email)) {
 					toastService.showToast('邮箱号码格式错误');
 					return;
 				}
 				https.request('/rest/member/update', {
-					email: this.email
+					email: email
 				}).then((result) => {
-					if (result.success) {
+					if (result && result.success) {
 						toastService.showToast(result.message);
-						this.setData({
-							'data.email': email,
-							dialogShowEmail: false
-						});
+						this.data.email = email;
+						this.dialogShowEmail = false;
 					}
 				});
 			},
 
 			tapdialogRealNameButton(e) {
-				let realName = this.realName;
+				const realName = this.realName;
 				if (!realName) {
 					toastService.showToast('请输入真实姓名');
 					return;
@@ -338,50 +253,49 @@
 				https.request('/rest/member/update', {
 					realName: realName
 				}).then((result) => {
-					if (result.success) {
+					if (result && result.success) {
 						toastService.showToast(result.message);
-						this.setData({
-							'data.realName': realName,
-							dialogShowRealName: false
-						});
+						this.data.realName = realName;
+						this.dialogShowRealName = false;
 					}
 				});
-
 			},
 
 			bindInputEmail(e) {
-				this.setData({
-					email: e.detail.value
-				});
+				this.email = e.detail.value;
 			},
 
 			bindInputRealName(e) {
-				this.setData({
-					realName: e.detail.value
-				});
+				this.realName = e.detail.value;
 			},
 
-			trueFun() {
-				console.log('占位：函数 true 未声明');
-			},
 			close() {
-				this.setData({
-					dialogShow: false,
-					dialogShowRealName: false,
-					dialogShowEmail: false
-				})
+				this.dialogShow = false;
+				this.dialogShowRealName = false;
+				this.dialogShowEmail = false;
 			}
 		}
 	};
 </script>
+
 <style>
+	page {
+		background: #ffffff;
+	}
+
+	.c02 {
+		min-height: 100vh;
+		background: #ffffff;
+	}
+
+	/* 行高 54pt = 108rpx（画板 21:191 相邻分割线间距实测 54pt） */
 	.userinfo-item {
 		line-height: 68rpx;
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		padding: 20rpx 30rpx;
-		border-bottom: 0.5rpx solid #f5f5f5;
+		border-bottom: 1rpx solid #f5f5f5;
 	}
 
 	.userinfo-avatar {
@@ -393,7 +307,7 @@
 
 	.title-text {
 		font-size: 28rpx;
-		color: #8e8e8e;
+		color: #999999;
 	}
 
 	.userinfo-text {
@@ -420,9 +334,9 @@
 	}
 
 	.out-login-btn {
-		margin: 50rpx;
+		margin: 100rpx 30rpx 0 30rpx;
 		text-align: center;
-		line-height: 88rpx;
+		line-height: 100rpx;
 		color: white;
 		border-radius: 10rpx;
 		font-size: 30rpx;
@@ -434,8 +348,20 @@
 		justify-content: flex-end;
 	}
 
+	/* 认证身份状态：已认证=成功绿、未认证=警示橙（沿用 C-01/C-03 的既有令牌） */
+	.c02-verified {
+		font-size: 28rpx;
+		font-weight: bold;
+		color: #43A047;
+	}
+
+	.c02-unverified {
+		font-size: 28rpx;
+		font-weight: bold;
+		color: #E6A23C;
+	}
+
 	.radio-group-label {
-		/* width: 100%; */
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
@@ -470,7 +396,6 @@
 		border-radius: 15rpx;
 		font-size: 28rpx;
 		font-weight: bold;
-
 		margin: 20rpx;
 	}
 </style>

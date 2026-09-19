@@ -61,6 +61,14 @@
 			}
 		},
 		{
+			"path": "pages/mine/growth/index/index",
+			"style": {
+				"usingComponents": {},
+				"navigationBarTitleText": "我的成长值",
+				"navigationStyle": "custom"
+			}
+		},
+		{
 			"path": "pages/mine/integral/integral",
 			"style": {
 				"navigationBarTitleText": "我的积分",
@@ -81,8 +89,8 @@
 			"style": {
 				"usingComponents": {},
 				"navigationBarTitleText": "会员中心",
-				"navigationBarBackgroundColor": "#171c0f",
-				"navigationBarTextStyle": "white"
+				"navigationBarBackgroundColor": "#FFFFFF",
+				"navigationBarTextStyle": "black"
 			}
 		},
 		{

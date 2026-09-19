@@ -146,16 +146,7 @@ export default class WXHttp {
                 //见 04-deploy-cost/mvp-migration/05；回滚开关=global-config.js 清空 cloud.env
                 // #ifdef MP-WEIXIN
                 if (GlobalConfig.cloud && GlobalConfig.cloud.env) {
-                    wx.cloud.callContainer({
-                        config: { env: GlobalConfig.cloud.env },
-                        path: GlobalConfig.cloud.basePath + url,
-                        data: JSON.stringify(postData),
-                        method: 'POST',
-                        dataType: 'json',
-                        header: Object.assign({}, headersObj, { 'X-WX-SERVICE': GlobalConfig.cloud.service }),
-                        success: onSuccess,
-                        fail: onFail
-                    });
+                    WXHttp.callContainer(url, postData, headersObj, onSuccess, onFail);
                     return;
                 }
                 // #endif
@@ -169,6 +160,70 @@ export default class WXHttp {
                     fail: onFail
                 });
             });
+        });
+    }
+
+    /**
+     * 云托管调用（含冷启动兜底）。
+     *
+     * 背景：云托管按量计费下最小副本数默认 0，容器缩容到 0 后第一次调用会由网关直接返回
+     * 系统错误 —— 客户端表现为 `cloud.callContainer:fail 102002 system error`，
+     * 原实现直接走 fail → 用户看到「网络异常，请稍后重试」，必须手动重试一次才好。
+     *
+     * 策略：
+     *   1) 网关级错误（102002 / system error）最多重试 2 次（间隔 400ms），冷启动窗口足以唤醒；
+     *   2) 仍失败则降级为 uni.request 直连 GlobalConfig.baseUrl（同一公网域名，
+     *      DevTools 勾选「不校验合法域名」时可用；真机需该域名已备案+加白名单，否则同样走 onFail）。
+     *   仅对网关级错误重试，业务错误/超时不会重复提交，避免下单类接口被重复执行。
+     */
+    static callContainer(url, postData, headersObj, onSuccess, onFail) {
+        //基础库过低或非微信环境没有 wx.cloud：直接降级，避免同步抛错卡死 Promise
+        if (!wx.cloud || !wx.cloud.callContainer) {
+            console.warn('[http] 当前环境无 wx.cloud.callContainer');
+            WXHttp._directRequest(url, postData, headersObj, onSuccess, onFail);
+            return;
+        }
+        const isGatewayError = (err) => {
+            const msg = ((err && err.errMsg) || '') + '';
+            return msg.indexOf('102002') !== -1 || msg.indexOf('system error') !== -1;
+        };
+        const doCall = (attempt) => {
+            wx.cloud.callContainer({
+                config: { env: GlobalConfig.cloud.env },
+                path: GlobalConfig.cloud.basePath + url,
+                data: JSON.stringify(postData),
+                method: 'POST',
+                dataType: 'json',
+                header: Object.assign({}, headersObj, { 'X-WX-SERVICE': GlobalConfig.cloud.service }),
+                success: onSuccess,
+                fail: (err) => {
+                    const msg = (err && err.errMsg) || '';
+                    if (isGatewayError(err) && attempt < 2) {
+                        console.warn('[http] callContainer 网关错误(第' + attempt + '次)，重试：' + msg);
+                        setTimeout(() => doCall(attempt + 1), 400);
+                        return;
+                    }
+                    if (isGatewayError(err)) {
+                        console.warn('[http] callContainer 重试仍失败，降级直连：' + msg);
+                        WXHttp._directRequest(url, postData, headersObj, onSuccess, onFail);
+                        return;
+                    }
+                    onFail(err);
+                }
+            });
+        };
+        doCall(1);
+    }
+
+    static _directRequest(url, postData, headersObj, onSuccess, onFail) {
+        uni.request({
+            url: GlobalConfig.baseUrl + url,
+            data: JSON.stringify(postData),
+            method: 'POST',
+            dataType: 'json',
+            header: headersObj,
+            success: onSuccess,
+            fail: onFail
         });
     }
 

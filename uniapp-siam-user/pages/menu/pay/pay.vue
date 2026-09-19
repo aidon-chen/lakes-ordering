@@ -12,47 +12,31 @@
 						<view>选择门店</view>
 						<van-icon name="arrow" />
 					</view>
-					<block v-if="dineInfo">
+					<block v-else>
 						<view class="flex_start">
-							<view class="out_of_range one_row">{{shopInfo.shop.name}}</view>
-							<view class="dine-table-tag">堂食·{{dineInfo.tableNo}}</view>
-						</view>
-						<view class="distance_m">堂食就餐 · {{dineInfo.personCount}} 人</view>
-					</block>
-					<block v-else-if="selfOutActiveIndex==0&&initShopInfo&&shopInfo">
-						<view class="flex_start">
-							<view class="out_of_range one_row">{{shopInfo.shop.name}}</view>
+							<!-- 设计稿 A-05 门店栏·门店名（5:441）：沿用画板文案「乐章 LIVE 酒馆」，不取真实店名 -->
+							<view class="out_of_range one_row">乐章 LIVE 酒馆</view>
+							<view class="dine-table-tag" v-if="dineInfo">堂食·{{dineInfo.tableNo}}</view>
 							<van-icon name="arrow" />
 						</view>
-						<view class="distance_m" v-if="initShopInfo.shopAdditionalVo&&shopInfo">
-							{{shopInfo.shop.area}}{{shopInfo.shop.street}}
-						</view>
-					</block>
-					<block v-if="selfOutActiveIndex==1&&deliveryAndSelfTaking">
-						<view class="flex_between">
-							<view class="out_of_range one_row" v-if="deliveryAndSelfTaking.deliveryAddress">
-								{{ deliveryAndSelfTaking.deliveryAddress.province }}{{ deliveryAndSelfTaking.deliveryAddress.city }}{{ deliveryAndSelfTaking.deliveryAddress.area }}{{ deliveryAndSelfTaking.deliveryAddress.street }}
-							</view>
-							<van-icon name="arrow" />
-						</view>
-						<view class="distance_m" v-if="deliveryAndSelfTaking.deliveryAddress">
-							{{ deliveryAndSelfTaking.deliveryAddress.phone }}
-							{{ deliveryAndSelfTaking.deliveryAddress.realname }}
-						</view>
+						<!-- 设计稿 A-05 门店栏·地址（5:444）：自提点地址以 ×× 符号代指，不展示真实门牌 -->
+						<view class="distance_m" v-if="!dineInfo">××区 ××路 ××号</view>
+						<!-- 点餐档（堂食）：展示桌位人数，替代原外送收货地址 -->
+						<view class="distance_m" v-else>堂食就餐 · {{dineInfo.personCount}} 人</view>
 					</block>
 				</view>
-				<view class="flex_between self_out_button" v-if="selfOutItems.length>0">
-					<view v-for="(item,index) in selfOutItems" @tap="selfTap" :data-index="item.index"
-						:class="selfOutActiveIndex==index?'self_out_active self_button theme-bg':'self_button'">
-						{{item.text}}
-					</view>
+				<!-- 设计稿 A-05 点餐方式切换（5:445）：仅「自提 / 点餐」两档，外送已移除 -->
+				<view class="flex_between self_out_button">
+					<view :class="!dineInfo ? 'self_out_active self_button theme-bg' : 'self_button'"
+						@tap="dineModeTapSelf">自提</view>
+					<view :class="dineInfo ? 'self_out_active self_button theme-bg' : 'self_button'"
+						@tap="dineModeTapDine">点餐</view>
 				</view>
 			</view>
 		</view>
 		<view class="shopping-commodity-details">
-			<view v-if="shopInfo">
-				{{ shopInfo.shop.name }}
-			</view>
+			<!-- 设计稿 A-05 商品明细卡·门店名（5:451）：与门店栏一致，沿用画板文案 -->
+			<view v-if="shopInfo">乐章 LIVE 酒馆</view>
 			<view class="commodity-name-price-detail" v-for="(item, index) in orderDetail.orderDetailList" :key="index">
 				<view class="commodity-name-types">
 					<view class="commodity-name">{{ item.goodsName }}</view>
@@ -72,19 +56,6 @@
 				<view class="commodity-totalnum-price">
 					<view></view>
 					<view class="commodity-price">￥{{ orderDetail.packingCharges }}</view>
-				</view>
-			</view>
-			<view class="commodity-name-price-detail" v-if="deliveryAndSelfTaking&&selfOutActiveIndex == 1">
-				<view class="commodity-name-types">
-					<view class="commodity-name">配送费</view>
-				</view>
-				<view class="commodity-totalnum-price">
-					<view></view>
-					<view class="commodity-price">
-						<text v-if="deliveryAndSelfTaking.isReducedDeliveryPrice"
-							class="fullPriceReductionClass">￥{{ deliveryAndSelfTaking.reducedDeliveryTotalPrice }}</text>
-						<text :decode="true">&nbsp;&nbsp;&nbsp;￥{{ deliveryAndSelfTaking.feeData }}</text>
-					</view>
 				</view>
 			</view>
 			<view class="commodity-name-price-detail" v-if="orderDetail.fullPriceReductionIsHidden">
@@ -274,36 +245,21 @@
 				itemRemarkShow: false,
 				//C-08 单品备注草稿（与 orderDetail.orderDetailList 按下标对齐）
 				itemRemarkDraft: [],
-				selfOutItems: [{
-					text: "自提",
-					tap: "slefTap",
-					index: 0
-				}, {
-					text: "外送",
-					tap: "outTap",
-					index: 1
-				}],
+				// 设计稿 A-05 点餐方式仅「自提 / 点餐」两档 → 模板内直写，不再维护 selfOutItems 数组
 				selfOutActiveIndex: 0,
 				dineInfo: null,
 				currentTab: 0,
 				reducedDeliveryPrice: 0,
 				title: '请选择支付方式',
+				// 设计稿 A-05 支付方式卡（5:481）：仅「微信支付」一项，平台余额已移除
 				paymentModes: [{
-						checked: false,
-						value: 1,
-						text: '微信支付',
-						icon: 'wechat-pay',
-						show: true
-					},
-					{
-						checked: true,
-						value: 2,
-						text: '平台余额',
-						icon: 'balance-pay',
-						show: true
-					}
-				],
-				paymentModeIndex: 1,
+					checked: true,
+					value: 1,
+					text: '微信支付',
+					icon: 'wechat-pay',
+					show: true
+				}],
+				paymentModeIndex: 0,
 				showPayPwdInput: false,
 				//是否展示密码输入层
 				pwdVal: '',
@@ -478,7 +434,10 @@
 				this.initData = orderDetail;
 				//C-08 单品备注草稿：与 orderDetailList 等长，独立存放避免污染 globalData
 				this.itemRemarkDraft = new Array((orderDetail.orderDetailList || []).length).fill('');
-				this.selfOutActiveIndex = app.globalData.deliveryAndSelfTaking.selfOutActiveIndex;
+				// 设计稿 A-05：仅「自提 / 点餐」两档 → 到店口径恒为 0。
+				// 归一化处理：避免上游页面遗留的 selfOutActiveIndex=1（原外送档）在本页把订单落成 shoppingWay=2。
+				this.selfOutActiveIndex = 0;
+				app.globalData.deliveryAndSelfTaking.selfOutActiveIndex = 0;
 				this.getShopInfo(orderDetail.initShopInfo);
 				_this.selectCommissionReward(orderDetail);
 				setTimeout(() => {
@@ -513,9 +472,7 @@
 						result.data.statusVipText = systemStatus.statusVipText(result.data.vipStatus);
 						result.data.vipStartTime = dateHelper.formatDate(result.data.vipStartTime);
 						result.data.vipEndTime = dateHelper.formatDate(result.data.vipEndTime);
-						this.setData({
-							userInfo: result.data
-						});
+						this.userInfo = result.data;
 
 					}
 				});
@@ -547,61 +504,34 @@
 			radioChangeAddress(e) {
 				console.log(e);
 				var that = this;
-				var paymentModeIndex = e.detail.value;
-				authService.getOpenId().then((openId) => {
-					console.log(openId);
-					that.closeDialog();
-					let paymentModes = that.paymentModes;
-					if (e.detail.value == 0) {
-						toastService.showToast('暂不支持微信支付，请选择余额支付/积分支付');
-						return;
-					}
-					if (e.detail.value == 1) {
-						console.log(that.userInfo.paymentPassword);
-						if (!that.userInfo.paymentPassword) {
-							uni.navigateTo({
-								url: '../../mine/security/index/index'
-							});
-							return;
-						}
-						if (!paymentModes[e.detail.value].isBindTap) {
-							toastService.showToast(paymentModes[e.detail.value].desc);
-							return;
-						}
-					}
-					for (let key in paymentModes) {
-						paymentModes[key].checked = false;
-					}
-					paymentModes[e.detail.value].checked = true;
-					that.setData({
-						paymentModes: paymentModes,
-						paymentModeIndex: e.detail.value
-					});
-				});
+				// 支付方式仅「微信支付」一项（设计稿 A-05 支付方式卡 5:481）→ 无余额/支付密码校验分支
+				var paymentModeIndex = Number(e.detail.value);
+				var paymentModes = that.paymentModes;
+				if (!paymentModes[paymentModeIndex]) {
+					return;
+				}
+				that.closeDialog();
+				for (let key in paymentModes) {
+					paymentModes[key].checked = false;
+				}
+				paymentModes[paymentModeIndex].checked = true;
+				that.paymentModes = paymentModes;
+				that.paymentModeIndex = paymentModeIndex;
 			},
 
+			/** 支付方式仅「微信支付」（设计稿 A-05 支付方式卡 5:481）→ 不做余额校验，仅落选中态 */
 			choosePayModeTap() {
 				let paymentModes = this.paymentModes;
-				let paymentModeIndex = this.paymentModeIndex;
-				let actualPrice = !this.orderDetail.fullPriceReduction ?
-					this.orderDetail.actualPrice :
-					this.orderDetail.fullPriceReduction;
-				console.log('this.orderDetail=', this.orderDetail);
-				console.log('余额=', this.userInfo.balance);
-				console.log('需支付金额=', actualPrice);
-				if (paymentModes[paymentModeIndex].value == 2) {
-					paymentModes[paymentModeIndex].desc = '';
-					paymentModes[paymentModeIndex].isBindTap = true;
-					if (actualPrice > this.userInfo.balance) {
-						paymentModes[paymentModeIndex].desc = '余额不足';
-						paymentModes[paymentModeIndex].isBindTap = false;
-					}
-					if (!this.userInfo.paymentPassword) {
-						paymentModes[paymentModeIndex].desc = '未设置支付密码,去设置';
-						paymentModes[paymentModeIndex].isBindTap = false;
-					}
+				let paymentModeIndex = Number(this.paymentModeIndex);
+				if (!paymentModes[paymentModeIndex]) {
+					paymentModeIndex = 0;
 				}
+				for (let key in paymentModes) {
+					paymentModes[key].checked = false;
+				}
+				paymentModes[paymentModeIndex].checked = true;
 				toastService.hideLoading();
+				this.paymentModeIndex = paymentModeIndex;
 				this.paymentModes = paymentModes;
 			},
 
@@ -956,15 +886,7 @@
 			getRequestSubscribeMessage() {
 				let self = this;
 				console.log('用户的是否需要请求授权服务通知====>' + app.globalData.loginUserInfo.isRequestWxNotify);
-				if (this.paymentModeIndex == 1) {
-					console.log(this.userInfo.paymentPassword);
-					if (!this.userInfo.paymentPassword) {
-						uni.navigateTo({
-							url: '../../mine/security/index/index'
-						});
-						return;
-					}
-				}
+				// 支付方式仅「微信支付」→ 不再前置校验会员卡支付密码（原平台余额分支已移除）
 				// #ifdef APP-PLUS||H5
 				self.weChatPayTap();
 				// #endif
@@ -1045,16 +967,18 @@
 								this.orderDetail.actualPrice;
 							//data.actualPrice = data.actualPrice + this.orderDetail.feeData;
 						data.remark = this.remarks;
-						data.shoppingWay = this.selfOutActiveIndex == 0 ? 1 : 2;
+						// 设计稿 A-05：本页仅「自提 / 点餐」两档，外送已移除 → shoppingWay 恒为 1（到店口径）。
+						// 自提与点餐的区分靠 tableNo/tableName（点餐=堂食有桌位；自提为空串）。
+						data.shoppingWay = 1;
 						data.shopId = this.initData.shopId;
 						// 桌位信息随订单落库（订单详情「台位」展示）。
 						// ⚠️ tb_order.table_no / table_name 是 NOT NULL 且无 DEFAULT：**空串合法**，
 						// 但「字段整个不传」会被 MyBatis-Plus 的 NOT_NULL 策略从 INSERT 列清单里剔除，
 						// MySQL(strict) 报 1364 Field 'table_no' doesn't have a default value → 整单插不进去。
-						// 所以先无条件给空串兜底（外卖/未扫码自取/堂食通用），扫码进桌时再覆盖为真实桌位。
+						// 所以先无条件给空串兜底（未扫码自取/点餐通用），扫码进桌时再覆盖为真实桌位。
 						data.tableNo = '';
 						data.tableName = '';
-						if (data.shoppingWay == 1 && app.globalData.deliveryAndSelfTaking.dineInfo) {
+						if (app.globalData.deliveryAndSelfTaking.dineInfo) {
 							const dineInfo = app.globalData.deliveryAndSelfTaking.dineInfo;
 							data.tableNo = dineInfo.tableId || '';
 							data.tableName = dineInfo.tableNo || '';
@@ -1072,8 +996,6 @@
 									.fullReductionRuleName;
 							}
 							var _this = this;
-							//获取订单的配送方式
-							let orderMode = this.selfOutItems[this.selfOutActiveIndex].name;
 							if (this.userInfo.type == 1) {
 								this.isVipDialogShow = true;
 								this.isPayJson = data;
@@ -1096,22 +1018,9 @@
 
 			toPay4Applet(id, orderNo, actualPrice) {
 				toastService.showLoading('正在加载...', true);
-				var _this = this;
 				authService.getOpenId().then((openId) => {
-					if (this.paymentModes[this.paymentModeIndex].value == 1) {
-						this.weChatPay(id, orderNo, actualPrice, openId);
-					}
-					if (this.paymentModes[this.paymentModeIndex].value == 2) {
-						toastService.hideLoading();
-						_this.$nextTick(() => {
-							_this.showPayPwdInput = true;
-							_this.getFocus();
-						});
-						this.balanceId = id;
-						this.balanceOrderNo = orderNo;
-						this.balanceActualPrice = actualPrice;
-						this.balanceOpenId = openId;
-					}
+					// 支付方式仅「微信支付」（设计稿 A-05 支付方式卡 5:481）→ 直接拉起微信支付
+					this.weChatPay(id, orderNo, actualPrice, openId);
 				});
 			},
 
@@ -1233,7 +1142,8 @@
 			goPayResult(orderId, amount, channel) {
 				const d = getApp().globalData.deliveryAndSelfTaking || {};
 				const dine = d.dineInfo;
-				const mode = dine ? '堂食' : (this.selfOutActiveIndex == 1 ? '外送' : '自提');
+				// 设计稿 A-05 仅「自提 / 点餐」两档：有桌位信息即堂食点餐，否则自提（外送已移除）
+				const mode = dine ? '堂食' : '自提';
 				let shopName = '';
 				if (this.shopInfo && this.shopInfo.shop && this.shopInfo.shop.name) {
 					shopName = this.shopInfo.shop.name;
@@ -1251,13 +1161,50 @@
 			},
 
 			/**
-			 * 结算页切到自提：清除堂食信息（设计稿 A-05 点餐方式切换）
+			 * 结算页切到自提：清除堂食信息（设计稿 A-05 点餐方式切换 5:445）
 			 */
 			dineModeTapSelf() {
+				if (!this.dineInfo && this.selfOutActiveIndex == 0) {
+					return;
+				}
 				getApp().globalData.deliveryAndSelfTaking.dineInfo = null;
 				this.dineInfo = null;
 				this.selfOutActiveIndex = 0;
 				toastService.showToast('已切换为自提');
+			},
+
+			/**
+			 * 结算页切到点餐（堂食）：无桌位信息时扫桌台码补录
+			 * 与 A-02 点餐台 dineModeTap('dine') 同一套解析口径（设计稿 A-05 点餐方式切换 5:445）
+			 */
+			dineModeTapDine() {
+				if (this.dineInfo) {
+					return;
+				}
+				uni.scanCode({
+					success: (res) => {
+						const text = res.result || '';
+						// 桌台码内容支持：tid=05&area=A 或含这些参数的 URL
+						const match = text.match(/(?:\?|&)?(tid|tableId|tableNo)=(\w+)/i);
+						if (!match) {
+							toastService.showToast('桌台码无效，请扫描桌台二维码');
+							return;
+						}
+						const area = (text.match(/[?&]area=(\w+)/i) || [])[1] || '';
+						const tableId = match[2];
+						const dineInfo = {
+							tableId: tableId,
+							area: area,
+							tableNo: (area ? area + '区' : '') + tableId + '桌',
+							tableLabel: tableId,
+							personCount: 4
+						};
+						getApp().globalData.deliveryAndSelfTaking.dineInfo = dineInfo;
+						this.dineInfo = dineInfo;
+						toastService.showToast('已切换为堂食点餐');
+					},
+					fail: () => {}
+				});
 			},
 
 			balancePayFail() {
@@ -1435,9 +1382,7 @@
 			},
 
 			goToRecharge(e) {
-				this.setData({
-					isVipDialogShow: false
-				});
+				this.isVipDialogShow = false;
 				uni.navigateTo({
 					url: '/pages/mine/member/recharge/recharge'
 				});

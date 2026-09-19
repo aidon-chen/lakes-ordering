@@ -102,6 +102,7 @@
 	import https from '../../../utils/http';
 	import authService from '../../../utils/auth';
 	import systemStatus from '../../../utils/system-status';
+	import memberLevel from '../../../utils/member-level';
 	//获取应用实例
 	let app = null;
 	export default {
@@ -198,13 +199,19 @@
 				return parts.join(' · ');
 			},
 			vipLevelText() {
-				// 等级名后端暂无独立字段，沿用 type 文案（1 普通用户 / 2 VIP会员）
+				// 有成长值就用等级表（utils/member-level.js）；否则退回 type 文案（1 普通用户 / 2 VIP会员）
+				if (Number(this.member.growth) > 0) {
+					return this.level.name;
+				}
 				return this.member.levelName ? this.member.levelName : systemStatus.typeVipText(this.member.type);
 			},
+			level() {
+				return memberLevel.levelOf(this.member.growth);
+			},
 			growthText() {
-				// 成长值字段后端未确认：有则显示「成长值 x/y」，无则退化为会员中心入口
-				if (this.member.growth !== null && this.member.growth !== undefined && this.member.nextGrowth) {
-					return '成长值 ' + this.member.growth + '/' + this.member.nextGrowth + ' ›';
+				// growth 已随 tb_member 加列上线；有值显示「成长值 x/下一档阈值 ›」，否则退化为会员中心入口
+				if (Number(this.member.growth) > 0) {
+					return '成长值 ' + this.member.growth + '/' + this.level.nextMin + ' ›';
 				}
 				return '会员权益 ›';
 			}

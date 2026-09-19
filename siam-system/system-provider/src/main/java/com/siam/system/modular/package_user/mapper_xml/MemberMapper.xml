@@ -40,6 +40,7 @@
     <result column="total_consume_balance" property="totalConsumeBalance" jdbcType="DECIMAL" />
     <result column="total_points" property="totalPoints" jdbcType="DECIMAL" />
     <result column="total_consume_points" property="totalConsumePoints" jdbcType="DECIMAL" />
+    <result column="growth" property="growth" jdbcType="INTEGER" />
     <result column="total_withdraw_invite_reward_amount" property="totalWithdrawInviteRewardAmount" jdbcType="DECIMAL" />
     <result column="payment_password" property="paymentPassword" jdbcType="VARCHAR" />
     <result column="payment_password_salt" property="paymentPasswordSalt" jdbcType="VARCHAR" />
@@ -89,6 +90,7 @@
     <result column="total_consume_balance" property="totalConsumeBalance" jdbcType="DECIMAL" />
     <result column="total_points" property="totalPoints" jdbcType="DECIMAL" />
     <result column="total_consume_points" property="totalConsumePoints" jdbcType="DECIMAL" />
+    <result column="growth" property="growth" jdbcType="INTEGER" />
     <result column="total_withdraw_invite_reward_amount" property="totalWithdrawInviteRewardAmount" jdbcType="DECIMAL" />
     <result column="payment_password" property="paymentPassword" jdbcType="VARCHAR" />
     <result column="payment_password_salt" property="paymentPasswordSalt" jdbcType="VARCHAR" />
@@ -163,7 +165,8 @@
     vip_status, vip_type, vip_start_time, vip_end_time, type, vip_no, is_new_people,
     is_remind_new_people, last_use_time, last_use_address, register_way, wx_public_platform_open_id,
     is_request_wx_notify, last_request_wx_notify_time, invite_reward_amount, real_name,
-    total_balance, total_consume_balance, total_points, total_consume_points, total_withdraw_invite_reward_amount,
+    total_balance, total_consume_balance, total_points, total_consume_points, growth,
+    total_withdraw_invite_reward_amount,
     payment_password, payment_password_salt, invite_suncode, unreceived_points, unreceived_invite_reward_amount,
     create_time, update_time, last_login_time
   </sql>
@@ -315,6 +318,9 @@
       <if test="totalConsumePoints != null" >
         total_consume_points,
       </if>
+      <if test="growth != null" >
+        growth,
+      </if>
       <if test="totalWithdrawInviteRewardAmount != null" >
         total_withdraw_invite_reward_amount,
       </if>
@@ -457,6 +463,9 @@
       </if>
       <if test="totalConsumePoints != null" >
         #{totalConsumePoints,jdbcType=DECIMAL},
+      </if>
+      <if test="growth != null" >
+        #{growth,jdbcType=INTEGER},
       </if>
       <if test="totalWithdrawInviteRewardAmount != null" >
         #{totalWithdrawInviteRewardAmount,jdbcType=DECIMAL},
@@ -610,6 +619,9 @@
       <if test="record.totalConsumePoints != null" >
         total_consume_points = #{record.totalConsumePoints,jdbcType=DECIMAL},
       </if>
+      <if test="record.growth != null" >
+        growth = #{record.growth,jdbcType=INTEGER},
+      </if>
       <if test="record.totalWithdrawInviteRewardAmount != null" >
         total_withdraw_invite_reward_amount = #{record.totalWithdrawInviteRewardAmount,jdbcType=DECIMAL},
       </if>
@@ -682,6 +694,7 @@
     total_consume_balance = #{record.totalConsumeBalance,jdbcType=DECIMAL},
     total_points = #{record.totalPoints,jdbcType=DECIMAL},
     total_consume_points = #{record.totalConsumePoints,jdbcType=DECIMAL},
+    growth = #{record.growth,jdbcType=INTEGER},
     total_withdraw_invite_reward_amount = #{record.totalWithdrawInviteRewardAmount,jdbcType=DECIMAL},
     payment_password = #{record.paymentPassword,jdbcType=VARCHAR},
     payment_password_salt = #{record.paymentPasswordSalt,jdbcType=VARCHAR},
@@ -809,6 +822,9 @@
       <if test="totalConsumePoints != null" >
         total_consume_points = #{totalConsumePoints,jdbcType=DECIMAL},
       </if>
+      <if test="growth != null" >
+        growth = #{growth,jdbcType=INTEGER},
+      </if>
       <if test="totalWithdrawInviteRewardAmount != null" >
         total_withdraw_invite_reward_amount = #{totalWithdrawInviteRewardAmount,jdbcType=DECIMAL},
       </if>
@@ -878,6 +894,7 @@
       total_consume_balance = #{totalConsumeBalance,jdbcType=DECIMAL},
       total_points = #{totalPoints,jdbcType=DECIMAL},
       total_consume_points = #{totalConsumePoints,jdbcType=DECIMAL},
+      growth = #{growth,jdbcType=INTEGER},
       total_withdraw_invite_reward_amount = #{totalWithdrawInviteRewardAmount,jdbcType=DECIMAL},
       payment_password = #{paymentPassword,jdbcType=VARCHAR},
       payment_password_salt = #{paymentPasswordSalt,jdbcType=VARCHAR},

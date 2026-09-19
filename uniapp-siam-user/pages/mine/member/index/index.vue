@@ -1,540 +1,390 @@
 <template>
-	<view class="page-content">
-		<view class="member-center">
-			<view class="member-vip-info">
-				<view class="vip-bg-view">
-					<view class="flex_between">
-						<view class="member-info">
-							<image :src="data.headImg" mode="widthFix" class="headImg"></image>
-							<view class="nickname-vipEndTime">
-								<view class="nickname flex_start">
-									<view class="out_of_range one_row">{{ data.username }}</view>
-									<view class="vip-image-view">
-										<image :src="item + '?v=' + appVersion" mode="widthFix" class="is-vip-image"
-											v-for="(item, index) in isVipImages" :key="index"></image>
-									</view>
-								</view>
-								<view class="vip-recharge flex_between">
-									<view class="renew-botton" v-if="data.type == 1" @tap="bindVipRecharge">加入会员</view>
-									<view class="renew-botton" v-else @tap="bindVipRecharge">去续费</view>
-								</view>
-								<view class="no-vipno flex_start">ID：{{ data.vipNo }}</view>
-							</view>
-						</view>
-						<view @tap="bindReward" class="wodejl-view">佣金明细></view>
-					</view>
-					<view>
-						<view class="mine-blocking-view">
-							<view class="mine-blocking">
-								<navigator class="mine-navigator" url="../../balance/index/index">
-									<view class="number-tip theme-color">{{ data.balance }}</view>
-									<view class="text-tip">余额</view>
-								</navigator>
-								<navigator class="mine-navigator" url="../../integral/integral">
-									<view class="number-tip theme-color">{{ data.points }}</view>
-									<view class="text-tip">我的积分</view>
-								</navigator>
-								<navigator class="mine-navigator" url="../../share/reward/reward">
-									<view class="number-tip theme-color">{{ data.inviteRewardAmount }}</view>
-									<view class="text-tip">佣金</view>
-								</navigator>
-								<navigator class="mine-navigator" url="../../coupons/coupons">
-									<view class="number-tip theme-color">
-										{{ data.couponsNumber ? data.couponsNumber : 0 }}
-									</view>
-									<view class="text-tip">卡券</view>
-								</navigator>
-							</view>
-						</view>
-					</view>
+	<view class="c03">
+		<!-- 等级卡（画板 298:97）—— 全宽绿带，非卡片 -->
+		<view class="c03-level theme-bg">
+			<view class="c03-level-row">
+				<view class="c03-level-name">{{ levelText }}</view>
+				<view class="c03-level-more" @tap="goGrowth">成长值明细 ›</view>
+			</view>
+			<!-- 成长值进度（画板 298:101/102/103）：等级与阈值统一走 utils/member-level.js，
+			     growth 为 0/缺失时整块不渲染，避免造数 -->
+			<block v-if="hasGrowth">
+				<view class="c03-track">
+					<view class="c03-track-bar" :style="'width:' + level.percent + '%'"></view>
 				</view>
-			</view>
+				<view class="c03-growth-text">成长值 {{ member.growth }}/{{ level.nextMin }} · 距{{ level.nextName }}还差 {{ level.gap }}</view>
+			</block>
 		</view>
-		<view class="add_buttom">
-			<view class="add-vip" @tap="bindVipRecharge">加入会员尊享4大权益</view>
-		</view>
-		<view class="vip-details-view">
-			<view class="vip-detail">
-				<image
-					:src="'https://siam-hangzhou.oss-cn-hangzhou.aliyuncs.com/data/images/business/vip_page/guarantee.png?v=' + appVersion"
-					mode="aspectFill" class="invite-image"></image>
-				<view class="iconfont-title">账户保障</view>
-			</view>
-			<view class="vip-detail">
-				<image
-					:src="'https://siam-hangzhou.oss-cn-hangzhou.aliyuncs.com/data/images/business/vip_page/wallet.png?v=' + appVersion"
-					mode="aspectFill" class="invite-image"></image>
-				<view class="iconfont-title">独家礼券</view>
-			</view>
-			<view class="vip-detail">
-				<image
-					:src="'https://siam-hangzhou.oss-cn-hangzhou.aliyuncs.com/data/images/business/vip_page/trophy.png?v=' + appVersion"
-					mode="aspectFill" class="invite-image"></image>
-				<view class="iconfont-title">下单奖励</view>
-			</view>
-			<view class="vip-detail">
-				<image
-					:src="'https://siam-hangzhou.oss-cn-hangzhou.aliyuncs.com/data/images/business/vip_page/share.png?v=' + appVersion"
-					mode="aspectFill" class="invite-image"></image>
-				<view class="iconfont-title">邀请奖励</view>
+
+		<!-- 权益卡（画板 298:104）—— 4 条权益为画板文案池，后端无权益表，暂静态配置 -->
+		<view class="c03-card">
+			<view class="c03-card-title">会员权益</view>
+			<view class="c03-benefit-row" v-for="(row, rowIndex) in benefitRows" :key="rowIndex">
+				<view class="c03-benefit-item" v-for="(item, itemIndex) in row" :key="itemIndex">· {{ item }}</view>
 			</view>
 		</view>
 
-		<view class="gift-view">
-			<view class="view-line"></view>
-			<view class="gift-view-info">
-				<image
-					:src="'https://siam-hangzhou.oss-cn-hangzhou.aliyuncs.com/data/images/business/vip_page/recharge.png?v=' + appVersion"
-					mode="widthFix" class="gift-image" @tap="bindVipRecharge"></image>
+		<!-- 积分积点卡（画板 298:112） -->
+		<view class="c03-card">
+			<view class="c03-card-head">
+				<view class="c03-card-title">我的积分 / 积点</view>
+				<view class="c03-card-more" @tap="goIntegral">收支明细 ›</view>
 			</view>
-			<view class="gift-content">
-				<view>
-					<view class="mrwcyqrw">每日完成邀请任务</view>
-					<view class="stqdsh">送TA券的时候你还有现金奖励</view>
+			<view class="c03-data-row">
+				<view class="c03-data-item">
+					<view class="c03-data-value theme-color">{{ member.points || 0 }}</view>
+					<view class="c03-data-label">积分（可抵扣）</view>
 				</view>
-				<view class="goto-finish" @tap="bindInvite">去完成</view>
-			</view>
-			<view class="view-line"></view>
-			<view class="vip-rules">
-				<text class="vip-text">{{ current.vipRule }}</text>
+				<!-- 积点（等级成长）：后端无独立字段，沿用 C-01「我的」页同口径取 balance -->
+				<view class="c03-data-item">
+					<view class="c03-data-value theme-color">{{ member.balance || 0 }}</view>
+					<view class="c03-data-label">积点（等级成长）</view>
+				</view>
 			</view>
 		</view>
+
+		<!-- 优惠券卡（画板 298:123） -->
+		<view class="c03-card">
+			<view class="c03-card-head">
+				<view class="c03-card-title">我的优惠券</view>
+				<view class="c03-card-more" @tap="goCoupons">{{ couponCount }} 张 ›</view>
+			</view>
+			<view class="c03-coupon-row" v-if="couponList.length">
+				<view class="c03-coupon" v-for="(item, index) in couponList" :key="index" @tap="goCoupons">
+					<view class="c03-coupon-value" :class="{ 'c03-coupon-value-sm': item.small }">{{ item.value }}</view>
+					<view class="c03-coupon-cond">{{ item.cond }}</view>
+				</view>
+			</view>
+			<view class="c03-coupon-empty" v-else>暂无可用优惠券</view>
+		</view>
+
+		<!-- 身份认证行（画板 298:137）已按用户要求移除：本页不再展示认证状态入口；
+		     认证能力仍保留在「我的」页常用服务 · 身份认证 → pages/mine/security/index/index -->
 	</view>
 </template>
 
 <script>
 	import https from '../../../../utils/http';
 	import authService from '../../../../utils/auth';
-	import toastService from '../../../../utils/toast.service';
-	import utilHelper from '../../../../utils/util';
-	import dateHelper from '../../../../utils/date-helper';
 	import systemStatus from '../../../../utils/system-status';
+	import memberLevel from '../../../../utils/member-level';
+
 	let app = null;
+
 	export default {
 		data() {
 			return {
-				isVipImages: [],
-				appVersion: 1.0,
-				data: {
-					headImg: '',
+				member: {
+					id: '',
 					username: '',
-					type: 0,
-					vipNo: '',
-					balance: '',
-					points: '',
-					inviteRewardAmount: '',
-					couponsNumber: false
+					headImg: '',
+					points: 0,
+					balance: 0,
+					couponsNumber: 0,
+					type: '',
+					// 以下字段由后端补齐后自动生效：growth 已随 tb_member 加列上线（见 19-*.sql）；
+					// levelName / nextGrowth / nextLevelName 仍无后端来源，等级改由 utils/member-level.js 判定
+					levelName: '',
+					growth: null,
+					nextGrowth: null,
+					nextLevelName: ''
 				},
-				userInfo: '',
-				timestamp: '',
-				current: {
-					vipRule: ''
-				}
+				benefitRows: [
+					['专属折扣', '生日礼遇'],
+					['优先取酒', '会员日积分翻倍']
+				],
+				couponList: []
 			};
-		}
-		/**
-		 * 生命周期函数--监听页面加载
-		 */
-		,
-		onLoad: function(options) {
-			app = getApp();
-			this.appVersion = app.globalData.appVersion;
-			this.selectCurrent();
 		},
-		/**
-		 * 生命周期函数--监听页面初次渲染完成
-		 */
-		onReady: function() {},
-		/**
-		 * 生命周期函数--监听页面显示
-		 */
-		onShow: function() {
+		computed: {
+			// 等级：有成长值就走等级表（utils/member-level.js），否则退回 type 文案
+			// （后端 tb_member 已加 growth 列，见 sql/mysql/cloudrun/19-会员成长值-加列与种子数据.sql）
+			hasGrowth() {
+				return Number(this.member.growth) > 0;
+			},
+			level() {
+				return memberLevel.levelOf(this.member.growth);
+			},
+			levelText() {
+				if (this.hasGrowth) {
+					return this.level.name;
+				}
+				return this.member.levelName ? this.member.levelName : systemStatus.typeVipText(this.member.type);
+			},
+			couponCount() {
+				return this.member.couponsNumber || 0;
+			}
+		},
+		onLoad() {
+			app = getApp();
+		},
+		onShow() {
 			authService.checkIsLogin().then((result) => {
 				if (result) {
-					this.getUserInfo();
+					this.getMemberInfo();
+					this.getCouponList();
 					return;
 				}
-				this.data = null;
-				this.userInfo = null;
+				this.member = {
+					id: ''
+				};
+				this.couponList = [];
+				uni.showToast({
+					title: '请先登录',
+					icon: 'none'
+				});
+				setTimeout(() => {
+					uni.navigateBack();
+				}, 800);
 			});
 		},
-		/**
-		 * 生命周期函数--监听页面隐藏
-		 */
-		onHide: function() {},
-		/**
-		 * 生命周期函数--监听页面卸载
-		 */
-		onUnload: function() {},
-		/**
-		 * 页面相关事件处理函数--监听用户下拉动作
-		 */
-		onPullDownRefresh: function() {},
-		/**
-		 * 页面上拉触底事件的处理函数
-		 */
-		onReachBottom: function() {},
-		/**
-		 * 用户点击右上角分享
-		 */
-		onShareAppMessage: function() {},
 		methods: {
-			getTimestamp() {
-				var timestamp = dateHelper.getTimestamp();
-				console.log(timestamp);
-				this.setData({
-					timestamp: timestamp
-				});
-			},
-
-			selectCurrent() {
-				https.request('/rest/setting/selectCurrent', {}).then((result) => {
-					if (result.success) {
-						result.data.vipRule = result.data.vipRule.replace('↵', '\n');
-						this.setData({
-							current: result.data
-						});
-					}
-				});
-			},
-
-			bindInvite() {
-				uni.navigateTo({
-					url: `../../share/index/index?inviterId=${this.data.id}`
-				});
-			},
-
-			getUserInfo: function(e) {
+			// 会员基础信息：未登录/接口异常时保持空态，不阻断页面渲染
+			getMemberInfo() {
 				https.request('/rest/member/getLoginMemberInfo', {}).then((result) => {
-					if (result.success) {
-						result.data.typeVipText = systemStatus.typeVipText(result.data.type);
-						if (this.isVipImages.length <= 0) {
-							if (result.data.type == 1) {
-								this.isVipImages.push(
-									'https://siam-hangzhou.oss-cn-hangzhou.aliyuncs.com/data/images/business/mine_page/user_1.png'
-								);
-								this.isVipImages.push(
-									'https://siam-hangzhou.oss-cn-hangzhou.aliyuncs.com/data/images/business/mine_page/user_2.png'
-								);
-								this.isVipImages.push(
-									'https://siam-hangzhou.oss-cn-hangzhou.aliyuncs.com/data/images/business/mine_page/user_3.png'
-								);
-							} else {
-								this.isVipImages.push(
-									'https://siam-hangzhou.oss-cn-hangzhou.aliyuncs.com/data/images/business/mine_page/vip_1.png'
-								);
-								this.isVipImages.push(
-									'https://siam-hangzhou.oss-cn-hangzhou.aliyuncs.com/data/images/business/mine_page/vip_2.png'
-								);
-								this.isVipImages.push(
-									'https://siam-hangzhou.oss-cn-hangzhou.aliyuncs.com/data/images/business/mine_page/vip_3.png'
-								);
-							}
-						}
-						result.data.isVip = result.data.type == 1 ? false : true;
-						this.setData({
-							data: result.data,
-							isVipImages: this.isVipImages
-						});
+					if (result && result.success && result.data) {
+						this.member = result.data;
 					}
 				});
 			},
-
-			bindReward() {
-				uni.navigateTo({
-					url: '../../../mine/share/reward/reward'
+			// 券卡取前 3 张可用券（isUsed/isExpired/isValid 三个 0 与「我的优惠券」页同口径）
+			getCouponList() {
+				https.request('/rest/member/couponsMemberRelation/list', {
+					pageNo: 1,
+					pageSize: 3,
+					isUsed: 0,
+					isExpired: 0,
+					isValid: 0
+				}).then((result) => {
+					if (result && result.success && result.data && result.data.records) {
+						this.couponList = result.data.records.slice(0, 3).map((row) => this.toCouponChip(row));
+					} else {
+						this.couponList = [];
+					}
 				});
 			},
-
-			bindOrders() {
+			// 券面额/门槛换算：preferentialType 1=折扣（discountAmount 为比率，0.38 → 3.8 折）/ 2=满减
+			toCouponChip(row) {
+				const coupon = (row && row.couponsMemberRelationMap) || row || {};
+				const type = Number(coupon.preferentialType);
+				const name = coupon.couponsName || coupon.name || '';
+				if (type === 2) {
+					return {
+						value: '¥' + (coupon.reducedPrice || 0),
+						cond: '满 ' + (coupon.limitedPrice || 0) + ' 可用',
+						small: false
+					};
+				}
+				if (type === 1) {
+					const discount = Number(coupon.discountAmount);
+					const zhe = isFinite(discount) && discount > 0 ?
+						Math.round((discount <= 1 ? discount * 10 : discount) * 10) / 10 :
+						0;
+					return {
+						value: zhe ? zhe + ' 折' : '折扣券',
+						cond: coupon.description || name || '指定酒款',
+						small: false
+					};
+				}
+				return {
+					value: name || '优惠券',
+					cond: coupon.description || '',
+					small: true
+				};
+			},
+			// C-08「我的成长值」（画板 21:660）已落地 → 直接跳转
+			goGrowth() {
 				uni.navigateTo({
-					url: '../record/record'
+					url: '/pages/mine/growth/index/index'
 				});
 			},
-
-			bindBalance() {
+			goIntegral() {
 				uni.navigateTo({
-					url: '../../balance/index/index'
+					url: '/pages/mine/integral/integral'
 				});
 			},
-
-			bindCoupons() {
+			goCoupons() {
 				uni.navigateTo({
-					url: '../../../mine/coupons/coupons'
-				});
-			},
-
-			bindVipRecharge() {
-				uni.navigateTo({
-					url: '../recharge/recharge'
+					url: '/pages/mine/coupons/coupons'
 				});
 			}
 		}
 	};
 </script>
+
 <style>
 	page {
-		background: #f5f5f5;
-		width: 100%;
-		height: 100%;
-		margin: 0;
+		background: #F0F3F2;
 	}
 
-	.page-content {
-		background-color: white;
+	.c03 {
+		min-height: 100vh;
+		background: #F0F3F2;
+		padding-bottom: 40rpx;
 	}
 
-	.member-center {
-		overflow: hidden;
-		color: #f0e0be;
-		background: #171c0f;
-		padding: 20rpx 20rpx 0 20rpx;
-		border-radius: 0 0 50% 50%/0 0 10% 10%;
+	/* ========== 等级卡（画板 298:97）：全宽绿带 ========== */
+	.c03-level {
+		padding: 32rpx 32rpx 36rpx 32rpx;
 	}
 
-	.member-vip-info {
+	.c03-level-row {
 		display: flex;
 		align-items: center;
+		justify-content: space-between;
 	}
 
-	.vip-bg-view {
-		width: 100%;
-		/* align-items: center; */
-		background: linear-gradient(to right, #f4e5c2, #e9a8a6);
-		color: #6f4e20;
-		height: 360rpx;
-		padding: 20rpx;
-		border-top-left-radius: 15rpx;
-		border-top-right-radius: 15rpx;
+	.c03-level-name {
+		font-size: 36rpx;
+		font-weight: 700;
+		line-height: 52rpx;
+		color: #ffffff;
 	}
 
-	.headImg {
-		width: 96rpx;
-		height: auto;
-		border-radius: 50%;
-	}
-
-	.member-info {
-		/* width: 70%; */
-		display: flex;
-		/* align-items: center; */
-	}
-
-	.nickname-vipEndTime {
-		margin-left: 20rpx;
-	}
-
-	.ptyh-class {
-		background: #8f8f8f;
-		padding: 2rpx 10rpx;
-		color: #f5f5f5;
-		border-radius: 10rpx;
-	}
-
-	.cjhy-class {
-		background: linear-gradient(to right, #d09650, #ba7c3f);
-		padding: 2rpx 8rpx;
-		color: white;
-		border-radius: 10rpx;
-	}
-
-	.nickname {
-		font-size: 30rpx;
-		font-weight: bold;
-		height: 50rpx;
-		line-height: 50rpx;
-	}
-
-	.vipEndTime {
+	.c03-level-more {
 		font-size: 22rpx;
+		color: #ffffff;
+		opacity: 0.95;
 	}
 
-	.renew-botton {
-		border: 1rpx solid #6f4e20;
-		padding: 0rpx 10rpx;
-		border-radius: 50rpx;
-		font-size: 24rpx;
-		background-color: #f4e5c2;
-	}
-
-	.vip-recharge-view {
-		height: 0;
-		margin-top: 25rpx;
-	}
-
-	.vip-image-view {
-		display: flex;
-		align-items: center;
-		margin-left: 15rpx;
-	}
-
-	.is-vip-image {
-		width: 36rpx;
-		height: auto;
-		margin-right: 10rpx;
-	}
-
-	.vipImg {
-		width: 280rpx;
-		height: auto;
-	}
-
-	.vip-details-view {
-		display: grid;
-		grid-template-columns: 1fr 1fr 1fr 1fr;
-		grid-row-gap: 10px;
-		grid-column-gap: 10px;
-		background-color: white;
-		margin: 20rpx;
-	}
-
-	.vip-detail {
-		display: flex;
-		align-items: center;
-		flex-direction: column;
-		color: #171c0f;
-		font-size: 30rpx;
-	}
-
-	.vip-detailImg {
-		width: 90rpx;
-		height: auto;
-	}
-
-	.iconfont.iconyue,
-	.icondingdan-,
-	.iconyouhuiquan {
-		font-size: 65rpx;
-		color: #f0dcab;
-	}
-
-	.iconfont-title {
-		font-size: 26rpx;
-	}
-
-	.iconhuiyuan1 {
-		font-size: 220rpx;
-		color: #f0deaf;
-	}
-
-	.no-vipno {
-		height: 86rpx;
-		font-weight: bold;
-		font-size: 28rpx;
-	}
-
-	.wodejl-view {
-		position: absolute;
-		right: 3%;
-		opacity: 0.6;
-		background: white;
-		padding: 10rpx 20rpx;
-		border-radius: 40rpx 0 0 40rpx;
-		color: black;
-		font-size: 28rpx;
-		font-weight: bold;
-	}
-
-	/* 个人余额和钱包等样式 */
-	.mine-blocking-view {
-		padding: 0 20rpx 20rpx 20rpx;
-		text-align: center;
-	}
-
-	.mine-blocking {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		text-align: center;
-		border-radius: 10rpx;
-	}
-
-	.mine-navigator {
-		padding: 20rpx 0;
-		width: 24%;
-		border-radius: 10rpx;
-	}
-
-	.number-tip {
-		font-size: 38rpx;
-	}
-
-	.text-tip {
-		font-size: 26rpx;
-	}
-
-	.invite-image {
-		width: 150rpx;
-		height: 150rpx;
-	}
-
-	.add_buttom {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		position: relative;
-		margin-top: -6%;
-	}
-
-	.add-vip {
-		font-size: 30rpx;
-		text-align: center;
-		padding: 15rpx;
-		background-color: #f5e9cd;
-		border-radius: 90rpx;
-		width: 40%;
-		color: #5a2e16;
-		border: 5rpx solid;
-		border-color: #e9a8a6;
-	}
-
-	.gift-view {
-		margin: 20rpx;
-	}
-
-	.gift-view-info {
-		/* width: 100%; */
-	}
-
-	.gift-image {
+	.c03-track {
+		height: 12rpx;
+		border-radius: 6rpx;
+		background: #ffffff;
+		overflow: hidden;
 		margin-top: 20rpx;
-		width: 100%;
-		height: auto;
 	}
 
-	.gift-content {
-		margin-bottom: 20rpx;
+	.c03-track-bar {
+		height: 12rpx;
+		border-radius: 6rpx;
+		background: #F0DCAB;
+	}
+
+	.c03-growth-text {
+		font-size: 22rpx;
+		line-height: 32rpx;
+		color: #ffffff;
+		margin-top: 20rpx;
+	}
+
+	/* ========== 白卡通用：与 C-01「我的」页同口径（24rpx 页边距 / 24rpx 圆角 / 28rpx 内边距 / 20rpx 卡间距） ========== */
+	.c03-card {
+		margin: 20rpx 24rpx 0 24rpx;
+		padding: 28rpx;
+		background: #ffffff;
+		border-radius: 24rpx;
+	}
+
+	.c03-card-head {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 	}
 
-	.mrwcyqrw {
-		font-size: 32rpx;
-		color: #eea025;
-		font-weight: bold;
+	.c03-card-title {
+		font-size: 28rpx;
+		font-weight: 500;
+		line-height: 40rpx;
+		color: #333333;
 	}
 
-	.stqdsh {
-		font-size: 28rpx;
+	.c03-card-more {
+		font-size: 22rpx;
 		color: #999999;
 	}
 
-	.goto-finish {
-		border: 1rpx solid #eba9a9;
-		padding: 5rpx 20rpx;
-		border-radius: 50rpx;
-		color: #df5353;
-		font-weight: bold;
-		font-size: 28rpx;
+	/* ========== 权益行（画板 298:106 / 298:109） ========== */
+	.c03-benefit-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-top: 20rpx;
 	}
 
-	.vip-rules {
-		margin: 20rpx 0;
-		padding-bottom: 80rpx;
+	.c03-benefit-item {
+		font-size: 24rpx;
+		line-height: 34rpx;
+		color: #666666;
 	}
 
-	.vip-text {
+	/* ========== 积分 / 积点数据行（画板 298:116） ========== */
+	.c03-data-row {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		margin-top: 20rpx;
+	}
+
+	.c03-data-item {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+	}
+
+	.c03-data-value {
+		font-size: 40rpx;
+		font-weight: 700;
+		line-height: 56rpx;
+	}
+
+	.c03-data-label {
+		font-size: 20rpx;
+		line-height: 26rpx;
+		color: #999999;
+		margin-top: 4rpx;
+	}
+
+	/* ========== 优惠券行（画板 298:127） ========== */
+	.c03-coupon-row {
+		display: flex;
+		margin-top: 20rpx;
+	}
+
+	.c03-coupon {
+		flex: 1;
+		height: 104rpx;
+		border-radius: 16rpx;
+		background: #F0DCAB;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		overflow: hidden;
+	}
+
+	.c03-coupon + .c03-coupon {
+		margin-left: 16rpx;
+	}
+
+	.c03-coupon-value {
 		font-size: 30rpx;
+		font-weight: 700;
+		line-height: 42rpx;
+		color: #6B5320;
+	}
+
+	/* 文字券（如「小食券」）面额降一档字号，对应画板 298:135 的 13pt */
+	.c03-coupon-value-sm {
+		font-size: 26rpx;
+	}
+
+	.c03-coupon-cond {
+		font-size: 18rpx;
+		line-height: 26rpx;
+		color: #8A7540;
+		margin-top: 4rpx;
+		max-width: 100%;
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+	}
+
+	.c03-coupon-empty {
+		font-size: 22rpx;
+		color: #B0B0B0;
+		margin-top: 20rpx;
+		padding: 24rpx 0;
+		text-align: center;
 	}
 </style>

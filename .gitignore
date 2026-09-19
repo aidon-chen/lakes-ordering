@@ -44,6 +44,8 @@ log.path_IS_UNDEFINED
 deploy/context/
 # 发版 zip 包（二进制大文件，不入库）
 deploy/*.zip
+# 归档旧包目录（发版时把上一版 zip 挪进来；deploy/*.zip 只覆盖一层，这里必须单独忽略）
+deploy/_archive/
 
 application-test.yml
 application-show.yml

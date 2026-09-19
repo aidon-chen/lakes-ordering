@@ -489,7 +489,7 @@
 						console.log(_this.userInfo.paymentPassword);
 						if (!_this.userInfo.paymentPassword) {
 							uni.navigateTo({
-								url: '../../mine/security/index/index'
+								url: '../../../mine/security/index/index'
 							});
 							return;
 						}
@@ -739,7 +739,7 @@
 				afterDiscount.type = 2;
 				//console.log(afterDiscount)
 				uni.navigateTo({
-					url: '../../mine/coupons/coupons?prevData=' + JSON.stringify(afterDiscount)
+					url: '../../../mine/coupons/coupons?prevData=' + JSON.stringify(afterDiscount)
 				});
 			},
 

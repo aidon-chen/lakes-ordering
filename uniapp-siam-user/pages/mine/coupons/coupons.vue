@@ -1,167 +1,70 @@
 <template>
-	<view>
+	<view class="c07">
+		<!-- tab 条：画板 21:593 只有单个居中「商城券」+ 主题色下划线；
+		     本页按用户口径改为 3 个状态 tab（待使用 / 已使用 / 已过期），
+		     选中态沿用 App.vue「活动tab的公共样式」里的全局 .active -->
 		<view class="swiper-content position-sticky">
 			<view class="swiper-tab self-adaption">
 				<view class="swiper-tab-item" :data-current="index" @tap="clickTab" hover-class="hover-click-class"
-					v-for="(item, index) in tabList" :key="index">
-					<view :class="'swiper_table_item_view ' + (currentTab == item.modeId ? 'active' : '')"
+					v-for="(item, index) in tabList" :key="item.key">
+					<view :class="'swiper_table_item_view ' + (currentTab === index ? 'active' : '')"
 						:data-current="index" @tap="clickTab">
-						{{ item.modeName }}
+						{{ item.name }}
 					</view>
 				</view>
 			</view>
 		</view>
-		<swiper :current="currentTab" class="swiper-box" duration="300" @change="bindSlideChange"
-			:style="'height:' + winHeight + 'px;'">
-			<swiper-item class="swiper-items">
-				<scroll-view @scrolltoupper="onPullDownRefresh" upper-threshold="-50"
-					:style="'height:' + winHeight + 'px;'" @scrolltolower="onReachBottom" lower-threshold="0" scroll-y
-					class="scroll-views" v-if="couponsList.length > 0">
-					<view class="coupins-items">
-						<radio-group>
-							<view
-								:class="'coupins-item ' + (item.couponsMemberRelationMap.isRelation ? '' : 'isRelation')"
-								v-for="(item, index) in couponsList" :key="index">
-								<view class="item-top">
-									<view>
-										<view class="couponsName">
-											{{ item.couponsMemberRelationMap.couponsName }}-{{ item.couponsMemberRelationMap.preferentialTypeText }}
-										</view>
-										<view class="endTime">有效期至{{ item.couponsMemberRelationMap.endTime }}</view>
-									</view>
-									<view class="theme-color">
-										<view class="couponsNum">
-											{{
-                                                item.couponsMemberRelationMap.preferentialType == 1
-                                                    ? item.couponsMemberRelationMap.discountAmount * 10 + '折'
-                                                    : '满' + item.couponsMemberRelationMap.limitedPrice + '减' + item.couponsMemberRelationMap.reducedPrice
-                                            }}
-										</view>
-										<view
-											v-if="item.couponsMemberRelationMap.afterDiscountPrice >= 0 && item.couponsMemberRelationMap.isRelation"
-											class="afterDiscountPrice">
-											优惠{{ item.couponsMemberRelationMap.afterDiscountPrice }}元
-										</view>
-									</view>
-								</view>
 
-								<view class="view-line"></view>
-
-								<view class="bottom-view">
-									<view class="usage-rule" @tap="onClick" :data-index="index">
-										使用规则
-										<text class="iconfont iconweibiaoti35"
-											v-if="item.couponsMemberRelationMap.isShow"></text>
-										<text class="iconfont iconhtbArrowright02"
-											v-if="!item.couponsMemberRelationMap.isShow"></text>
-									</view>
-									<view :class="
-                                            'immediate-use ' +
-                                            (!item.couponsMemberRelationMap.isExpired && !item.couponsMemberRelationMap.isUsed && item.couponsMemberRelationMap.isRelation
-                                                ? 'theme-color-border'
-                                                : 'out-of-commission') +
-                                            ' '
-                                        " @tap="
-                                            parseEventDynamicCode(
-                                                $event,
-                                                !item.couponsMemberRelationMap.isExpired && !item.couponsMemberRelationMap.isUsed && item.couponsMemberRelationMap.isRelation
-                                                    ? 'onImmediateUse'
-                                                    : ''
-                                            )
-                                        " v-if="!item.couponsMemberRelationMap.checked" :data-index="index">
-										立即使用
-									</view>
-									<label class="checkbox-group-label" v-else>
-										<checkbox :value="index" :data-index="index" @tap="onRadioChange"
-											class="theme-color theme-border-color"
-											:checked="item.couponsMemberRelationMap.checked" />
-									</label>
-								</view>
-
-								<view v-if="item.couponsMemberRelationMap.isShow" class="usage-rule">
-									{{ item.couponsMemberRelationMap.description }}
-								</view>
+		<scroll-view :style="'height:' + winHeight + 'px;'" scroll-y class="scroll-views">
+			<view class="coupins-items" v-if="activeList.length > 0">
+				<view :class="'coupins-item ' + (itemDisabled(item) ? 'isRelation' : '')"
+					v-for="(item, index) in activeList" :key="item.key">
+					<view class="item-top">
+						<view>
+							<view class="couponsName">
+								{{ item.record.couponsMemberRelationMap.couponsName }}-{{ item.record.couponsMemberRelationMap.preferentialTypeText }}
 							</view>
-						</radio-group>
-					</view>
-				</scroll-view>
-				<van-empty :description="'暂无' + tabList[0].modeName" v-if="couponsList.length <= 0" />
-			</swiper-item>
-			<swiper-item class="swiper-items">
-				<scroll-view @scrolltoupper="onPullDownRefresh" upper-threshold="-50"
-					:style="'height:' + winHeight + 'px;'" @scrolltolower="onReachBottom" lower-threshold="0" scroll-y
-					class="scroll-views" v-if="couponsPointsList.length > 0">
-					<view class="coupins-items">
-						<radio-group>
-							<view
-								:class="'coupins-item ' + (item.couponsMemberRelationMap.isRelation ? '' : 'isRelation')"
-								v-for="(item, index) in couponsPointsList" :key="index">
-								<view class="item-top">
-									<view>
-										<view class="couponsName">
-											{{ item.couponsMemberRelationMap.couponsName }}-{{ item.couponsMemberRelationMap.preferentialTypeText }}
-										</view>
-										<view class="endTime">有效期至{{ item.couponsMemberRelationMap.endTime }}</view>
-									</view>
-									<view class="theme-color">
-										<view class="couponsNum">
-											{{
-                                                item.couponsMemberRelationMap.preferentialType == 1
-                                                    ? item.couponsMemberRelationMap.discountAmount * 10 + '折'
-                                                    : '满' + item.couponsMemberRelationMap.limitedPrice + '减' + item.couponsMemberRelationMap.reducedPrice
-                                            }}
-										</view>
-										<view
-											v-if="item.couponsMemberRelationMap.afterDiscountPrice >= 0 && item.couponsMemberRelationMap.isRelation"
-											class="afterDiscountPrice">
-											优惠{{ item.couponsMemberRelationMap.afterDiscountPrice }}元
-										</view>
-									</view>
-								</view>
-
-								<view class="view-line"></view>
-
-								<view class="bottom-view">
-									<view class="usage-rule" @tap="onPointsClick" :data-index="index">
-										使用规则
-										<text class="iconfont iconweibiaoti35"
-											v-if="item.couponsMemberRelationMap.isShow"></text>
-										<text class="iconfont iconhtbArrowright02"
-											v-if="!item.couponsMemberRelationMap.isShow"></text>
-									</view>
-									<view :class="
-                                            'immediate-use ' +
-                                            (!item.couponsMemberRelationMap.isExpired && !item.couponsMemberRelationMap.isUsed && item.couponsMemberRelationMap.isRelation
-                                                ? 'theme-color-border'
-                                                : 'out-of-commission') +
-                                            ' '
-                                        " @tap="
-                                            parseEventDynamicCode(
-                                                $event,
-                                                !item.couponsMemberRelationMap.isExpired && !item.couponsMemberRelationMap.isUsed && item.couponsMemberRelationMap.isRelation
-                                                    ? 'onImmediatePointsUse'
-                                                    : ''
-                                            )
-                                        " v-if="!item.couponsMemberRelationMap.checked" :data-index="index">
-										立即使用
-									</view>
-									<label class="checkbox-group-label" v-else>
-										<checkbox :value="index" :data-index="index" @tap="onPointsRadioChange"
-											class="theme-color theme-border-color"
-											:checked="item.couponsMemberRelationMap.checked" />
-									</label>
-								</view>
-
-								<view v-if="item.couponsMemberRelationMap.isShow" class="usage-rule">
-									{{ item.couponsMemberRelationMap.description }}
-								</view>
+							<view class="endTime">有效期至{{ item.record.couponsMemberRelationMap.endTime }}</view>
+						</view>
+						<view class="theme-color">
+							<view class="couponsNum">{{ amountText(item.record.couponsMemberRelationMap) }}</view>
+							<view class="afterDiscountPrice" v-if="discountText(item.record.couponsMemberRelationMap)">
+								{{ discountText(item.record.couponsMemberRelationMap) }}
 							</view>
-						</radio-group>
+						</view>
 					</view>
-				</scroll-view>
-				<van-empty :description="'暂无' + tabList[1].modeName" v-if="couponsPointsList.length <= 0" />
-			</swiper-item>
-		</swiper>
+
+					<view class="view-line"></view>
+
+					<view class="bottom-view">
+						<view class="usage-rule" @tap="toggleRule(item)">
+							使用规则
+							<text class="iconfont iconweibiaoti35"
+								v-if="item.record.couponsMemberRelationMap.isShow"></text>
+							<text class="iconfont iconhtbArrowright02" v-else></text>
+						</view>
+						<!-- 待使用可操作；已使用 / 已过期 只读展示状态 -->
+						<block v-if="item.status === 'wait'">
+							<view v-if="!item.record.couponsMemberRelationMap.checked"
+								:class="'immediate-use ' + (canUse(item) ? 'theme-color-border' : 'out-of-commission')"
+								@tap="onUse(item)">
+								立即使用
+							</view>
+							<label class="checkbox-group-label" v-else>
+								<checkbox :value="index" :checked="item.record.couponsMemberRelationMap.checked"
+									class="theme-color theme-border-color" @tap="onCancelUse(item)" />
+							</label>
+						</block>
+						<view v-else class="immediate-use out-of-commission">{{ statusText(item.status) }}</view>
+					</view>
+
+					<view v-if="item.record.couponsMemberRelationMap.isShow" class="usage-rule">
+						{{ item.record.couponsMemberRelationMap.description }}
+					</view>
+				</view>
+			</view>
+			<van-empty v-else :description="'暂无' + tabList[currentTab].name" />
+		</scroll-view>
 	</view>
 </template>
 
@@ -177,23 +80,29 @@
 	export default {
 		data() {
 			return {
+				// 两条券来源各自保留原始数组：选券回填与满减计算都按「数组下标」索引，不能合并成一个
 				couponsList: [],
-				currentTab: 0,
+				couponsPointsList: [],
 				tabList: [{
-						modeId: 0,
-						modeName: '外卖券'
+						key: 'wait',
+						name: '待使用'
 					},
 					{
-						modeId: 1,
-						modeName: '商城券'
+						key: 'used',
+						name: '已使用'
+					},
+					{
+						key: 'expired',
+						name: '已过期'
 					}
 				],
-				prevData: {
-					fullPriceReduction: '',
-					couponsIsHidden: false
-				},
+				currentTab: 0,
 				winHeight: '',
-				couponsPointsList: '',
+				// 选券模式（支付页带 prevData 进来）才有值；纯浏览时为 null。
+				// ⚠️ 原实现初始化为对象 → 恒为真 → 浏览模式也走「订单上下文」分支：
+				//    该分支在无 shopId 时一条都不命中，且不会给 isRelation 赋值，
+				//    结果整列表被 .isRelation 置灰、按钮显示为不可用（看着像没做）。
+				prevData: null,
 				afterDiscount: '',
 				data: {
 					couponsIsHidden: false
@@ -202,32 +111,55 @@
 				modeName: ''
 			};
 		},
+		computed: {
+			todayKey() {
+				const d = new Date();
+				const pad = (n) => (n < 10 ? '0' + n : '' + n);
+				return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+			},
+			// 两条来源按状态分桶；每项带 source + 在各自原始数组中的下标，供选券回填复用既有方法
+			buckets() {
+				const buckets = {
+					wait: [],
+					used: [],
+					expired: []
+				};
+				const collect = (list, source) => {
+					(list || []).forEach((record, index) => {
+						const info = record.couponsMemberRelationMap || {};
+						const status = this.resolveStatus(info);
+						buckets[status].push({
+							key: source + '-' + (info.id !== undefined && info.id !== null ? info.id :
+								index),
+							source: source,
+							index: index,
+							record: record,
+							status: status
+						});
+					});
+				};
+				collect(this.couponsList, 'merchant');
+				collect(this.couponsPointsList, 'mall');
+				return buckets;
+			},
+			activeList() {
+				return this.buckets[this.tabList[this.currentTab].key] || [];
+			}
+		},
 		/**
 		 * 生命周期函数--监听页面加载
 		 */
 		onLoad: function(options) {
-			console.log(options);
 			app = getApp();
-			//可以直接取上一个页面的数据
-			var prevData = options.prevData;
-			console.log(prevData);
+			// 选券模式：支付页带 prevData 进来，选完回填上一页；否则是纯浏览
+			var prevData = options && options.prevData;
 			if (prevData) {
 				prevData = JSON.parse(prevData);
-				console.log(prevData);
 				prevData.checked = true;
 				this.prevData = prevData;
-				console.log(prevData.type);
-				if (prevData.type == 2) {
-					this.getCouponsMemberPointsMallRelation();
-				} else {
-					this.getCouponsMemberRelation();
-				}
-				this.currentTab = prevData.type - 1;
-			} else {
-				this.getCouponsMemberRelation();
-				this.getCouponsMemberPointsMallRelation();
 			}
-			
+			this.getCouponsMemberRelation();
+			this.getCouponsMemberPointsMallRelation();
 		},
 		/**
 		 * 生命周期函数--监听页面初次渲染完成
@@ -242,15 +174,11 @@
 		/**
 		 * 生命周期函数--监听页面隐藏
 		 */
-		onHide: function() {
-			//this.getFullReductionRule();
-		},
+		onHide: function() {},
 		/**
 		 * 生命周期函数--监听页面卸载
 		 */
-		onUnload: function() {
-			//this.getFullReductionRule();
-		},
+		onUnload: function() {},
 		/**
 		 * 页面相关事件处理函数--监听用户下拉动作
 		 */
@@ -258,79 +186,147 @@
 		/**
 		 * 页面上拉触底事件的处理函数
 		 */
-		onReachBottom: function() {
-			// if(this.data.isLastPage){
-			//   toastService.showToast("没有更多啦~");
-			//   return;
-			// }
-			// pageNo = pageNo + 1;
-			// this.getCouponsMemberRelation();
-		},
+		onReachBottom: function() {},
 		/**
 		 * 用户点击右上角分享
 		 */
 		onShareAppMessage: function() {},
 		methods: {
+			// 列表高度 = 窗口高 − tab 条高。
+			// ⚠️ 原实现用 this.prevData 判空，而它恒为对象 → 永远不减 tab 高，列表会被 tab 压住
 			getHeight() {
-				//获取用户手机系统信息
-				var that = this;
 				uni.getSystemInfo({
-					success: function(res) {
-						let winHeight = res.windowHeight; //获取高度
-						//获取class为settlement-view并减去这个高度，自适应scrollview的高度
-						if (that.prevData) {
-							that.setData({
-								winHeight: winHeight
-							});
-						} else {
-							const query = uni.createSelectorQuery();
-							query.select('.swiper-content').boundingClientRect();
-							query.selectViewport().scrollOffset();
-							query.exec(function(res) {
-								console.log(winHeight - res[0].height);
-								that.setData({
-									winHeight: winHeight - res[0].height
-								});
-							});
-						}
+					success: (res) => {
+						const query = uni.createSelectorQuery();
+						query.select('.swiper-content').boundingClientRect();
+						query.selectViewport().scrollOffset();
+						query.exec((rects) => {
+							const tabHeight = rects && rects[0] ? rects[0].height : 44;
+							this.winHeight = res.windowHeight - tabHeight;
+						});
 					}
 				});
 			},
 
-			// 滑动切换tab
-			bindSlideChange: function(e) {
-				console.log(e);
-				// if (e.detail.current == 1) {
-				//   if (this.data.mallList.length <= 0) {
-				//     this.getMallOrderList();
-				//   }
-				// }
-				this.setData({
-					currentTab: e.detail.current
-				});
+			// 状态判定：已使用优先；过期以 endTime 与今天做字符串比较
+			// （endTime 已在上面的取数里被格式化成 YYYY-MM-DD，定时任务关闭时 is_expired 不可信）
+			resolveStatus(info) {
+				if (info.isUsed) {
+					return 'used';
+				}
+				const end = info.endTime ? String(info.endTime) : '';
+				if (info.isExpired) {
+					return 'expired';
+				}
+				if (end && end.length >= 10 && end.substring(0, 10) < this.todayKey) {
+					return 'expired';
+				}
+				return 'wait';
 			},
 
-			//点击切换
-			clickTab: function(e) {
-				//console.log(e.target.dataset.current)
-				if (this.currentTab === e.target.dataset.current) {
+			statusText(status) {
+				if (status === 'used') {
+					return '已使用';
+				}
+				if (status === 'expired') {
+					return '已过期';
+				}
+				return '';
+			},
+
+			// 券面额：1=折扣（discountAmount 是比率，0.38 → 3.8 折）/ 2=满减
+			amountText(info) {
+				if (!info) {
+					return '';
+				}
+				if (Number(info.preferentialType) === 1) {
+					const zhe = Number(info.discountAmount);
+					if (!isFinite(zhe) || zhe <= 0) {
+						return '折扣券';
+					}
+					return (zhe <= 1 ? zhe * 10 : zhe) + '折';
+				}
+				return '满' + (info.limitedPrice || 0) + '减' + (info.reducedPrice || 0);
+			},
+
+			// 优惠金额：选券模式用订单算出的真实值；浏览模式无订单金额，
+			// 满减券直接展示券面额（对应画板 21:593 卡片的「优惠10元」）
+			discountText(info) {
+				if (!info || !info.isRelation) {
+					return '';
+				}
+				const after = info.afterDiscountPrice;
+				if (after !== undefined && after !== null && Number(after) >= 0) {
+					return '优惠' + after + '元';
+				}
+				if (!this.prevData && Number(info.preferentialType) === 2) {
+					return '优惠' + (info.reducedPrice || 0) + '元';
+				}
+				return '';
+			},
+
+			canUse(item) {
+				return item.status === 'wait' && !!item.record.couponsMemberRelationMap.isRelation;
+			},
+
+			itemDisabled(item) {
+				return item.status !== 'wait' || !item.record.couponsMemberRelationMap.isRelation;
+			},
+
+			// 点击切换
+			clickTab(e) {
+				const index = Number(e.currentTarget.dataset.current);
+				if (this.currentTab === index) {
 					return false;
+				}
+				this.currentTab = index;
+			},
+
+			toggleRule(item) {
+				const info = item.record.couponsMemberRelationMap;
+				info.isShow = !info.isShow;
+			},
+
+			// 把点击派回既有方法：它们按「原始数组下标」索引，故这里还原 legacy 的 event 形状
+			onUse(item) {
+				if (!this.canUse(item)) {
+					return;
+				}
+				const e = {
+					currentTarget: {
+						dataset: {
+							index: item.index
+						}
+					}
+				};
+				if (item.source === 'merchant') {
+					this.onImmediateUse(e);
 				} else {
-					// 显示加载图标
-					this.setData({
-						currentTab: e.target.dataset.current
-					});
+					this.onImmediatePointsUse(e);
+				}
+			},
+
+			onCancelUse(item) {
+				const e = {
+					currentTarget: {
+						dataset: {
+							index: item.index
+						}
+					}
+				};
+				if (item.source === 'merchant') {
+					this.onRadioChange(e);
+				} else {
+					this.onPointsRadioChange(e);
 				}
 			},
 
 			getCouponsMemberRelation() {
 				toastService.showLoading();
-				https.request('/rest/member/couponsMemberRelation/list', {
+				// 不再带 isUsed/isExpired 过滤：三个状态 tab 由客户端分桶（后端 SQL 另有 is_valid=1 硬编码）
+https.request('/rest/member/couponsMemberRelation/list', {
 					pageNo: pageNo,
-					pageSize: pageSize,
-					isUsed: 0,
-					isExpired: 0,
-					isValid: 0
+					pageSize: pageSize
 				}).then((result) => {
 					toastService.hideLoading();
 					if (result.success) {
@@ -434,21 +430,26 @@
 							//}
 						});
 
-						this.setData({
-							couponsList: result.data.records
+												// 安全网：取数分支已给浏览模式置 isRelation=true，这里兜住任何漏网的记录，
+						// 否则模板会按「不可用」把它置灰
+						const records = result.data.records || [];
+						records.forEach((row) => {
+							const info = row.couponsMemberRelationMap || {};
+							if (info.isRelation === undefined) {
+								info.isRelation = true;
+							}
 						});
+						this.couponsList = records;
 					}
 				});
 			},
 
 			getCouponsMemberPointsMallRelation() {
 				toastService.showLoading();
-				https.request('/rest/member/pointsMall/couponsMemberRelation/list', {
+				// 同商家券：取全量，状态分桶在客户端做
+https.request('/rest/member/pointsMall/couponsMemberRelation/list', {
 					pageNo: pageNo,
-					pageSize: pageSize,
-					isUsed: 0,
-					isExpired: 0,
-					isValid: 0
+					pageSize: pageSize
 				}).then((result) => {
 					toastService.hideLoading();
 					if (result.success) {
@@ -541,33 +542,16 @@
 							//}
 						});
 
-						this.setData({
-							couponsPointsList: result.data.records
+												// 安全网：同上（浏览模式整列表被置灰的兜底）
+						const records = result.data.records || [];
+						records.forEach((row) => {
+							const info = row.couponsMemberRelationMap || {};
+							if (info.isRelation === undefined) {
+								info.isRelation = true;
+							}
 						});
+						this.couponsPointsList = records;
 					}
-				});
-			},
-
-			onClick(e) {
-				//设置当前点击的使用规则为显示
-				this.couponsList[e.currentTarget.dataset.index].couponsMemberRelationMap.isShow = this.couponsList[e
-						.currentTarget.dataset.index].couponsMemberRelationMap.isShow ?
-					false :
-					true;
-				this.setData({
-					couponsList: this.couponsList
-				});
-			},
-
-			onPointsClick(e) {
-				//设置当前点击的使用规则为显示
-				this.couponsPointsList[e.currentTarget.dataset.index].couponsMemberRelationMap.isShow = this
-					.couponsPointsList[e.currentTarget.dataset.index].couponsMemberRelationMap
-					.isShow ?
-					false :
-					true;
-				this.setData({
-					couponsPointsList: this.couponsPointsList
 				});
 			},
 
@@ -592,12 +576,9 @@
 					//   "data.fullPriceReduction": utilHelper.toFixed((this.data.prevData.actualPrice - afterDiscounts.price), 2),
 					//   "data.couponsIsHidden": true
 					// })
-					this.setData({
-						afterDiscount: afterDiscounts,
-						'prevData.fullPriceReduction': utilHelper.toFixed(this.prevData.actualPrice -
-							afterDiscounts.price, 2),
-						'prevData.couponsIsHidden': true
-					});
+					this.afterDiscount = afterDiscounts;
+					this.prevData.fullPriceReduction = utilHelper.toFixed(this.prevData.actualPrice - afterDiscounts.price, 2);
+					this.prevData.couponsIsHidden = true;
 					this.getFullReductionRule();
 					//console.log(prevPage.data)
 					//wx.navigateBack(1);
@@ -641,12 +622,9 @@
 					//   "data.fullPriceReduction": utilHelper.toFixed((this.data.prevData.actualPrice - afterDiscounts.price), 2),
 					//   "data.couponsIsHidden": true
 					// })
-					this.setData({
-						afterDiscount: afterDiscounts,
-						'prevData.fullPriceReduction': utilHelper.toFixed(this.prevData.actualPrice -
-							afterDiscounts.price, 2),
-						'prevData.couponsIsHidden': true
-					});
+					this.afterDiscount = afterDiscounts;
+					this.prevData.fullPriceReduction = utilHelper.toFixed(this.prevData.actualPrice - afterDiscounts.price, 2);
+					this.prevData.couponsIsHidden = true;
 					this.getPointsFullReductionRule();
 					//console.log(prevPage.data)
 					//wx.navigateBack(1);
@@ -655,7 +633,8 @@
 				let couponIndex = e.currentTarget.dataset.index;
 				console.log(this.couponsPointsList[couponIndex]);
 				uni.switchTab({
-					url: '../../mall/index/index'
+					// switchTab 必须用 tabBar 里的绝对路径；商城 tab 是 pages/internal/mall/index/index
+					url: '/pages/internal/mall/index/index'
 				});
 			},
 
@@ -727,10 +706,9 @@
 							app.globalData.deliveryAndSelfTaking.isThereADiscount = true;
 						}
 						console.log('获取价格====' + this.prevData.fullPriceReductionBefore);
-						prevPage.setData({
-							data: this.prevData,
-							afterDiscount: this.afterDiscount
-						});
+						// vue3 下 prevPage 也没有 setData → 直接赋值（this.prevData 是 data 字段，整体替换）
+						prevPage.data = this.prevData;
+						prevPage.afterDiscount = this.afterDiscount;
 						uni.navigateBack(1);
 					}
 				});
@@ -779,10 +757,9 @@
 							}
 						}
 						console.log('获取价格====' + this.prevData.fullPriceReductionBefore);
-						prevPage.setData({
-							data: this.prevData,
-							afterDiscount: this.afterDiscount
-						});
+						// vue3 下 prevPage 也没有 setData → 直接赋值（this.prevData 是 data 字段，整体替换）
+						prevPage.data = this.prevData;
+						prevPage.afterDiscount = this.afterDiscount;
 						uni.navigateBack(1);
 					}
 				});
@@ -855,11 +832,9 @@
 							app.globalData.deliveryAndSelfTaking.isThereADiscount = true;
 						}
 						console.log('获取最终价格====' + this.prevData.fullPriceReduction);
-						prevPage.setData({
-							feeData: reducedDeliveryPrice,
-							data: this.prevData,
-							'data.couponsIsHidden': false
-						});
+						prevPage.feeData = reducedDeliveryPrice;
+						prevPage.data = this.prevData;
+						prevPage.data.couponsIsHidden = false;
 					}
 				});
 			},
@@ -907,10 +882,8 @@
 						}
 
 						console.log('获取最终价格====' + this.prevData.fullPriceReduction);
-						prevPage.setData({
-							data: this.prevData,
-							'data.couponsIsHidden': false
-						});
+						prevPage.data = this.prevData;
+						prevPage.data.couponsIsHidden = false;
 					}
 				});
 			},
@@ -926,14 +899,11 @@
 				afterDiscounts.couponsName = null;
 				afterDiscounts.couponsDescription = null;
 				afterDiscounts.preferentialType = null;
-				prevPage.setData({
-					afterDiscount: afterDiscounts
-				});
+				prevPage.afterDiscount = afterDiscounts;
 				this.getFullReductionRule_();
 				this.couponsList[e.currentTarget.dataset.index].couponsMemberRelationMap.checked = false;
-				this.setData({
-					couponsList: this.couponsList
-				});
+				// vue3 对 data 字段是响应式的，直接改数组元素即会重渲染，无需再刷一次
+					void 0;
 			},
 
 			onPointsRadioChange(e) {
@@ -947,28 +917,22 @@
 				afterDiscounts.couponsName = null;
 				afterDiscounts.couponsDescription = null;
 				afterDiscounts.preferentialType = null;
-				prevPage.setData({
-					afterDiscount: afterDiscounts
-				});
+				prevPage.afterDiscount = afterDiscounts;
 				this.getPonintsFullReductionRule_();
 				this.couponsPointsList[e.currentTarget.dataset.index].couponsMemberRelationMap.checked = false;
-				this.setData({
-					couponsPointsList: this.couponsPointsList
-				});
+				void 0;
 			},
 
-			onPullDownRefresh() {
-				console.log('占位：函数 onPullDownRefresh 未声明');
-			},
-
-			onReachBottom() {
-				console.log('占位：函数 onReachBottom 未声明');
-			}
 		}
 	};
 </script>
 <style>
 	page {
+		background: #f5f5f5;
+	}
+
+	.c07 {
+		min-height: 100vh;
 		background: #f5f5f5;
 	}
 
@@ -978,15 +942,6 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-	}
-
-	.swiper-tab-item {
-		width: 50%;
-	}
-
-	.swiper-box {
-		/* height: 400rpx; */
-		border-radius: 0 0 15rpx 15rpx;
 	}
 
 	.swiper-tab {
@@ -1002,19 +957,9 @@
 		z-index: 1;
 	}
 
+	/* 3 个状态 tab 等分（原为 2 tab 写死的 50%） */
 	.swiper-tab-item {
-		width: 50%;
-	}
-
-	.swiper-box {
-		display: block;
-		width: 100%;
-		height: 100%;
-		overflow: hidden;
-	}
-
-	.swiper-items {
-		height: 100%;
+		flex: 1;
 	}
 
 	.scroll-views {
@@ -1047,6 +992,7 @@
 	.couponsName {
 		font-size: 30rpx;
 		font-weight: bold;
+		color: #333333;
 	}
 
 	.endTime {
@@ -1075,7 +1021,7 @@
 	}
 
 	.afterDiscountPrice {
-		color: red;
+		color: #FF4343;
 		font-size: 24rpx;
 		text-align: right;
 	}

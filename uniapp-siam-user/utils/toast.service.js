@@ -1,4 +1,22 @@
 import GlobalConfig from './global-config';
+
+// loading 租约计数。
+// 微信要求 showLoading / hideLoading 成对出现，次数不匹配就会在控制台刷
+// 「请注意 showLoading 与 hideLoading 必须配对使用」。
+// 旧实现每次 show 都挂一个「3s 后无条件 hideLoading」的定时器，和业务代码里的
+// hideLoading 互相踩踏 —— A 的定时器把 B 的 loading 关掉，B 那句 hide 就打空。
+// 改为计数：show +1、hide -1，只有归零才真正调平台 API；3s 兜底也走计数。
+let loadingCount = 0;
+const hideLoadingCounted = function() {
+	if (loadingCount <= 0) {
+		return;
+	}
+	loadingCount--;
+	if (loadingCount === 0) {
+		uni.hideLoading();
+	}
+};
+
 export default {
 	showToast: function(title = '', duration) {
 		uni.showToast({
@@ -43,19 +61,23 @@ export default {
 	 * 显示加载
 	 */
 	showLoading: function(title = '正在加载...', mask = true) {
-		uni.showLoading({
-			title: title,
-			mask: mask
-		});
-		setTimeout(function () {
-			uni.hideLoading();
+		if (loadingCount === 0) {
+			uni.showLoading({
+				title: title,
+				mask: mask
+			});
+		}
+		loadingCount++;
+		//3s 兜底：调用方忘了 hideLoading 也能自己收起来（走计数，不会多减）
+		setTimeout(function() {
+			hideLoadingCounted();
 		}, 3000);
 	},
 	/**
 	 * 隐藏加载
 	 */
 	hideLoading: function() {
-		uni.hideLoading();
+		hideLoadingCounted();
 	},
 	/**
 	 * 显示模态窗口
