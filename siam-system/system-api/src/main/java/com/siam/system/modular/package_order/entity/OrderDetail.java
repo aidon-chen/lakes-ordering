@@ -55,6 +55,9 @@ public class OrderDetail {
 
     private Boolean isDeleted;
 
+    @ApiModelProperty(notes = "单品备注（C-08：随订单明细落库）")
+    private String remark;
+
     //页码
     @TableField(exist = false) private Integer pageNo = 1;
 
@@ -179,5 +182,13 @@ public class OrderDetail {
 
     public void setIsDeleted(Boolean isDeleted) {
         this.isDeleted = isDeleted;
+    }
+
+    public String getRemark() {
+        return remark;
+    }
+
+    public void setRemark(String remark) {
+        this.remark = remark == null ? null : remark.trim();
     }
 }

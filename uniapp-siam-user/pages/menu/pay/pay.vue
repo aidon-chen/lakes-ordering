@@ -153,7 +153,18 @@
 					<view class="remarks-title">特殊备注要求</view>
 					<view class="remarks-input-num">{{ inputLength }}/30</view>
 				</view>
-				<textarea class="textarea-remarks" @input="remarksInput" maxlength="30" placeholder="输入其他特殊备注要求（可不填）"
+				<!-- C-08 常用备注快捷标签（设计稿 A-05·快捷标签行 163:280） -->
+				<view class="quick-remark-view">
+					<view v-for="(item, index) in quickRemarkOptions" :key="index"
+						:class="'quick-remark-tag-shape ' + (quickRemarkActive(item) ? 'theme-bg-light theme-color' : 'quick-remark-tag-idle')"
+						@tap="toggleQuickRemark(item)">{{ item }}</view>
+				</view>
+				<!-- C-08 单品备注行（设计稿 A-05·单品备注行 163:287） -->
+				<view class="item-remark-view" @tap="openItemRemark">
+					<view class="item-remark-text theme-color">单品备注{{ itemRemarkSummary() ? '　' + itemRemarkSummary() : '　未设置' }}</view>
+					<view class="item-remark-edit theme-color">修改 ›</view>
+				</view>
+				<textarea class="textarea-remarks" :value="remarks" @input="remarksInput" maxlength="30" placeholder="输入其他特殊备注要求（可不填）"
 					placeholder-class="textarea-placeholder"></textarea>
 			</view>
 		</view>
@@ -172,6 +183,21 @@
 				@tap="parseEventDynamicCode($event, isForgetThePassword ? 'showPwdLayer' : 'getRequestSubscribeMessage')">
 				去支付
 			</view>
+		</view>
+		<!-- C-08 单品备注弹层（设计稿 A-05·单品备注行 163:287 的「修改 ›」入口） -->
+		<view class="item-remark-mask" v-if="itemRemarkShow" @tap="closeItemRemark"></view>
+		<view class="item-remark-sheet" v-if="itemRemarkShow">
+			<view class="item-remark-sheet-title">单品备注</view>
+			<view class="item-remark-sheet-tip">可为每件商品单独备注（各 20 字内）</view>
+			<scroll-view scroll-y class="item-remark-sheet-list">
+				<view class="item-remark-sheet-row" v-for="(item, index) in orderDetail.orderDetailList" :key="index">
+					<view class="item-remark-sheet-name">{{ item.goodsName }}</view>
+					<input class="item-remark-sheet-input" :value="itemRemarkDraft[index]" maxlength="20"
+						placeholder="如：加冰、少冰（可不填）" placeholder-class="textarea-placeholder"
+						@input="onItemRemarkInput(index, $event)" />
+				</view>
+			</scroll-view>
+			<view class="item-remark-sheet-save theme-bg" hover-class="hover-class-public" @tap="closeItemRemark">完成</view>
 		</view>
 		<van-dialog use-slot :show="showPayPwdInput" :showConfirmButton="false" :showCancelButton="false" z-index='1'>
 			<view class="flex_between content_box">
@@ -242,6 +268,12 @@
 				inputLength: 0,
 				deliveryData: {},
 				remarks: '',
+				//C-08 常用备注快捷标签（对应设计稿 A-05 备注卡·快捷标签行 163:280）
+				quickRemarkOptions: ['冰块少放', '分开下单', '插吸管'],
+				//C-08 单品备注弹层
+				itemRemarkShow: false,
+				//C-08 单品备注草稿（与 orderDetail.orderDetailList 按下标对齐）
+				itemRemarkDraft: [],
 				selfOutItems: [{
 					text: "自提",
 					tap: "slefTap",
@@ -444,6 +476,8 @@
 				this.orderDetail = orderDetail;
 				this.payType = orderDetail.payType;
 				this.initData = orderDetail;
+				//C-08 单品备注草稿：与 orderDetailList 等长，独立存放避免污染 globalData
+				this.itemRemarkDraft = new Array((orderDetail.orderDetailList || []).length).fill('');
 				this.selfOutActiveIndex = app.globalData.deliveryAndSelfTaking.selfOutActiveIndex;
 				this.getShopInfo(orderDetail.initShopInfo);
 				_this.selectCommissionReward(orderDetail);
@@ -572,11 +606,72 @@
 			},
 
 			remarksInput(e) {
-				this.setData({
-					inputLength: e.detail.value.length,
-					remarks: e.detail.value
-				});
+				this.remarks = e.detail.value;
+				this.inputLength = this.remarks ? this.remarks.length : 0;
 			},
+
+			/** C-08 快捷标签是否已生效（备注文本中包含该标签） */
+			quickRemarkActive(text) {
+				return (this.remarks || '').indexOf(text) > -1;
+			},
+
+			/** C-08 常用备注快捷标签：点击追加 / 再点移除，统一以备注文本为唯一数据源 */
+			toggleQuickRemark(text) {
+				let value = this.remarks || '';
+				if (value.indexOf(text) > -1) {
+					//已选中 → 摘除标签，并清理因此产生的空档分隔符
+					value = value.split(text).join('');
+					value = value.replace(/^，+/, '').replace(/，+$/, '').replace(/，{2,}/g, '，');
+				} else {
+					if (!value) {
+						value = text;
+					} else if (value.length + 1 + text.length <= 30) {
+						value = value + '，' + text;
+					} else {
+						toastService.showToast('备注已达 30 字上限');
+						return;
+					}
+				}
+				if (value.length > 30) {
+					value = value.substring(0, 30);
+				}
+				this.remarks = value;
+				this.inputLength = value.length;
+			},
+
+			/** C-08 单品备注汇总文案：`商品名：备注`，多条以「；」连接 */
+			itemRemarkSummary() {
+				let list = (this.orderDetail && this.orderDetail.orderDetailList) || [];
+				let parts = [];
+				for (let i = 0; i < list.length; i++) {
+					let remark = this.itemRemarkDraft[i];
+					if (remark) {
+						parts.push(list[i].goodsName + '：' + remark);
+					}
+				}
+				return parts.join('；');
+			},
+
+			/** C-08 打开单品备注弹层（无可点商品时不响应） */
+			openItemRemark() {
+				let list = (this.orderDetail && this.orderDetail.orderDetailList) || [];
+				if (!list.length) {
+					return;
+				}
+				this.itemRemarkShow = true;
+			},
+
+			closeItemRemark() {
+				this.itemRemarkShow = false;
+			},
+
+			/** C-08 单品备注输入：整数组替换以触发视图刷新 */
+			onItemRemarkInput(index, e) {
+				let draft = this.itemRemarkDraft.slice();
+				draft[index] = e.detail.value;
+				this.itemRemarkDraft = draft;
+			},
+
 			getShopInfo(initShopInfo) {
 				var shopId = initShopInfo.id;
 				https.request('/rest/shop/detail', {
@@ -932,7 +1027,9 @@
 									goodsId: list[key].goodsId,
 									goodsName: list[key].goodsName,
 									specList: list[key].specList,
-									number: list[key].number
+									number: list[key].number,
+									//C-08 单品备注：随明细一起提交，后端落 tb_order_detail.remark
+									remark: this.itemRemarkDraft[key] || ''
 								});
 								if (payType == 'car') {
 									data.shoppingCartIdList.push(list[key].id);
@@ -1615,6 +1712,119 @@
 		height: 120rpx;
 		font-size: 28rpx;
 		z-index: 0;
+	}
+
+	/* C-08 常用备注快捷标签（设计稿 A-05 备注卡·快捷标签行 163:280：高 26／圆角 13／左右内距 12／间距 8）
+	   ⚠️ 几何与配色分两个类：配色只由「未选中」类承担，选中态交给主题类（.theme-bg-light/.theme-color），
+	   避免页内样式（后加载）覆盖 app.wxss 的主题色导致选中态仍是灰字 */
+	.quick-remark-view {
+		display: flex;
+		flex-direction: row;
+		flex-wrap: wrap;
+		margin-bottom: 16rpx;
+	}
+
+	.quick-remark-tag-shape {
+		height: 52rpx;
+		line-height: 52rpx;
+		padding: 0 24rpx;
+		margin-right: 16rpx;
+		border-radius: 26rpx;
+		font-size: 24rpx;
+	}
+
+	.quick-remark-tag-idle {
+		background: #f5f5f5;
+		color: #666666;
+	}
+
+	/* C-08 单品备注行（设计稿 A-05·单品备注行 163:287） */
+	.item-remark-view {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 16rpx;
+	}
+
+	.item-remark-text {
+		font-size: 24rpx;
+		flex: 1;
+	}
+
+	.item-remark-edit {
+		font-size: 24rpx;
+		flex-shrink: 0;
+		margin-left: 16rpx;
+	}
+
+	/* C-08 单品备注弹层 */
+	.item-remark-mask {
+		position: fixed;
+		left: 0;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		background: rgba(0, 0, 0, 0.5);
+		z-index: 900;
+	}
+
+	.item-remark-sheet {
+		position: fixed;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background: #ffffff;
+		border-radius: 24rpx 24rpx 0 0;
+		padding: 32rpx 32rpx 40rpx 32rpx;
+		z-index: 901;
+	}
+
+	.item-remark-sheet-title {
+		font-size: 32rpx;
+		color: #333333;
+		text-align: center;
+		line-height: 48rpx;
+	}
+
+	.item-remark-sheet-tip {
+		font-size: 24rpx;
+		color: #999999;
+		text-align: center;
+		margin: 8rpx 0 16rpx 0;
+	}
+
+	.item-remark-sheet-list {
+		max-height: 560rpx;
+	}
+
+	.item-remark-sheet-row {
+		padding: 16rpx 0;
+		border-bottom: 1rpx solid #f0f0f0;
+	}
+
+	.item-remark-sheet-name {
+		font-size: 28rpx;
+		color: #333333;
+		line-height: 40rpx;
+	}
+
+	.item-remark-sheet-input {
+		margin-top: 12rpx;
+		height: 68rpx;
+		padding: 0 20rpx;
+		background: #f5f5f5;
+		border-radius: 8rpx;
+		font-size: 26rpx;
+	}
+
+	.item-remark-sheet-save {
+		margin-top: 24rpx;
+		height: 84rpx;
+		line-height: 84rpx;
+		text-align: center;
+		font-size: 30rpx;
+		border-radius: 42rpx;
 	}
 
 	.iconwechat_pay {

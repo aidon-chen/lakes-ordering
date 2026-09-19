@@ -592,6 +592,8 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
                 insertOrderDetail.setAfterCouponsDiscountPrice(dbGoods.getPrice().subtract(orderDetail.getCouponsDiscountPrice()));
             }
             insertOrderDetail.setIsDeleted(false);
+            //C-08 单品备注：随订单明细落库（tb_order_detail.remark）
+            insertOrderDetail.setRemark(orderDetail.getRemark());
             orderDetailService.insertSelective(insertOrderDetail);
 
             // 减少商品库存 (规格的库存该怎么去变化)
@@ -894,6 +896,8 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
                 insertOrderDetail.setAfterCouponsDiscountPrice(dbGoods.getPrice().subtract(orderDetail.getCouponsDiscountPrice()));
             }
             insertOrderDetail.setIsDeleted(false);
+            //C-08 单品备注：随订单明细落库（tb_order_detail.remark）
+            insertOrderDetail.setRemark(orderDetail.getRemark());
             orderDetailService.insertSelective(insertOrderDetail);
 
             //设置打印菜单商品参数
