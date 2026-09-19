@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import router from '@/router'
 import type { CartLine, PosView, TableInfo, TableUiState } from '@/types'
 import { clearTable, changeTable as changeTableApi, fetchTableList, openTable, type ZoneRow } from '@/api/table'
-import { fetchGoods, fetchMenus, fetchSpecs, type GoodsRow, type MenuRow, type SpecGroupMap } from '@/api/menu'
+import { fetchGoods, fetchMenus, fetchSpecs, updateGoodsStatus, type GoodsRow, type MenuRow, type SpecGroupMap } from '@/api/menu'
 import { submitOrder, type OrderDetailSubmit } from '@/api/order'
 
 /**
@@ -185,11 +185,30 @@ export const usePosStore = defineStore('pos', {
     async confirmClear(tableId: number) {
       try {
         await clearTable(tableId)
+        // 清台后复位点单上下文：该台位已释放，避免后续下单挂到已关闭会话
+        if (this.currentTableId === tableId) {
+          this.currentTableId = null
+          this.currentSessionId = null
+          this.cart = []
+          this.setView('floor')
+        }
         await this.loadTables()
       } catch (e) {
         console.error('[pos] 清台失败', e)
         alert((e as Error).message || '清台失败')
       }
+    },
+
+    /** 清台入口：有未结金额时二次确认（M-05 清台作业） */
+    async askClear(tableId: number) {
+      const t = this.tables.find(x => x.id === tableId)
+      if (!t) return
+      const unpaid = t.session?.goodsTotalPrice ?? 0
+      const tip = unpaid > 0
+        ? `${t.tableNo} 尚有点单未结 ¥${unpaid.toFixed(2)}，确认清台？`
+        : `确认清台 ${t.tableNo}？`
+      if (!window.confirm(tip)) return
+      await this.confirmClear(tableId)
     },
 
     /** 恢复既有会话进单（点占用桌）：进入 order 视图并加载点单数据 */
@@ -228,6 +247,21 @@ export const usePosStore = defineStore('pos', {
         console.error('[pos] loadGoods 失败', e)
       } finally {
         this.loadingGoods = false
+      }
+    },
+
+    /**
+     * M-07 沽清 / 恢复出餐（2=可出餐 4=沽清）
+     * 失败不改本地态，保证界面与后端一致
+     */
+    async toggleSoldOut(g: GoodsRow) {
+      const next: 2 | 4 = g.status === 4 ? 2 : 4
+      try {
+        await updateGoodsStatus(g.id, next)
+        g.status = next
+      } catch (e) {
+        console.error('[pos] 沽清切换失败', e)
+        alert((e as Error).message || '操作失败')
       }
     },
 

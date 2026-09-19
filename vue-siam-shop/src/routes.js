@@ -127,7 +127,8 @@ let routes = [
       children: [
           { path: '/todayOrderList', component: todayOrderList, name: '今日订单' },
           { path: '/forHereOrderList', component: forHereOrderList, name: '自取订单' },
-          { path: '/takeOutOrderList', component: takeOutOrderList, name: '外卖订单' },          
+          // 需求外（单店堂食+自提场景）：隐藏菜单，保留页面与路由
+          { path: '/takeOutOrderList', component: takeOutOrderList, name: '外卖订单', hidden: true },          
           // { path: '/unpaidOrderList', component: unpaidOrderList, name: '未付款' },
           // { path: '/waitHandleOrderList', component: waitHandleOrderList, name: '待处理订单' },
           // { path: '/forHereTabsChild1', component: forHereTabsChild1, name: '待自取订单' },
@@ -135,7 +136,7 @@ let routes = [
           // { path: '/takeOutTabsChild2', component: takeOutTabsChild2, name: '已配送订单' },
           // { path: '/forHereTabsChild2', component: forHereTabsChild2, name: '已完成订单' },       
           { path: '/refundOrderList', component: refundOrderList, name: '售后处理' },          
-          { path: '/appraiseList', component: appraiseList, name: '评价管理' },     
+          { path: '/appraiseList', component: appraiseList, name: '评价管理', hidden: true },     
           // { path: '/forHereTabsChild3', component: forHereTabsChild3, name: '已取消订单' },          
           { path: '/orderDetail', component: orderDetail, name: '查看订单详情', hidden: true },   
          // { path: '/CoreImage', component: CoreImage, name: '裁剪图片' },        
@@ -180,7 +181,7 @@ let routes = [
           { path: '/shopInfoImportant', component: shopInfoImportant, name: '门店重要信息' },
           { path: '/shopChangeRecord', component: shopChangeRecord, name: '门店信息变更记录' },          
           { path: '/advertisementList', component: advertisementList, name: '门店装修' },
-          { path: '/courierList', component: courierList, name: '骑手信息' },
+          { path: '/courierList', component: courierList, name: '骑手信息', hidden: true },
       ]
     },
     {

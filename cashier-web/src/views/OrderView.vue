@@ -33,23 +33,32 @@
     <div class="flex-1 overflow-auto">
       <div v-if="pos.loadingGoods" class="text-[12px] p-4" style="color: var(--tc-gray)">加载中…</div>
       <div v-else class="grid gap-3" style="grid-template-columns: repeat(auto-fill, minmax(140px, 1fr))">
-        <button
+        <!-- M-07 沽清/恢复：卡片右上角开关（不改商品资料，只切「能否出餐」） -->
+        <div
           v-for="g in pos.goods"
           :key="g.id"
-          class="rounded-lg border p-3 text-left flex flex-col gap-1.5"
-          :class="g.status === 4 ? 'opacity-50' : ''"
+          class="relative rounded-lg border p-3 flex flex-col gap-1.5"
+          :class="g.status === 4 ? 'opacity-60' : 'cursor-pointer'"
           style="border-color: var(--tc-line); background: #fff"
-          :disabled="g.status === 4"
-          @click="pos.pickGoodsWithSpec(g)"
+          @click="g.status !== 4 && pos.pickGoodsWithSpec(g)"
         >
+          <button
+            class="absolute top-1.5 right-1.5 h-[20px] px-1.5 rounded border text-[10px] leading-none"
+            :style="g.status === 4
+              ? 'border-color: var(--p); color: var(--p)'
+              : 'border-color: var(--tc-line); color: var(--tc-gray)'"
+            :title="g.status === 4 ? '恢复后可下单出餐' : '沽清后顾客端不可下单'"
+            @click.stop="pos.toggleSoldOut(g)"
+          >{{ g.status === 4 ? '恢复' : '沽清' }}</button>
+
           <div class="w-full h-[72px] rounded flex items-center justify-center overflow-hidden" style="background: var(--pl)">
             <img v-if="g.mainImage" :src="g.mainImage" class="w-full h-full object-cover" />
             <span v-else class="text-[24px]" style="color: var(--tc-sub)">♪</span>
           </div>
-          <div class="text-[12px] font-medium leading-tight" style="color: var(--tc-title)">{{ g.name }}</div>
+          <div class="text-[12px] font-medium leading-tight pr-10" style="color: var(--tc-title)">{{ g.name }}</div>
           <div class="text-[12px] font-bold" style="color: var(--p)">¥{{ g.salePrice || g.price }}</div>
-          <div v-if="g.status === 4" class="text-[10px]" style="color: var(--danger, #f56c6c)">已售罄</div>
-        </button>
+          <div v-if="g.status === 4" class="text-[10px]" style="color: var(--danger, #f56c6c)">已沽清 · 不可出餐</div>
+        </div>
       </div>
     </div>
 

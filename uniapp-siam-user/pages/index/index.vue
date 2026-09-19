@@ -12,35 +12,68 @@
 			</view>
 		</view>
 
-		<!-- A-01 露出式轮播：左右各露出 55px -->
-		<swiper class="expose-swiper" previous-margin="110rpx" next-margin="110rpx" :autoplay="true"
-			:interval="5000" :duration="500" :circular="true" @change="swiperChange">
-			<swiper-item class="expose-swiper-item" v-for="(item, index) in carouselUrls" :key="index">
-				<image :src="item.imagePath" class="expose-image" :class="swiperCurrent === index ? 'is-active' : ''"
-					mode="aspectFill" :data-imageLinkUrl="item.imageLinkUrl" @tap="carouseCommodityDetailTap" />
-			</swiper-item>
-		</swiper>
+		<!-- A-01 海报区（全幅无圆角） -->
+		<view class="hero">
+			<!-- 海报图占位：暂用 2 张深绿渐变，不接真实广告图（接回方式见 data.posterSlides 注释） -->
+			<swiper class="hero-swiper" :autoplay="true" :interval="5000" :duration="500" :circular="true"
+				@change="swiperChange">
+				<swiper-item v-for="(slide, index) in posterSlides" :key="index">
+					<view class="hero-slide"></view>
+				</swiper-item>
+			</swiper>
 
-		<!-- A-01 会员入口条（活动展示位） -->
-		<view class="member-bar" hover-class="hover-class-public" @tap="memberCenterTap">
-			<view class="member-bar-left">
-				<view class="member-bar-title">会员中心</view>
-				<view class="member-bar-desc">成长值 · 优惠券 · 会员专属价</view>
+			<!-- 音符水印（设计稿不透明度 12%，见 a01-opt 画板像素反解） -->
+			<image class="hero-watermark" src="/static/assets/icons/login-note-white.png" mode="widthFix" />
+
+			<!-- 品牌行：门店 logo + 门店名 -->
+			<view class="hero-brand">
+				<image class="hero-brand-logo" :src="shopLogo" mode="aspectFill" />
+				<view class="hero-brand-name">{{ shopName }}</view>
 			</view>
-			<van-icon name="arrow" class="member-bar-arrow" />
+			<view class="hero-shop-info">{{ shopInfoLine }}</view>
+
+			<!-- 底部渐变遮罩 -->
+			<view class="hero-mask"></view>
+
+			<!-- 海报文案 + 轮播指示点 -->
+			<view class="hero-title">{{ posterTitle }}</view>
+			<view class="hero-subtitle">{{ posterSubtitle }}</view>
+			<view class="hero-dots">
+				<view class="hero-dot" :class="{ 'is-active': swiperCurrent === index }"
+					v-for="(item, index) in dotCount" :key="index"></view>
+			</view>
 		</view>
 
-		<!-- A-01 入口卡片区：堂食点餐 / 自提外带 -->
-		<view class="entry-cards">
-			<view class="entry-card" hover-class="hover-class-public" @tap="dineScanTap">
-				<view class="entry-card-title">堂食点餐</view>
-				<view class="entry-card-desc">扫桌台码 · 自动带入桌号</view>
-				<van-icon name="scan" class="entry-card-icon" />
+		<!-- A-01 主功能区 -->
+		<view class="main-area">
+			<view class="member-row" hover-class="hover-class-public" @tap="memberCenterTap">
+				<view class="member-row-left">
+					<image class="member-crown" src="/static/assets/icons/home-crown.png" mode="widthFix" />
+					<view class="member-title">会员中心</view>
+					<view class="member-desc">成长值 {{ growthValue }} · 优惠券 {{ couponsNumber }} 张</view>
+				</view>
+				<van-icon name="arrow" class="member-arrow" />
 			</view>
-			<view class="entry-card" hover-class="hover-class-public" @tap="selfPickupTap">
-				<view class="entry-card-title">自提外带</view>
-				<view class="entry-card-desc">下单免排队 · 到店即取</view>
-				<van-icon name="bag-o" class="entry-card-icon" />
+
+			<view class="entry-row">
+				<view class="entry-card" hover-class="hover-class-public" @tap="dineScanTap">
+					<view class="entry-icon">
+						<van-icon name="scan" class="entry-icon-glyph" />
+					</view>
+					<view class="entry-text">
+						<view class="entry-name">点餐</view>
+						<view class="entry-sub">扫桌角码 · 立即开台</view>
+					</view>
+				</view>
+				<view class="entry-card" hover-class="hover-class-public" @tap="selfPickupTap">
+					<view class="entry-icon">
+						<van-icon name="bag-o" class="entry-icon-glyph" />
+					</view>
+					<view class="entry-text">
+						<view class="entry-name">外带自提</view>
+						<view class="entry-sub">商城好物 · 到店取货</view>
+					</view>
+				</view>
 			</view>
 		</view>
 	</view>
@@ -57,7 +90,25 @@
 			return {
 				statusBarHeight: 0,
 				swiperCurrent: 0,
-				carouselUrls: [],
+				// 海报区占位：固定 2 张深绿渐变（不接真实广告图）。
+				// 接回真实轮播：把本数组换成 /rest/advertisement/list?type=1 返回的 records
+				// （含 imagePath / imageLinkUrl），并把模板中的 .hero-slide 换回 image 节点、恢复点击跳转。
+				posterSlides: [{
+					name: '海报占位一'
+				}, {
+					name: '海报占位二'
+				}],
+				// 海报区文案（设计稿文案池；后端 tb_advertisement 无标题字段，故为静态配置项）
+				posterTitle: '中秋主题夜',
+				posterSubtitle: '9/25 乐队现场 · 双款特调首发',
+				// 门店信息：暂不接设备定位，用占位文案（改这里即可换地址/营业时间文案）。
+				// 接回真实取数：uni.getLocation → /rest/shop/listForPickup 取最近门店，
+				// 地址拼 shop.street + shop.houseNumber，营业时间用 shop.endTime / isOperatingOfShop。
+				shopName: '乐章 LIVE 酒馆',
+				shopLogo: '/static/assets/icons/home-brand-mark.png',
+				shopInfoLine: '***市 **区 **路 **号 · 营业中至 02:00',
+				// 会员信息：/rest/member/getLoginMemberInfo（未登录时为空对象）
+				member: {},
 				// C-02 活动弹窗
 				activityDialogShow: false,
 				activityAd: {
@@ -66,11 +117,27 @@
 				}
 			};
 		},
+		computed: {
+			// 指示点数量跟随海报占位张数（当前 2 张）
+			dotCount() {
+				return this.posterSlides.length;
+			},
+			// 后端 tb_member 无 growth（成长值）字段，退化取积分，保证展示数字真实非造数
+			growthValue() {
+				const member = this.member || {};
+				const value = member.growth !== null && member.growth !== undefined ? member.growth : member.points;
+				return value === null || value === undefined ? 0 : value;
+			},
+			couponsNumber() {
+				const member = this.member || {};
+				return member.couponsNumber === null || member.couponsNumber === undefined ? 0 : member.couponsNumber;
+			}
+		},
 		onLoad: function() {
 			app = getApp();
 			this.statusBarHeight = app.globalData.systemInfoSync.statusBarHeight;
-			this.getCarouselList();
 			this.getActivityDialog();
+			this.getMemberInfo();
 		},
 		onShow: function() {
 			const addressInfo = app.globalData.deliveryAndSelfTaking.initRegeoInfo;
@@ -80,7 +147,7 @@
 			}
 		},
 		onPullDownRefresh() {
-			this.getCarouselList();
+			this.getMemberInfo();
 			setTimeout(() => {
 				uni.stopPullDownRefresh();
 			}, 1000);
@@ -93,19 +160,13 @@
 				this.swiperCurrent = e.detail.current;
 			},
 
-			getCarouselList() {
-				https.request('/rest/advertisement/list', {
-					type: 1,
-					pageNo: -1,
-					pageSize: 20
-				}).then((result) => {
-					if (result.success) {
-						result.data.records.forEach(function(item) {
-							item.imagePath = GlobalConfig.ossUrl + item.imagePath;
-						});
-						this.carouselUrls = result.data.records;
+			// A-01 会员中心行：登录态才返回数据，未登录保持 0 值空态
+			getMemberInfo() {
+				https.request('/rest/member/getLoginMemberInfo', {}).then((result) => {
+					if (result && result.success && result.data) {
+						this.member = result.data;
 					}
-				});
+				}).catch(() => {});
 			},
 
 			// C-02 首页活动弹窗：取弹窗广告（type=2），无数据则不展示
@@ -153,18 +214,6 @@
 				});
 			},
 
-			// 轮播图跳转（保留原登录检查逻辑）
-			carouseCommodityDetailTap(e) {
-				let _this = this;
-				authService.checkIsLogin().then((result) => {
-					if (result) {
-						_this.navigateToAd(e.currentTarget.dataset.imagelinkurl);
-						return;
-					}
-					app.globalData.checkIsAuth('scope.userInfo');
-				});
-			},
-
 			// A-01 会员入口条
 			memberCenterTap() {
 				uni.navigateTo({
@@ -172,7 +221,7 @@
 				});
 			},
 
-			// A-01 堂食点餐：扫桌台码 → 写入 dineInfo → 进点餐台（与点餐台切换逻辑一致）
+			// A-01 点餐：扫桌台码 → 写入 dineInfo → 进点餐台（与点餐台切换逻辑一致）
 			dineScanTap() {
 				uni.scanCode({
 					success: (res) => {
@@ -203,7 +252,7 @@
 				});
 			},
 
-			// A-01 自提外带：切自提模式进点餐台
+			// A-01 外带自提：切自提模式进点餐台
 			selfPickupTap() {
 				app.globalData.deliveryAndSelfTaking.selfOutActiveIndex = 0;
 				app.globalData.deliveryAndSelfTaking.dineInfo = null;
@@ -220,108 +269,241 @@
 <style>
 	page {
 		width: 100%;
-		background: #FFFFFF;
+		background: #F0F3F2;
 	}
 
 	.page {
 		min-height: 100vh;
-		padding-bottom: 40rpx;
 	}
 
-	/* ===== A-01 露出式轮播 ===== */
-	.expose-swiper {
-		height: 558rpx;
+	/* ===== A-01 海报区 =====
+	   渐变与不透明度口径来自画板「A-01 首页·优化版」334:90 的栅格像素反解：
+	   linear 180°，#253730 0% → #4F6B5E 55% → #739B8D 100%；
+	   音符水印为不透明白叠加 12%。
+	   注：本页强调色按设计稿取 #739B8D，与全站主题绿 #5f7d22 存在色差（本次经确认采纳）。 */
+	.hero {
+		position: relative;
+		width: 100%;
+		height: 1140rpx;
+		background: linear-gradient(180deg, #253730 0%, #4F6B5E 55%, #739B8D 100%);
+		overflow: hidden;
 	}
 
-	.expose-swiper-item {
-		height: 100%;
+	.hero-swiper,
+	.hero-slide {
+		width: 100%;
+		height: 1140rpx;
 	}
 
-	.expose-image {
-		display: block;
-		width: 550rpx;
-		height: 558rpx;
-		margin: 0 auto;
-		border-radius: 20rpx;
-		transform: scale(0.92);
-		opacity: 0.6;
-		transition: transform 0.3s ease, opacity 0.3s ease;
+	/* 海报图占位渐变（同 .hero 底色；接回真实广告图后可删本类） */
+	.hero-slide {
+		background: linear-gradient(180deg, #253730 0%, #4F6B5E 55%, #739B8D 100%);
 	}
 
-	.expose-image.is-active {
-		transform: scale(1);
-		opacity: 1;
+	/* 音符水印：画板 334:93，左 169.4pt 上 161.4pt 宽 171.5pt，不透明度 0.12 */
+	.hero-watermark {
+		position: absolute;
+		left: 338rpx;
+		top: 322rpx;
+		width: 344rpx;
+		height: 344rpx;
+		opacity: 0.12;
 	}
 
-	/* ===== A-01 会员入口条 ===== */
-	.member-bar {
+	/* 品牌行：画板 334:97，left 16pt / top 14pt，logo 24pt + gap 8pt */
+	.hero-brand {
+		position: absolute;
+		left: 32rpx;
+		top: 28rpx;
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
-		margin: 30rpx 30rpx 0;
-		padding: 28rpx 30rpx;
-		background: #FFF7E6;
-		border-radius: 20rpx;
 	}
 
-	.member-bar-left {
+	.hero-brand-logo {
+		width: 48rpx;
+		height: 48rpx;
+		margin-right: 16rpx;
+		border-radius: 24rpx;
+	}
+
+	.hero-brand-name {
+		font-size: 30rpx;
+		font-weight: 500;
+		color: #FFFFFF;
+	}
+
+	/* 门店信息：画板 334:104，left 16pt / top 44pt，11pt */
+	.hero-shop-info {
+		position: absolute;
+		left: 32rpx;
+		top: 88rpx;
+		font-size: 22rpx;
+		font-weight: 400;
+		color: #FFFFFF;
+	}
+
+	/* 底部渐变遮罩：画板 334:109，高 200pt，透明 → 黑 55% */
+	.hero-mask {
+		position: absolute;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		height: 400rpx;
+		background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.55) 100%);
+	}
+
+	/* 海报主/副标题：画板 334:110/334:111，left 20pt，距底 80pt / 59pt */
+	.hero-title {
+		position: absolute;
+		left: 40rpx;
+		bottom: 160rpx;
+		font-size: 52rpx;
+		line-height: 76rpx;
+		font-weight: 700;
+		color: #FFFFFF;
+	}
+
+	.hero-subtitle {
+		position: absolute;
+		left: 40rpx;
+		bottom: 118rpx;
+		font-size: 26rpx;
+		line-height: 38rpx;
+		font-weight: 400;
+		color: #FFFFFF;
+	}
+
+	/* 轮播指示点：画板 343:29，整体居中，距底 30pt；未选中白 44%，选中白色 16pt 长胶囊 */
+	.hero-dots {
+		position: absolute;
+		left: 0;
+		right: 0;
+		bottom: 60rpx;
+		height: 12rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.hero-dot {
+		width: 12rpx;
+		height: 12rpx;
+		margin: 0 6rpx;
+		border-radius: 6rpx;
+		background: rgba(255, 255, 255, 0.44);
+	}
+
+	.hero-dot.is-active {
+		width: 32rpx;
+		background: #FFFFFF;
+	}
+
+	/* ===== A-01 主功能区（画板 334:114，padding 10pt / gap 8pt） ===== */
+	.main-area {
+		padding: 20rpx;
 		display: flex;
 		flex-direction: column;
 	}
 
-	.member-bar-title {
-		font-size: 32rpx;
-		font-weight: 600;
+	/* 会员中心跳转行：画板 343:1，高 32pt；左组 gap 6pt */
+	.member-row {
+		height: 64rpx;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.member-row-left {
+		display: flex;
+		align-items: center;
+	}
+
+	.member-crown {
+		width: 28rpx;
+		height: 28rpx;
+		margin-right: 12rpx;
+	}
+
+	.member-title {
+		font-size: 26rpx;
+		font-weight: 500;
 		color: #333333;
 	}
 
-	.member-bar-desc {
-		margin-top: 8rpx;
-		font-size: 24rpx;
-		color: #9C7A3C;
+	.member-desc {
+		margin-left: 12rpx;
+		font-size: 22rpx;
+		font-weight: 400;
+		color: #999999;
 	}
 
-	.member-bar-arrow {
-		font-size: 32rpx;
-		color: #C9A86A;
+	/* 箭头：画板 343:9，6.6pt × 16.4pt，描边 #739B8D */
+	.member-arrow {
+		font-size: 56rpx;
+		color: #739B8D;
 	}
 
-	/* ===== A-01 入口卡片区 ===== */
-	.entry-cards {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		grid-column-gap: 20rpx;
-		margin: 30rpx 30rpx 0;
+	/* 双主功能：画板 334:116，gap 10pt；卡片 172.5pt × 88pt / 圆角 12pt / 内边距 12pt */
+	.entry-row {
+		display: flex;
+		margin-top: 16rpx;
 	}
 
 	.entry-card {
-		position: relative;
-		height: 350rpx;
-		background: #F6F6F6;
-		border-radius: 20rpx;
-		padding: 32rpx;
+		flex: 1;
+		height: 176rpx;
+		padding: 24rpx;
 		box-sizing: border-box;
+		background: #FFFFFF;
+		border-radius: 24rpx;
+		display: flex;
+		align-items: center;
 		overflow: hidden;
 	}
 
-	.entry-card-title {
-		font-size: 34rpx;
-		font-weight: 600;
-		color: #222222;
+	.entry-card:last-child {
+		margin-left: 20rpx;
 	}
 
-	.entry-card-desc {
-		margin-top: 12rpx;
-		font-size: 24rpx;
-		color: #646566;
+	/* 图标底：画板 343:11，36pt 方形 / 圆角 10pt / #E8F0EC */
+	.entry-icon {
+		width: 72rpx;
+		height: 72rpx;
+		margin-right: 20rpx;
+		border-radius: 20rpx;
+		background: #E8F0EC;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
 	}
 
-	.entry-card-icon {
-		position: absolute;
-		right: 28rpx;
-		bottom: 24rpx;
-		font-size: 88rpx;
-		color: #D9D9D9;
+	.entry-icon-glyph {
+		font-size: 40rpx;
+		color: #739B8D;
+	}
+
+	.entry-text {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+	}
+
+	.entry-name {
+		font-size: 30rpx;
+		line-height: 42rpx;
+		font-weight: 500;
+		color: #333333;
+	}
+
+	.entry-sub {
+		margin-top: 4rpx;
+		font-size: 20rpx;
+		line-height: 28rpx;
+		font-weight: 400;
+		color: #999999;
+		white-space: nowrap;
 	}
 
 	/* ===== C-02 活动弹窗 ===== */

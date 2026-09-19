@@ -36,14 +36,27 @@ export interface Page<T> {
 export const fetchMenus = () =>
   http.post<unknown, Page<MenuRow>>('/rest/merchant/menu/list', { pageNo: -1, pageSize: 100 })
 
-/** 商品列表（按分类过滤，不分页） */
+/**
+ * 商品列表（按分类过滤，不分页）
+ * goodsStatusIn2And4=true → 后端 GoodsMapper 过滤 g.status in (2,4)：
+ * 只取「可出餐(2) + 已沽清(4)」，收银端据此显示并可一键恢复，待上架(1)/已下架(3) 归管理端 A-05。
+ */
 export const fetchGoods = (menuId?: number) =>
   http.post<unknown, Page<GoodsRow>>('/rest/merchant/goods/list', {
     pageNo: -1,
     pageSize: 100,
     menuId,
-    status: 2
+    goodsStatusIn2And4: true
   })
+
+/**
+ * 沽清 / 恢复出餐（M-07，D8 裁决：上下架＝当前能否出餐，归商家端）
+ * - status=4 沽清（顾客端不可下单，后端 insertByMerchant 会拦截）
+ * - status=2 恢复出餐
+ * 后端 MerchantGoodsController.update 走 MP updateById，仅非空字段落库 → 只传 {id,status} 不会改动商品资料。
+ */
+export const updateGoodsStatus = (id: number, status: 2 | 4) =>
+  http.post<unknown, null>('/rest/merchant/goods/update', { id, status })
 
 /** 规格选项（/rest/goodsSpecificationOption/selectByGoodsId 返回 LinkedHashMap<规格名, 选项列表>） */
 export interface SpecOption {

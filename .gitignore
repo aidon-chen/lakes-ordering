@@ -1,4 +1,4 @@
-﻿﻿HELP.md
+﻿HELP.md
 .gradle
 /build/
 !gradle/wrapper/gradle-wrapper.jar
@@ -38,6 +38,12 @@ target
 
 logs
 log.path_IS_UNDEFINED
+
+### 发版部署目录 ###
+# Docker 构建上下文（源码副本，随打包重新生成，不入库）
+deploy/context/
+# 发版 zip 包（二进制大文件，不入库）
+deploy/*.zip
 
 application-test.yml
 application-show.yml

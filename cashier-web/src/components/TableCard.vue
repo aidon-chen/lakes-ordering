@@ -22,10 +22,10 @@
     <!-- 状态行 -->
     <span class="text-[11px] font-medium leading-tight" :style="{ color: t.fg }">{{ statusLine }}</span>
 
-    <!-- 操作区：占用=加酒/转台；空闲=空 -->
+    <!-- 操作区：占用=加酒/转台/清台；空闲=空 -->
     <div
       v-if="isBusy"
-      class="mt-auto w-full flex gap-2"
+      class="mt-auto w-full flex gap-1.5"
       @click.stop
     >
       <span
@@ -38,6 +38,11 @@
         style="background: var(--tc-gray)"
         @click="pos.startChange(table.id)"
       >转台</span>
+      <span
+        class="flex-1 h-[26px] rounded flex items-center justify-center text-[11px] cursor-pointer"
+        style="background: #fff; border: 1px solid var(--tc-line); color: var(--tc-gray)"
+        @click="pos.askClear(table.id)"
+      >清台</span>
     </div>
   </button>
 </template>
