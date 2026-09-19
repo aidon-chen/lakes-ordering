@@ -144,6 +144,12 @@ public class RewardServiceImpl implements RewardService {
 
     @Override
     public String selectCommissionReward(OrderParam param) {
+        //C-10 批次6（2026-09-19 口径变更）：返现/返利功能全面取消（点餐 + 商城同步）→ 不返回文案、不发放佣金。
+        //如需恢复，把 REWARD_DISABLED 改为 false 即可（下方原逻辑完整保留）。
+        boolean REWARD_DISABLED = true;
+        if (REWARD_DISABLED) {
+            return "";
+        }
         BasicData basicResult = new BasicData();
         Member loginMember = memberSessionManager.getSession(TokenUtil.getToken());
 

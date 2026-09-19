@@ -1,11 +1,17 @@
 <template>
 	<view>
-		<view class="top-detail" v-if="tipReward">
-			<view class="current-tips" @tap.stop.prevent="customerServiceWechat">
-				{{ tipReward }}
+		<!-- C-10 批次6（口径变更）：不做配送 → 原「收货地址卡」改为「自提门店卡」（画板 B-05） -->
+		<view class="pickup-shop-card margin-border-radius">
+			<view class="pickup-shop-icon theme-color">
+				<van-icon name="location-o" />
+			</view>
+			<view class="pickup-shop-main">
+				<view class="pickup-shop-name out_of_range one_row">{{ pickupShop.name || '门店信息加载中…' }}</view>
+				<view class="pickup-shop-addr out_of_range one_row" v-if="pickupShop.address">{{ pickupShop.address }}</view>
+				<view class="pickup-shop-tip">到店自提 · 请到店出示自提码</view>
 			</view>
 		</view>
-		<view class="ask-for-delivery-detail margin-border-radius">
+		<view class="ask-for-delivery-detail margin-border-radius" v-if="false">
 			<view class="ask-for-delivery-title">收货地址</view>
 			<view class="ask-for-delivery" @tap="openAddressDialog">
 				<view class="ask-for-delivery-house-view" v-if="deliveryAndSelfTaking.deliveryAddress"
@@ -49,24 +55,6 @@
 					<view class="commodity-price">￥{{ item.price }}</view>
 				</view>
 			</view>
-			<view class="commodity-name-price-detail">
-				<view class="commodity-name-types">
-					<view class="commodity-name">运费</view>
-				</view>
-				<view class="commodity-totalnum-price">
-					<view></view>
-					<view class="commodity-types commodity-delivery-tip theme-color">免运费</view>
-				</view>
-			</view>
-			<view class="commodity-name-price-detail" v-if="radioIndex == 1">
-				<view class="commodity-name-types">
-					<view class="commodity-name">配送费</view>
-				</view>
-				<view class="commodity-totalnum-price">
-					<view></view>
-					<view class="commodity-price">￥{{ feeData }}</view>
-				</view>
-			</view>
 			<view class="commodity-name-price-detail" v-if="data.fullPriceReductionIsHidden">
 				<view class="commodity-name-types">
 					<view class="commodity-name">满减</view>
@@ -91,7 +79,8 @@
 		</view>
 		<view class="pay-mode-view margin-border-radius">
 			<view class="pay-mode-title">优惠券</view>
-			<view class="choose-pay-mode" @tap="parseEventDynamicCode($event, afterDiscount ? 'onCoupon' : '')">
+			<!-- C-10 批次6：无可用券时也要能进选券页（原条件会让点击无反应） -->
+			<view class="choose-pay-mode" @tap="onCoupon">
 				<view class="theme-color after-discount flex_end" v-if="afterDiscount.couponsName">
 					<view class="flex_end">
 						<text class="coupons-name-text" :decode="true">
@@ -115,7 +104,7 @@
 						<label v-if="item.show"
 							:class="'radio-label-payment flex_center ' + (item.checked ? 'payment-checked' : 'payment-not-checked')">
 							<radio :value="index" :checked="item.checked" class="pay_radio" />
-							<van-icon :name="item.icon" />
+							<van-icon :name="item.icon" v-if="item.icon" />
 							<text :decode="true">&nbsp;{{ item.text }}</text>
 							<text :decode="true" class="actionItem__desc" v-if="item.desc">&nbsp;{{ item.desc }}</text>
 						</label>
@@ -214,14 +203,7 @@
 			</view>
 			// #endif
 		</van-dialog>
-		<van-overlay :show="isVipDialogShow" z-index="1">
-			<view class="flex_column content_box" style="margin-top: 50px;">
-				<image
-					:src="'https://siam-hangzhou.oss-cn-hangzhou.aliyuncs.com/data/images/business/vip_recharge_guide.png?v=' + timestamp"
-					mode="widthFix" class="now-order-image" @tap="goToRecharge"></image>
-				<van-icon name="clear" @tap="close" style="font-size: 40px;color: wheat;" />
-			</view>
-		</van-overlay>
+		<!-- C-10 批次6（口径变更）：会员引导弹窗（加入会员/获好友返利）已删除 -->
 		// #ifdef APP-PLUS||H5
 		<van-number-keyboard :show="payFocus" @blur="payFocus = false" @input="inputPwd" @delete="deletePwd" />
 		// #endif
@@ -252,22 +234,24 @@
 				inputLength: 0,
 				deliveryData: {},
 				title: '请选择支付方式',
-				paymentModes: [{
-						checked: false,
-						value: 1,
-						text: '微信支付',
-						show: true,
-						icon: 'wechat-pay'
-					},
+				// C-10 批次6（口径变更）：支付方式只保留「到店支付」；微信支付链路已完整，二期需要时再加回本项
+				paymentModes: [
 					{
+						// C-10 批次6（口径变更）：积分支付全面取消 → 仅保留「到店支付」（4=到店支付，后端约定）
 						checked: true,
-						value: 2,
-						text: '平台积分',
+						value: 4,
+						text: '到店支付',
 						show: true,
-						icon: 'points'
+						icon: ''
 					}
 				],
-				paymentModeIndex: 1,
+				paymentModeIndex: 0,
+				// C-10 批次6：自提门店（结算页展示；来源 /rest/shop/listForPickup，失败则留空）
+				pickupShop: {
+					id: '',
+					name: '',
+					address: ''
+				},
 				dialogShow: false,
 				addressDialog: false,
 				remarks: '',
@@ -359,6 +343,7 @@
 		onShow: function() {
 			app = getApp();
 			this.deliveryAndSelfTaking = app.globalData.deliveryAndSelfTaking;
+			this.getPickupShop();
 			this.getLoginMemberInfo();
 			this.createOrderToken();
 			setTimeout((time) => {
@@ -391,16 +376,49 @@
 			getTimestamp() {
 				var timestamp = dateHelper.getTimestamp();
 				console.log(timestamp);
-				this.setData({
-					timestamp: timestamp
+				this.timestamp = timestamp;
+			},
+
+			/**
+			 * C-10 批次6：加载自提门店（画板 B-05 门店卡）。
+			 * 优先用定位查自提门店列表；定位失败用门店所在地坐标兜底；接口失败不阻塞下单。
+			 */
+			getPickupShop() {
+				const that = this;
+				const loadByPosition = (lng, lat) => {
+					https.request('/rest/shop/listForPickup', {
+						position: lng + ',' + lat,
+						pageNo: 1,
+						pageSize: 1
+					}).then((result) => {
+						if (result.success) {
+							const records = (result.data && result.data.records) || [];
+							if (records.length > 0) {
+								const shop = records[0];
+								that.pickupShop = {
+									id: shop.id,
+									name: shop.name || '',
+									address: shop.street || ((shop.province || '') + (shop.city || '') + (shop.area || ''))
+								};
+							}
+						}
+					}).catch(() => {});
+				};
+				uni.getLocation({
+					type: 'gcj02',
+					success: (res) => {
+						loadByPosition(res.longitude, res.latitude);
+					},
+					fail: () => {
+						// 兜底：门店所在坐标（演示环境）
+						loadByPosition(112.883120, 28.236586);
+					}
 				});
 			},
 
 			openAddressDialog(e) {
 				this.getDeliveryAddressList();
-				this.setData({
-					addressDialog: true
-				});
+				this.addressDialog = true;
 			},
 
 			getDeliveryAddressList() {
@@ -410,9 +428,7 @@
 				}).then((result) => {
 					toastService.hideLoading();
 					if (result.success) {
-						this.setData({
-							addressList: result.data.records
-						});
+						this.addressList = result.data.records;
 					}
 				});
 			},
@@ -423,36 +439,10 @@
 			},
 
 			choosePayModeTap() {
-				let paymentModes = this.paymentModes;
-				let actualPrice = !this.data.fullPriceReductionIsHidden && !this.data.couponsIsHidden && !this
-					.deliveryAndSelfTaking.isThereADiscount ?
-					this.data.actualPrice :
-					this.data.fullPriceReduction;
-				console.log('积分余额=', this.userInfo.points);
-				console.log('平台余额=', this.userInfo.balance);
-				console.log('需支付金额=', actualPrice);
-				paymentModes[1].subname = '';
-				paymentModes[1].isBindTap = true;
-				if (actualPrice > this.userInfo.points) {
-					console.log('积分不足');
-					paymentModes[1].subname = '积分不足';
-					paymentModes[1].isBindTap = false;
-				}
-				if (!this.userInfo.paymentPassword) {
-					paymentModes[1].subname = '未设置支付密码,去设置';
-					paymentModes[1].isBindTap = false;
-				}
-				// this.setData({
-				//   dialogShow: true,
-				//   maskClosable: false,
-				//   title: "请选择支付方式",
-				//   paymentModes: paymentModes
-				// })
+				// C-10 批次6（口径变更）：积分/余额支付已取消，支付方式只剩「到店支付」一项。
+				// 原实现会给 paymentModes[1]（平台积分）写 subname/isBindTap —— 该项已删除，
+				// 访问 [1] 会抛 "Cannot set properties of undefined (setting 'subname')" 并中断后续逻辑。
 				toastService.hideLoading();
-				console.log(paymentModes);
-				this.setData({
-					paymentModes: paymentModes
-				});
 			},
 
 			close() {
@@ -521,7 +511,7 @@
 				console.log(e);
 				console.log(this.addressList[this.addrIndex]);
 				if (!this.addressList[this.addrIndex]) {
-					toastService.showToast("请选择收货地址");
+					// C-10 批次6（口径变更）：不做配送，地址选择弹层已禁用
 					return;
 				}
 				app.globalData.deliveryAndSelfTaking.deliveryAddress = this.addressList[this.addrIndex];
@@ -545,10 +535,8 @@
 			},
 
 			remarksInput(e) {
-				this.setData({
-					inputLength: e.detail.value.length,
-					remarks: e.detail.value
-				});
+				this.inputLength = e.detail.value.length;
+				this.remarks = e.detail.value;
 			},
 
 			getLoginMemberInfo: function(e) {
@@ -559,9 +547,7 @@
 						result.data.statusVipText = systemStatus.statusVipText(result.data.vipStatus);
 						result.data.vipStartTime = dateHelper.formatDate(result.data.vipStartTime);
 						result.data.vipEndTime = dateHelper.formatDate(result.data.vipEndTime);
-						this.setData({
-							userInfo: result.data
-						});
+						this.userInfo = result.data;
 						setTimeout((time) => {
 							this.choosePayModeTap();
 							clearTimeout(time);
@@ -763,9 +749,8 @@
 						.actualPrice : this.data.fullPriceReduction
 				}).then((result) => {
 					if (result.success) {
-						this.setData({
-							tipReward: result.data
-						});
+						// C-10 批次6（口径变更）：返现/返利全面取消 → 后端已不返回文案，此处自然为空
+						this.tipReward = result.data || '';
 					}
 				});
 			},
@@ -890,19 +875,15 @@
 			},
 
 			hidePwdLayer() {
-				this.setData({
-					showPayPwdInput: false,
-					payFocus: false,
-					pwdVal: ''
-				});
+				this.showPayPwdInput = false;
+				this.payFocus = false;
+				this.pwdVal = '';
 			},
 
 			showPwdLayer() {
-				this.setData({
-					showPayPwdInput: true,
-					payFocus: true,
-					pwdVal: ''
-				});
+				this.showPayPwdInput = true;
+				this.payFocus = true;
+				this.pwdVal = '';
 			},
 
 			/**
@@ -917,12 +898,12 @@
 			weChatPayTap() {
 				//判断店铺是否打烊
 				var data = {};
-				if (this.deliveryAndSelfTaking.deliveryAddress == null) {
-					toastService.showToast('请选择配送地址');
-					return;
+				// C-10 批次6（口径变更）：商城只做门店自提 → 不再校验/提交配送地址与配送费，改传自提门店 id
+				// ⚠️ 门店信息可能因定位失败而为空：此时**不要传 shopId**。
+				// 传空字符串会让后端 Integer 反序列化抛 NumberFormatException → 前端只看到「系统异常，请稍后重试」。
+				if (this.pickupShop && this.pickupShop.id) {
+					data.shopId = this.pickupShop.id;
 				}
-				data.deliveryAddressId = this.deliveryAndSelfTaking.deliveryAddress.id;
-				data.deliveryFee = this.deliveryAndSelfTaking.feeData;
 				var list = this.data.orderDetailList;
 				var orderDetailList = [];
 				data.shoppingCartIdList = [];
@@ -944,7 +925,8 @@
 					.fullPriceReduction : this.data.actualPrice;
 				// data.packingCharges = this.data.data.packingCharges;
 				data.remark = this.remarks;
-				data.shoppingWay = Number(this.radioIndex + 1);
+				// C-10 批次6（口径变更）：商城只做门店自提 → 固定 1（后端亦强制为 1）
+				data.shoppingWay = 1;
 				//console.log(data)
 				if (this.data.couponsIsHidden) {
 					data.couponsId = this.afterDiscount.couponsId;
@@ -957,32 +939,23 @@
 					data.fullReductionRuleDescription = this.data.fullReductionRuleName;
 				}
 				var _this = this;
-				//获取订单的配送方式
-				let addressMode =
-					'配送地址：' +
-					this.deliveryAndSelfTaking.deliveryAddress.province +
-					this.deliveryAndSelfTaking.deliveryAddress.city +
-					this.deliveryAndSelfTaking.deliveryAddress.area +
-					this.deliveryAndSelfTaking.deliveryAddress.street;
 				// toastService.showModal("积分商城订单", "订单确认后将无法更改!\r\n确认下单吗?", function comfirm() {
 
 				//防重令牌
 				data.orderToken = this.orderToken;
-				if (this.userInfo.type == 1) {
-					this.isVipDialogShow = true;
-					this.isPayJson = data;
-
-				} else {
-					toastService.showLoading();
-					https.request('/rest/member/pointsMall/order/insert', data).then((result) => {
-						toastService.hideLoading();
-						if (result.success) {
-							// toastService.showLoading("正在支付...", true);
-							//console.log(result.data)
-							_this.toPay4Applet(result.data.id, result.data.orderNo, result.data.actualPrice);
-						}
-					});
-				}
+				// C-10 批次6（口径变更）：返现/会员引导已取消 → 不再按会员身份弹窗，直接下单
+				toastService.showLoading();
+				https.request('/rest/member/pointsMall/order/insert', data).then((result) => {
+					toastService.hideLoading();
+					if (result.success) {
+						_this.toPay4Applet(result.data.id, result.data.orderNo, result.data.actualPrice);
+					} else {
+						toastService.showToast(result.message || '下单失败');
+					}
+				}).catch(() => {
+					toastService.hideLoading();
+					toastService.showToast('下单失败，请重试');
+				});
 				// }, null)
 			},
 			toPay4Applet(id, orderNo, actualPrice) {
@@ -1563,4 +1536,45 @@
 		font-size: 62rpx;
 		color: gainsboro;
 	}
+
+	/* C-10 批次6：自提门店卡（替代原收货地址卡，画板 B-05） */
+	.pickup-shop-card {
+		display: flex;
+		align-items: center;
+		padding: 24rpx 20rpx;
+		background-color: #ffffff;
+	}
+
+	.pickup-shop-icon {
+		font-size: 40rpx;
+		margin-right: 18rpx;
+		line-height: 44rpx;
+		flex-shrink: 0;
+	}
+
+	.pickup-shop-main {
+		flex: 1;
+		min-width: 0;
+	}
+
+	.pickup-shop-name {
+		font-size: 30rpx;
+		font-weight: 600;
+		color: #202020;
+		line-height: 42rpx;
+	}
+
+	.pickup-shop-addr {
+		font-size: 26rpx;
+		color: #909090;
+		line-height: 36rpx;
+		margin-top: 4rpx;
+	}
+
+	.pickup-shop-tip {
+		font-size: 24rpx;
+		color: #999999;
+		margin-top: 4rpx;
+	}
+
 </style>

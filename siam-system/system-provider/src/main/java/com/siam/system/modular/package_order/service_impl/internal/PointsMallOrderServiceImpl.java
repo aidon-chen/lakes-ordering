@@ -181,9 +181,10 @@ public class PointsMallOrderServiceImpl extends ServiceImpl<PointsMallOrderMappe
             }
         }
 
-        //取货方式：1=门店自提（C-10 酒水商城）2=配送（基座原行为，默认）
-        Integer shoppingWay = param.getShoppingWay() == null ? Quantity.INT_2 : param.getShoppingWay();
-        boolean isSelfPickup = Quantity.INT_1 == shoppingWay;
+        //C-10 批次6（2026-09-19 口径变更）：商城不提供配送，只做门店自提 → 取货方式强制为 1
+        //（下方「配送」分支保留但不执行；如将来恢复配送，改回 param.getShoppingWay() 即可）
+        Integer shoppingWay = Quantity.INT_1;
+        boolean isSelfPickup = true;
 
         //到店支付：自提订单默认走「到店支付」（本期主用）；显式传 paymentMode=1（微信支付）时走在线支付分支（二期）
         boolean isPayAtStore = isSelfPickup
@@ -271,7 +272,12 @@ public class PointsMallOrderServiceImpl extends ServiceImpl<PointsMallOrderMappe
         insertOrder.setShopId(param.getShopId());
         insertOrder.setPickupCode(pickupCode);
         insertOrder.setPickupDeadline(pickupDeadline);
-        insertOrder.setPaymentMode(isPayAtStore ? PointsMallOrder.PAYMENT_MODE_OF_PAY_AT_STORE : param.getPaymentMode());
+        //C-10 批次6（2026-09-19 口径变更）：积分/余额支付全面取消 → 仅「到店支付」（4）；
+        //显式传 1（微信支付）保留在线支付分支（二期）
+        int paymentMode = (param.getPaymentMode() != null && Quantity.INT_1 == param.getPaymentMode())
+                ? Quantity.INT_1
+                : PointsMallOrder.PAYMENT_MODE_OF_PAY_AT_STORE;
+        insertOrder.setPaymentMode(paymentMode);
         insertOrder.setFullReductionRuleId(param.getFullReductionRuleId());
         insertOrder.setFullReductionRuleDescription(param.getFullReductionRuleDescription());
         insertOrder.setCouponsId(param.getCouponsId());
@@ -2817,6 +2823,13 @@ public class PointsMallOrderServiceImpl extends ServiceImpl<PointsMallOrderMappe
 
     @Override
     public String selectCommissionReward(PointsMallOrderParam param) {
+
+        //C-10 批次6（2026-09-19 口径变更）：返现/返利功能全面取消 → 不返回文案、不发放佣金。
+        //如需恢复，把 REWARD_DISABLED 改为 false 即可（下方原逻辑完整保留）。
+        boolean REWARD_DISABLED = true;
+        if (REWARD_DISABLED) {
+            return "";
+        }
 
         Member loginMember = memberSessionManager.getSession(TokenUtil.getToken());
 

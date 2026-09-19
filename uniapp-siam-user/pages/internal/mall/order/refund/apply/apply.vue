@@ -1,9 +1,6 @@
 <template>
 	<view>
 		<view class="top-detail">
-			<view class="current-tips" @tap.stop.prevent="customerServiceWechat">联系客服可领取运费险，获取客服微信请戳这里</view>
-		</view>
-		<view class="top-detail">
 			<view class="top-shop-name">
 				<text :decode="true">{{ order.description }}</text>
 			</view>
@@ -57,10 +54,6 @@
 			<view class="order-delivery-fee" v-if="order.reducedPrice > 0">
 				<text>满减费</text>
 				<text>-￥{{ order.reducedPrice }}</text>
-			</view>
-			<view class="order-delivery-fee">
-				<text>配送费</text>
-				<text>￥{{ order.deliveryFee?order.deliveryFee:0 }}</text>
 			</view>
 		</view>
 		<view class="refund-reason">

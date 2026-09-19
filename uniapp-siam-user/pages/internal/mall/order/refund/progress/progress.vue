@@ -40,10 +40,6 @@
                     </view>
                 </view>
             </view>
-            <view class="refund-process-column">
-                <text class="title">运费</text>
-                <text class="pirce">￥{{ orderRefund.deliveryFee }}</text>
-            </view>
             <view class="view-line"></view>
             <view class="refund-process-column">
                 <text class="title">退款金额</text>

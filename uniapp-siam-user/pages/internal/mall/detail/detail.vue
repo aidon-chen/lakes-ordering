@@ -46,9 +46,10 @@
 			</view>
 		</view>
 		<view class="commodity-detail-view">
+			<!-- C-10 批次6（口径变更）：不做配送 → 运费行改为提货方式 -->
 			<view class="guige-yunfei">
-				<text class="commodity-detail">运费</text>
-				<text class="goods-info-specListString guige-specListString">免运费</text>
+				<text class="commodity-detail">提货方式</text>
+				<text class="goods-info-specListString guige-specListString">门店自提</text>
 			</view>
 		</view>
 

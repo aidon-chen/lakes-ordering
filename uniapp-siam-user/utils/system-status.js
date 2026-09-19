@@ -155,7 +155,10 @@ const paymentModeText = (type) => {
         case 2:
             return '余额支付';
         case 3:
+            // 积分支付已全面取消（2026-09-19 口径变更）；保留映射以兼容历史订单
             return '积分支付';
+        case 4:
+            return '到店支付';
         default:
             return '-';
     }

@@ -66,25 +66,28 @@
 				</view>
 				<scroll-view scroll-y style="height: 50vh">
 					<view class="commdity-name-type-view">
-						<view class="commdity-type-item" v-if="specList" v-for="(item, key) in specList" :key="key">
-							<view class="commdity-type-name">{{ key }}</view>
+						<!-- C-10 批次6：拆开 v-if/v-for（同元素会让 Vue3 语义失效，且触发小程序渲染层 framework inner error） -->
+						<block v-if="specList && specList.length > 0">
+							<view class="commdity-type-item" v-for="(item, key) in specList" :key="key">
+								<view class="commdity-type-name">{{ key }}</view>
 
-							<radio-group class="radio-group" @change="radioChange" :data-firstIndex="key">
-								<label :class="
+								<radio-group class="radio-group" @change="radioChange" :data-firstIndex="key">
+									<label :class="
                                         'group-label theme-border ' +
                                         (!item.stock ? 'disabled-group-label' : '') +
                                         ' ' +
                                         (item.checked ? 'active theme-bg' : 'theme-color-border') +
                                         ' out_of_range one_row'
                                     " v-for="(item, index) in item" :key="index">
-									<radio :value="index" :checked="item.checked" :disabled="!item.stock"
-										class="radio" />
+										<radio :value="index" :checked="item.checked" :disabled="!item.stock"
+											class="radio" />
 
-									{{ item.name }}
-								</label>
-							</radio-group>
-						</view>
-						<van-empty v-if="specList.length <= 0" description="暂无规格"></van-empty>
+										{{ item.name }}
+									</label>
+								</radio-group>
+							</view>
+						</block>
+						<van-empty v-else description="暂无规格"></van-empty>
 					</view>
 				</scroll-view>
 

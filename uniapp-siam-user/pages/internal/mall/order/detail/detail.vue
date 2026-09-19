@@ -77,10 +77,6 @@
 					<text class="commodity-money">￥{{ item.price }}</text>
 				</view>
 			</view>
-			<view class="distribution-fee-view">
-				<text>运费</text>
-				<text>￥{{ order.deliveryFee }}</text>
-			</view>
 			<view class="distribution-fee-view" v-if="order.fullReductionRuleId">
 				<text>使用满减</text>
 				<text>{{ order.fullReductionRuleDescription }}</text>
@@ -102,7 +98,16 @@
 			<text>支付方式</text>
 			<text>{{ order.paymentModeText }}</text>
 		</view>
-		<view class="receiving-address-view">
+		<!-- C-10 批次6（口径变更）：自提订单展示门店入口卡（画板 B-06），配送历史单仍走原地址卡 -->
+		<view class="pickup-shop-entry" v-if="order.shoppingWay == 1">
+			<van-icon name="logistics" class="theme-color pickup-shop-entry-icon" />
+			<view class="pickup-shop-entry-main">
+				<view class="pickup-shop-entry-name out_of_range one_row">{{ order.shopName || '门店自提' }}</view>
+				<view class="pickup-shop-entry-tip">请到门店出示自提码取货</view>
+			</view>
+			<view class="pickup-shop-entry-link theme-color" @tap="toPickupCode">查看自提码</view>
+		</view>
+		<view class="receiving-address-view" v-if="order.shoppingWay != 1">
 			<text class="receiving-address-title">收货地址</text>
 			<view class="receiving-address-details">
 				<view class="receiving-address out_of_range">
@@ -441,33 +446,14 @@
 			},
 
 			openConfirm() {
-				let paymentModes = [{
-						value: 1,
-						name: '微信支付',
-						icon: 'wechat-pay',
-						show: true
-					},
-					{
-						value: 3,
-						name: '平台积分',
-						icon: 'points',
-						show: true
-					}
-				];
-				console.log('余额=', this.userInfo.balance);
-				console.log('需支付金额=', this.order.actualPrice);
-				if (this.order.actualPrice > this.userInfo.balance) {
-					paymentModes[1].subname = '余额不足';
-					paymentModes[1].isBindTap = true;
-				}
-				if (this.order.actualPrice > this.userInfo.points) {
-					paymentModes[2].subname = '积分不足';
-					paymentModes[2].isBindTap = true;
-				}
-				if (!this.userInfo.paymentPassword) {
-					paymentModes[1].subname = '未设置支付密码,去设置';
-					paymentModes[1].isBindTap = false;
-				}
+				// C-10 批次6（口径变更）：积分/余额支付全面取消 → 支付方式只保留「到店支付」；
+				// 原代码在只有 2 项的数组上访问 paymentModes[2]（越界，会抛 TypeError），且到店支付无需"余额/密码"校验
+				const paymentModes = [{
+					value: 4,
+					name: '到店支付',
+					icon: '',
+					show: true
+				}];
 				this.dialogShow = true;
 				this.maskClosable = false;
 				this.title = '请选择支付方式';
@@ -1261,4 +1247,45 @@
 		font-size: 26rpx;
 		color: #acacac;
 	}
+
+	/* C-10 批次6：自提门店入口卡（画板 B-06） */
+	.pickup-shop-entry {
+		display: flex;
+		align-items: center;
+		padding: 24rpx 20rpx;
+		margin: 20rpx 24rpx 0 24rpx;
+		background-color: #ffffff;
+		border-radius: 24rpx;
+	}
+
+	.pickup-shop-entry-icon {
+		font-size: 40rpx;
+		margin-right: 18rpx;
+		flex-shrink: 0;
+	}
+
+	.pickup-shop-entry-main {
+		flex: 1;
+		min-width: 0;
+	}
+
+	.pickup-shop-entry-name {
+		font-size: 28rpx;
+		font-weight: 600;
+		color: #202020;
+		line-height: 40rpx;
+	}
+
+	.pickup-shop-entry-tip {
+		font-size: 24rpx;
+		color: #999999;
+		margin-top: 4rpx;
+	}
+
+	.pickup-shop-entry-link {
+		font-size: 24rpx;
+		flex-shrink: 0;
+		margin-left: 12rpx;
+	}
+
 </style>
