@@ -31,7 +31,7 @@ module.exports = {
       //生产：云托管 bar-mvp 公网域名（2026-09-18 部署接入）
       baseUrl: 'https://bar-mvp-315579-12-1488393615.sh.run.tcloudbase.com/siam-server', // production
       baseUrl4Test: 'https://bar-mvp-315579-12-1488393615.sh.run.tcloudbase.com/siam-server', // production_test
-      developmentBaseUrl: 'https://bar-mvp-315579-12-1488393615.sh.run.tcloudbase.com/siam-server', // development
+      developmentBaseUrl: 'http://localhost:9201/siam-server', // development（本地联调：A-09 新后端）
       cashierBaseUrl: '/cashier' // 收银台静态托管子目录（同域相对路径，如改独立域名则填完整 URL）
     },
     oss:{
