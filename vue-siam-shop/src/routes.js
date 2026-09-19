@@ -58,6 +58,9 @@ const labelPrinterList = () => import( './pages/shopManage/internal/labelPrinter
 //轮播图管理
 const advertisementList = () => import( './pages/shopDecoration/advertisementList.vue')
 
+//台位管理（A-09）
+const tableList = () => import( './pages/dining/tableList.vue')
+
 //数据中心
 const statisticGraph = () => import( './pages/basicModule/statisticGraph.vue')
 
@@ -178,6 +181,15 @@ let routes = [
           { path: '/shopChangeRecord', component: shopChangeRecord, name: '门店信息变更记录' },          
           { path: '/advertisementList', component: advertisementList, name: '门店装修' },
           { path: '/courierList', component: courierList, name: '骑手信息' },
+      ]
+    },
+    {
+      path: '/',
+      component: Home,
+      name: '台位管理',
+      iconCls: 'el-icon-s-grid',
+      children: [
+          { path: '/tableList', component: tableList, name: '台位与桌码' },
       ]
     },
     {

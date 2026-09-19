@@ -40,6 +40,7 @@
 
 <script>
 	let app = null;
+	import https from '../../../utils/http';
 	export default {
 		data() {
 			return {
@@ -48,7 +49,10 @@
 				tableType: '散台',
 				personCount: 4,
 				minPerson: 2,
-				maxPerson: 12
+				maxPerson: 12,
+				// 扫码校验状态（C-04：作废码/停用台位禁止进入点单）
+				qrInvalid: '',
+				verified: false
 			};
 		},
 		computed: {
@@ -91,9 +95,48 @@
 			this.tableId = params.tid || params.tableId || params.tableNo || (options && options.tableNo) || '';
 			this.area = params.area || (options && options.area) || '';
 			this.tableType = params.type || (options && options.type) || '散台';
-			// TODO: 后端桌台接口就绪后，按 tableId 拉取桌台信息（可容纳人数等）
+			// 扫码校验（C-04）：停用台位/失效桌码禁止进入点单；成功则拉取容量/类型/区域
+			this.verifyTable(scene);
 		},
 		methods: {
+			// 台位详情校验：后端返回 状态/容量/类型/区域/当前有效 scene
+			verifyTable(scene) {
+				if (!this.tableId) {
+					return; // 无桌号，点单时兜底拦截
+				}
+				https.request('/rest/shop/diningTable/detail', { tableNo: this.tableId }).then((res) => {
+					const d = res.data;
+					if (!d || d.status === 3) {
+						this.qrInvalid = '该台位已停用，请联系店员';
+						return;
+					}
+					// 码有效性：与后端当前有效 scene 比对（作废未重生成=空、重生成后旧码=不匹配）
+					if (d.qrScene && scene && d.qrScene !== scene) {
+						this.qrInvalid = '该桌码已失效，请使用最新桌码';
+						return;
+					}
+					if (!d.qrScene) {
+						this.qrInvalid = '该桌码已作废，请重新生成';
+						return;
+					}
+					// 校验通过：拉取台位信息（解决 TODO：可容纳人数等）
+					if (d.capacity) {
+						this.maxPerson = d.capacity;
+						if (this.personCount > d.capacity) {
+							this.personCount = d.capacity;
+						}
+					}
+					if (d.typeName) {
+						this.tableType = d.typeName;
+					}
+					if (d.zoneName) {
+						this.area = d.zoneName;
+					}
+					this.verified = true;
+				}).catch(() => {
+					// 接口异常不阻塞流程，点单时由后端兜底校验
+				});
+			},
 			decrease() {
 				if (this.personCount > this.minPerson) {
 					this.personCount--;
@@ -108,6 +151,20 @@
 				if (!this.tableId) {
 					uni.showToast({
 						title: '未识别到桌号，请重新扫码',
+						icon: 'none'
+					});
+					return;
+				}
+				if (this.qrInvalid) {
+					uni.showToast({
+						title: this.qrInvalid,
+						icon: 'none'
+					});
+					return;
+				}
+				if (!this.verified) {
+					uni.showToast({
+						title: '桌台信息加载中，请稍候',
 						icon: 'none'
 					});
 					return;

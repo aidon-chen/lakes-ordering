@@ -46,9 +46,11 @@ public class DiningTableServiceImpl implements DiningTableService {
 
     @Override
     public Map<String, Object> list(Integer shopId) {
-        // 台位全量（不分页，单店桌数小；Round 9）
+        // 台位全量（不分页，单店桌数小；Round 9）；停用台位（status=3）收银端不显示（A-09 作废/撤除语义）
         List<DiningTable> tables = diningTableMapper.selectList(
-                new LambdaQueryWrapper<DiningTable>().eq(DiningTable::getShopId, shopId));
+                new LambdaQueryWrapper<DiningTable>()
+                        .eq(DiningTable::getShopId, shopId)
+                        .ne(DiningTable::getStatus, 3));
 
         // 类型/区域映射表
         Map<Integer, TableType> typeMap = tableTypeMapper.selectList(
