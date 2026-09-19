@@ -17,7 +17,14 @@ const IMPLEMENTED: Record<string, Component> = {
 }
 
 const router = createRouter({
-  history: createWebHistory(),
+  /*
+   * base 必须显式传 import.meta.env.BASE_URL（= vite 的 base）：
+   * 不传时 vue-router 只在页面有 <base> 标签时才认子路径，否则**兜底成 '/'**，
+   * 于是它会把 `/cashier/order/goods-status` 整体当成路由路径去匹配 → 匹配不到
+   * → 落到 catch-all 重定向回默认页（2026-09-19 线上实测：深链被弹回台位图）。
+   * 开发环境 BASE_URL='/',生产 '/cashier/'，两边都正确。
+   */
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     { path: '/', redirect: DEFAULT_PATH },
     { path: '/login', name: 'login', component: () => import('@/views/LoginView.vue') },
