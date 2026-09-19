@@ -12,12 +12,18 @@ export interface TableFloorRow {
   capacity: number
   status: 1 | 2 | 3
   minSpend: number
-  // 占用时的进行中会话摘要
+  // 会话摘要（进行中 或 最近一次已结台，后者用于派生待清台）
   sessionId: number | null
   memberNum: number | null
   openMinutes: number | null
   goodsTotalPrice: number | null
   addedCount: number | null
+  /** 会话状态 1=进行中 2=已结台；无会话为 null */
+  sessionStatus: number | null
+  /** 结台时间（已结台时有值） */
+  closeTime: string | null
+  /** 待清台：台位仍占用且最近会话已结台（后端算好下发） */
+  awaitingClean: boolean | null
 }
 
 /** 区域行 */
@@ -47,6 +53,17 @@ export const openTable = (id: number, memberNum: number) =>
 export const changeTable = (id: number, targetTableId: number) =>
   http.post<unknown, null>('/rest/merchant/diningTable/change', { id, targetTableId })
 
-/** 清台 */
+/**
+ * 结账（批次 C 2026-09-19 新增）
+ * 只闭台、**不放台** → 台位进入「待清台」，再由 clearTable 真正释放。
+ * 对齐 W-04 画板底注「收款后：订单→已完成 · 台位→待清台」。
+ */
+export const settleTable = (id: number) =>
+  http.post<unknown, null>('/rest/merchant/diningTable/settle', { id })
+
+/**
+ * 清台
+ * 兼容「待清台」：会话已结台时本次仅释放台位
+ */
 export const clearTable = (id: number) =>
   http.post<unknown, null>('/rest/merchant/diningTable/clear', { id })

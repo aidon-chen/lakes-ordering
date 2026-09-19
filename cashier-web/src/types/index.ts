@@ -1,10 +1,10 @@
 /** 桌台 / 会话 / 账单类型定义（与后端 package_dining 模型对齐） */
 
-/** 桌台状态：1=空闲 2=占用 3=停用（Round 8 回归三态，待清台/预定后续扩展） */
+/** 桌台状态：1=空闲 2=占用 3=停用（待清台由 awaitingClean 派生，见 TableInfo） */
 export type TableStatus = 1 | 2 | 3
 
-/** 桌卡 UI 展示态（Round 8：仅两态 idle/busy） */
-export type TableUiState = 'idle' | 'busy'
+/** 桌卡 UI 展示态（批次 C 扩为三态：idle/busy/toclean） */
+export type TableUiState = 'idle' | 'busy' | 'toclean'
 
 /** 桌台（对齐后端 TableFloorVo，list 接口行结构） */
 export interface TableInfo {
@@ -21,19 +21,28 @@ export interface TableInfo {
   typeName: string
   /** 低消金额（0 = 无低消；一期仅展示不校验） */
   minSpend: number
-  /** 桌卡展示态（由 status+session 推导） */
+  /**
+   * 待清台：台位仍占用但会话已结台（后端算好下发，批次 C 2026-09-19）
+   * 由 settle（结账）产生，等 clear（清台）消除
+   */
+  awaitingClean: boolean
+  /** 桌卡展示态（由 awaitingClean + status + session 推导） */
   ui: TableUiState
-  /** 占用时携带进行中会话（聚合下发，桌卡图零二次请求） */
+  /** 占用/待清台时携带会话（聚合下发，桌卡图零二次请求） */
   session: SessionBrief | null
 }
 
-/** 进行中会话摘要 */
+/** 会话摘要 */
 export interface SessionBrief {
   sessionId: number
   memberNum: number
   openMinutes: number
   goodsTotalPrice: number
   addedCount: number
+  /** 会话状态 1=进行中 2=已结台（3=已失效不下发） */
+  sessionStatus: number
+  /** 结台时间（sessionStatus=2 时有值），用于待清台卡显示「已结账 HH:mm」 */
+  closeTime: string | null
 }
 
 /** 账单明细行（对齐 W-04 结算栏行：品名（规格）／规格 ×n · 备注／小计） */

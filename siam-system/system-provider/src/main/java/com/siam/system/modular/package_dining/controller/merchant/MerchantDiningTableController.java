@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 收银台台位作业接口（开台/清台/转台）
+ * 收银台台位作业接口（开台/结账/清台/转台）
  * 鉴权：/rest/merchant/** 由 merchant 拦截器统一保护
  * 台位档案（增删改/桌码）归 A-09 在商家中心做，本期不提供
  */
@@ -60,7 +60,19 @@ public class MerchantDiningTableController {
     }
 
     /**
+     * 结账（批次 C 2026-09-19 新增）
+     * 只闭台、不放台 → 台位进入「待清台」，由 /clear 真正释放。
+     * 对齐 W-04 画板底注「收款后：订单→已完成 · 台位→待清台」。
+     */
+    @PostMapping(value = "/settle")
+    public BasicResult settle(@RequestBody DiningTableParam param) {
+        diningTableService.settleTable(shopId(), param.getId());
+        return BasicResult.success();
+    }
+
+    /**
      * 清台
+     * 兼容「待清台」：会话已结台时本次仅释放台位
      */
     @PostMapping(value = "/clear")
     public BasicResult clear(@RequestBody DiningTableParam param) {

@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import router from '@/router'
 import type { CartLine, MenuChip, PosView, TableInfo, TableUiState } from '@/types'
-import { clearTable, changeTable as changeTableApi, fetchTableList, openTable, type ZoneRow } from '@/api/table'
+import { clearTable, changeTable as changeTableApi, fetchTableList, openTable, settleTable, type ZoneRow } from '@/api/table'
 import { fetchGoods, fetchMenus, fetchSpecs, updateGoodsStatus, type GoodsRow, type MenuRow, type SpecGroupMap } from '@/api/menu'
 import { submitOrder, type OrderDetailSubmit } from '@/api/order'
 
@@ -29,6 +29,8 @@ export const usePosStore = defineStore('pos', {
     guestPick: 2,
     // 转台弹窗中间态（Round 5 拍板弹窗选目标台）
     changeForTableId: null as number | null,
+    /** 台位抽屉（批次 C）：null = 关闭 */
+    drawerTableId: null as number | null,
     // ===== 点单区（对齐 W-04 三段式：商品区 566 ｜ 做法与备注区 290）=====
     menus: [] as MenuRow[],
     /** 本店全部在售商品（status ∈ 2,4），分类切换在本地过滤以便统计计数 */
@@ -64,9 +66,9 @@ export const usePosStore = defineStore('pos', {
         return true
       })
     },
-    /** 图例计数：空闲 / 占用（Round 8 两态） */
+    /** 图例计数：空闲 / 占用 / 待清台（批次 C 三态） */
     uiCounts(s): Record<TableUiState, number> {
-      const c: Record<TableUiState, number> = { idle: 0, busy: 0 }
+      const c: Record<TableUiState, number> = { idle: 0, busy: 0, toclean: 0 }
       for (const t of s.tables) c[uiOf(t)]++
       return c
     },
@@ -80,6 +82,10 @@ export const usePosStore = defineStore('pos', {
     changeTargets(s): TableInfo[] {
       const src = s.changeForTableId
       return s.tables.filter(t => t.id !== src && t.status === 1)
+    },
+    /** 台位抽屉当前台位（批次 C） */
+    drawerTable(s): TableInfo | null {
+      return s.tables.find(t => t.id === s.drawerTableId) ?? null
     },
     cartTotal(s): number {
       return s.cart.reduce((sum, l) => sum + l.price * l.qty, 0)
@@ -164,14 +170,18 @@ export const usePosStore = defineStore('pos', {
           zone: r.zone,
           typeName: r.typeName,
           minSpend: r.minSpend ?? 0,
-          ui: r.status === 2 ? 'busy' : 'idle',
+          // 待清台由后端算好下发（批次 C），前端不重复推导口径
+          awaitingClean: r.awaitingClean === true,
+          ui: r.awaitingClean === true ? 'toclean' : r.status === 2 ? 'busy' : 'idle',
           session: r.sessionId
             ? {
                 sessionId: r.sessionId,
                 memberNum: r.memberNum ?? 0,
                 openMinutes: r.openMinutes ?? 0,
                 goodsTotalPrice: r.goodsTotalPrice ?? 0,
-                addedCount: r.addedCount ?? 0
+                addedCount: r.addedCount ?? 0,
+                sessionStatus: r.sessionStatus ?? 1,
+                closeTime: r.closeTime ?? null
               }
             : null
         }))
@@ -181,14 +191,44 @@ export const usePosStore = defineStore('pos', {
       }
     },
 
-    /** 桌卡点击路由：占用→恢复进单；空闲→开台弹窗 */
+    /**
+     * 桌卡点击路由（批次 C 三态）
+     * - 空闲 → 开台弹窗
+     * - 占用 → 恢复进单（加酒 / 转台）
+     * - 待清台 → 开台位抽屉（查看该台订单 + 只读台位码 + 清台入口）
+     */
     clickTable(table: TableInfo) {
       const ui = uiOf(table)
       if (ui === 'busy') {
         this.resumeOrder(table.id)
-      } else if (ui === 'idle') {
+      } else if (ui === 'toclean') {
+        this.drawerTableId = table.id
+      } else {
         this.openForTableId = table.id
         this.guestPick = Math.max(1, Math.round(table.capacity / 2))
+      }
+    },
+
+    /** 开台位抽屉 / 关闭 */
+    openDrawer(tableId: number) {
+      this.drawerTableId = tableId
+    },
+    closeDrawer() {
+      this.drawerTableId = null
+    },
+
+    /**
+     * 结账（批次 C 新增）：只闭台不放台 → 台位进「待清台」
+     * 真实收款属批次 H（商户号未就绪），此处先提供状态流转入口，
+     * 供批次 H 把「确认收款」串成「下单 → 收款 → settle → 待清台」。
+     */
+    async settle(tableId: number) {
+      try {
+        await settleTable(tableId)
+        await this.loadTables()
+      } catch (e) {
+        console.error('[pos] 结账失败', e)
+        alert((e as Error).message || '结账失败')
       }
     },
 
@@ -205,7 +245,9 @@ export const usePosStore = defineStore('pos', {
           memberNum: this.guestPick,
           openMinutes: 0,
           goodsTotalPrice: 0,
-          addedCount: 0
+          addedCount: 0,
+          sessionStatus: 1,
+          closeTime: null
         }
         this.currentSessionId = sessionId
         this.openForTableId = null
@@ -465,7 +507,14 @@ export const usePosStore = defineStore('pos', {
 })
 
 /** 桌卡展示态推导（Round 8 两态：busy=有进行中会话，否则 idle） */
+/**
+ * 桌卡展示态推导（批次 C 三态）
+ * - toclean：后端下发 awaitingClean（台位仍占用但会话已结台）
+ * - busy：有进行中会话或台位占用
+ * - idle：其余
+ */
 function uiOf(t: TableInfo): TableUiState {
+  if (t.awaitingClean) return 'toclean'
   if (t.session) return 'busy'
   if (t.status === 2) return 'busy'
   return 'idle'
@@ -515,6 +564,7 @@ function statusLabelOf(label: string): TableUiState | null {
   switch (label) {
     case '空闲': return 'idle'
     case '占用': return 'busy'
+    case '待清台': return 'toclean'
     default: return null
   }
 }
