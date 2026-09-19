@@ -11,8 +11,9 @@ import PageStub from '@/components/PageStub.vue'
 const IMPLEMENTED: Record<string, Component> = {
   '/table/floor': defineAsyncComponent(() => import('@/views/FloorView.vue')),
   '/order/cashier': defineAsyncComponent(() => import('@/views/OrderView.vue')),
+  '/order/goods-status': defineAsyncComponent(() => import('@/views/GoodsStatusView.vue')),
   '/shop/account': defineAsyncComponent(() => import('@/views/AccountView.vue'))
-  // /orders/today 等 16 项尚未落地 → 统一走 PageStub（批次 D 起逐页替换）
+  // 其余 15 项尚未落地 → 统一走 PageStub（批次 C 起逐页替换）
 }
 
 const router = createRouter({

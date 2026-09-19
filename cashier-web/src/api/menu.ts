@@ -60,6 +60,24 @@ export const fetchGoods = (menuId?: number) =>
 export const updateGoodsStatus = (id: number, status: 2 | 4) =>
   http.post<unknown, null>('/rest/merchant/goods/update', { id, status })
 
+/**
+ * 批量沽清 / 恢复（W-26「批量沽清」「批量恢复」）
+ * 逐件调用 `/goods/update`，返回成功与失败的清单供界面如实提示。
+ * ⚠️ 后端无批量接口，逐件调用是唯一路径；顺序执行以免打爆连接池。
+ */
+export async function updateGoodsStatusBatch(ids: number[], status: 2 | 4) {
+  const failed: number[] = []
+  for (const id of ids) {
+    try {
+      await updateGoodsStatus(id, status)
+    } catch (e) {
+      console.error('[goods] 批量更新失败 id=' + id, e)
+      failed.push(id)
+    }
+  }
+  return { ok: ids.length - failed.length, failed }
+}
+
 /** 规格选项（/rest/goodsSpecificationOption/selectByGoodsId 返回 LinkedHashMap<规格名, 选项列表>） */
 export interface SpecOption {
   id: number
