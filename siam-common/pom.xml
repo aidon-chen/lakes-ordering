@@ -83,11 +83,11 @@
             <version>2.3.3.RELEASE</version>
         </dependency>
 
-        <!-- 整合lombok，便于打印日志 -->
+        <!-- 整合lombok，便于打印日志；1.16.20 在 JDK9+ 注解处理失效，1.18.38 起支持 JDK24，且向下兼容 JDK8 -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.16.20</version>
+            <version>1.18.38</version>
         </dependency>
 
         <!-- 整合redis -->

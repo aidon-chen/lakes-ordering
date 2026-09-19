@@ -155,7 +155,7 @@ CREATE TABLE `tb_invoice_apply` (
   `update_time` datetime DEFAULT NULL COMMENT '修改时间',
   PRIMARY KEY (`id`),
   KEY `idx_member_status` (`member_id`,`status`),
-  KEY `idx_order` (`order_id`)
+  UNIQUE KEY `uk_order` (`order_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='发票申请表';
 
 -- ---------------------------------------------------------------------------
@@ -170,6 +170,7 @@ CREATE TABLE `tb_wine_storage` (
   `bottle_count` int(11) NOT NULL COMMENT '存入瓶数',
   `remain_count` int(11) NOT NULL COMMENT '剩余瓶数',
   `storage_code` varchar(16) NOT NULL COMMENT '存酒码(唯一)',
+  `location` varchar(50) DEFAULT NULL COMMENT '存放柜位，如 B 区 03 号柜（批次5新增）',
   `storage_date` date NOT NULL COMMENT '存入日期',
   `expire_date` date NOT NULL COMMENT '有效期截止日期',
   `status` int(2) DEFAULT 1 COMMENT '状态 1=在存 2=已取完 3=已过期',

@@ -355,6 +355,32 @@
 			"style": {
 				"navigationBarTitleText": "未到账余额"
 			}
+		},
+		{
+			"path": "pages/notice/list/list",
+			"style": {
+				"navigationBarTitleText": "公告",
+				"enablePullDownRefresh": true,
+				"backgroundTextStyle": "dark"
+			}
+		},
+		{
+			"path": "pages/notice/detail/detail",
+			"style": {
+				"navigationBarTitleText": "公告详情"
+			}
+		},
+		{
+			"path": "pages/mine/invoice/apply/apply",
+			"style": {
+				"navigationBarTitleText": "发票申请"
+			}
+		},
+		{
+			"path": "pages/mine/wine/list/list",
+			"style": {
+				"navigationBarTitleText": "存酒查询"
+			}
 		}
 	],
 	"tabBar": {

@@ -1,142 +1,94 @@
 <template>
-	<view class="container">
-		<image
-			:src="'https://siam-hangzhou.oss-cn-hangzhou.aliyuncs.com/data/images/business/mypage_top.jpg?v=' + appVersion"
-			class="index-bg-class" mode="widthFix"></image>
-		<view class="userinfo" :style="'margin-top:' + (statusBarHeight + 30) + 'rpx;'">
-			<block v-if="!data.id">
-				<button @tap="getUserProfile" :plain="true" class="userinfo-button"
-					style="margin: 0; width: 100%; padding: inherit">
-					<view class="notlogin">
-						<image class="userinfo-avatar" src="/static/assets/images/user-head.png" mode="cover"></image>
-						<!-- <text class="userinfo-nickname">{{userInfo.nickName}}</text> -->
-						请登录/注册
+	<view class="c01">
+		<!-- 状态栏占位（本页 navigationStyle: custom） -->
+		<view class="c01-status" :style="'height:' + statusBarHeight + 'rpx;'"></view>
+
+		<!-- 绿色头部：用户行 + 会员卡 -->
+		<view class="c01-head theme-bg">
+			<view class="c01-user-row">
+				<view class="c01-avatar">
+					<image v-if="member.id && member.headImg" class="c01-avatar-img" :src="member.headImg"
+						mode="aspectFill"></image>
+					<image v-else class="c01-avatar-person" src="/static/assets/icons/mine-avatar-person.png"
+						mode="widthFix"></image>
+				</view>
+				<view class="c01-user-col">
+					<view class="c01-nickname">{{ member.id ? member.username : '请登录/注册' }}</view>
+					<view class="c01-user-line" v-if="member.id && phoneLine">{{ phoneLine }}</view>
+					<view class="c01-user-line" v-if="member.id && profileLine">{{ profileLine }}</view>
+				</view>
+			</view>
+
+			<view class="c01-vip-card" v-if="member.id" @tap="goMemberCenter">
+				<view class="c01-vip-level-row">
+					<view class="c01-vip-level-left">
+						<image class="c01-crown" src="/static/assets/icons/mine-crown.png" mode="widthFix"></image>
+						<view class="c01-vip-level-text">{{ vipLevelText }}</view>
 					</view>
-				</button>
-			</block>
-			<block v-else>
-				<navigator url="../userinfo/userinfo" class="navigator-userinfo">
-					<view class="flex_between" style="width: 100%;">
-						<view class="userinfo-view">
-							<image class="userinfo-avatar"
-								:src="data.headImg ? data.headImg : '/static/assets/images/user-head.png'" mode="cover">
-							</image>
-							<view class="userinfo-nickname">
-								<view class="nickname-class">{{ data.username }}</view>
-								<view class="vip-class">
-									<!-- <text class="{{data.type!=1?'is-vip-class':'not-vip-class'}}">{{data.typeVipText}}</text> -->
-									<!-- <text decode="true">&nbsp;&nbsp;</text> -->
-									<view class="vip-image-view">
-										<image :src="item + '?v=' + appVersion" mode="widthFix" class="is-vip-image"
-											v-for="(item, index) in isVipImages" :key="index"></image>
-									</view>
-								</view>
-								<view>
-									<text :decode="true">NO:&nbsp;&nbsp;{{ data.vipNo }}</text>
-								</view>
-							</view>
-						</view>
-						<view><van-icon name="arrow" /></view>
+					<view class="c01-vip-growth">{{ growthText }}</view>
+				</view>
+				<view class="c01-vip-divider"></view>
+				<view class="c01-vip-data-row">
+					<view class="c01-vip-data-item">
+						<view class="c01-vip-value">{{ member.points || 0 }}</view>
+						<view class="c01-vip-label">积分</view>
 					</view>
-				</navigator>
-			</block>
-			<view id="content_info" v-if="data.id">
-				<view class="mine-blocking-view">
-					<view class="mine-blocking">
-						<navigator class="mine-navigator" url="../share/reward/reward">
-							<view class="number-tip theme-color">{{ data.inviteRewardAmount }}</view>
-							<view class="text-tip">佣金</view>
-						</navigator>
-						<text class="line-tip">|</text>
-						<navigator class="mine-navigator" url="../integral/integral">
-							<view class="number-tip theme-color">{{ data.points }}</view>
-							<view class="text-tip">我的积分</view>
-						</navigator>
-						<text class="line-tip">|</text>
-						<navigator class="mine-navigator" url="../coupons/coupons">
-							<view class="number-tip theme-color">{{ data.couponsNumber ? data.couponsNumber : 0 }}
-							</view>
-							<view class="text-tip">优惠券</view>
-						</navigator>
-						<text class="line-tip">|</text>
-						<navigator class="mine-navigator" url="../member/index/index">
-							<view class="number-tip theme-color">{{ data.balance }}</view>
-							<view class="text-tip">会员中心</view>
-						</navigator>
+					<view class="c01-vip-data-item">
+						<view class="c01-vip-value">{{ member.balance || 0 }}</view>
+						<view class="c01-vip-label">积点</view>
+					</view>
+					<view class="c01-vip-data-item">
+						<view class="c01-vip-value">{{ member.couponsNumber || 0 }}</view>
+						<view class="c01-vip-label">优惠券</view>
 					</view>
 				</view>
-				<view class="my-order-box">
-					<view class="my-order-title my-order-all" @tap="bindOrderInfo">
-						<view class="order-title">我的订单</view>
-						<view class="order-all">
-							<text>查看全部</text>
-							<van-icon name="arrow" />
-						</view>
-					</view>
-					<view class="swiper-content">
-						<view class="swiper-tab self-adaption">
-							<view class="swiper-tab-item" :data-current="index" @tap="clickTab"
-								hover-class="hover-click-class" v-for="(item, index) in tabList" :key="index">
-								<view :class="'swiper_table_item_view ' + (currentTab == item.modeId ? 'active_' : '')"
-									:data-current="index" @tap="clickTab">
-									{{ item.modeName }}
-								</view>
-							</view>
-						</view>
-					</view>
-					<swiper :current="currentTab" class="swiper-box" duration="300" @change="bindSlideChange"
-						style="height: 78px">
-						<swiper-item class="swiper-items">
-							<view class="mine-blocking">
-								<view class="order-navigator" hover-class="hover-click-class"
-									@tap="goOrderCenter(item, 0)" v-for="(item, index) in shopOrderTabList"
-									:key="index">
-									<van-icon :name="item.icon" size="50rpx" />
-									<view class="text-tip">{{ item.modeName }}</view>
-								</view>
-							</view>
-						</swiper-item>
-						<swiper-item class="swiper-items">
-							<view class="mine-blocking">
-								<view class="order-navigator" hover-class="hover-click-class"
-									@tap="goOrderCenter(item)" v-for="(item, index) in pointsOrderTabList" :key="index">
-									<van-icon :name="item.icon" size="50rpx" />
-									<view class="text-tip">{{ item.modeName }}</view>
-							</view>
-							</view>
-						</swiper-item>
-					</swiper>
-					<navigator class="navigator-class" url="../collect/index/index">
-						<view class="navigator-view">
-							<view>我的收藏</view>
-							<van-icon name="arrow" />
-						</view>
-					</navigator>
+			</view>
+		</view>
+
+		<!-- 订单入口卡（上叠绿色头部，叠入量 = 设计稿头部底与卡片顶之差 36pt） -->
+		<view class="c01-order-card">
+			<view class="c01-title-row">
+				<view class="c01-title">我的订单</view>
+				<view class="c01-more" @tap="bindOrderInfo">全部订单 ›</view>
+			</view>
+			<view class="c01-entry-row">
+				<view class="c01-entry" v-for="(item, index) in orderEntries" :key="index" @tap="goOrderCenter(item)">
+					<image class="c01-entry-icon" :src="item.icon" mode="widthFix"></image>
+					<view class="c01-entry-label">{{ item.name }}</view>
 				</view>
-				<view class="navigator-box">
-					<view class="navigator-radius">
-						<navigator class="navigator-class" url="../../address/index/index">
-							<view class="navigator-view">
-								<view>收货地址</view>
-								<van-icon name="arrow" />
-							</view>
-						</navigator>
-						<view class="view-line"></view>
-						<navigator class="navigator-class" url="../security/index/index">
-							<view class="navigator-view">
-								<view>账号安全</view>
-								<van-icon name="arrow" />
-							</view>
-						</navigator>
-						<!-- 分享 -->
-						<view class="view-line"></view>
-						<navigator class="navigator-class" :url="'../../mine/share/index/index?inviterId=' + data.id">
-							<view class="invite-wrapper">
-								<image
-									:src="'https://siam-hangzhou.oss-cn-hangzhou.aliyuncs.com/data/images/business/share-invite/share_mine.png?v=' + timestamp"
-									mode="widthFix" class="invite-image"></image>
-							</view>
-						</navigator>
+			</view>
+		</view>
+
+		<!-- 存酒区（无数据整卡隐藏） -->
+		<view class="c01-block" v-if="wineList.length">
+			<view class="c01-card">
+				<view class="c01-title-row">
+					<view class="c01-title">我的存酒</view>
+					<view class="c01-more" @tap="goWineList">全部 ›</view>
+				</view>
+				<block v-for="(wine, index) in wineList" :key="wine.id">
+					<view class="c01-wine-row">
+						<view class="c01-wine-left">
+							<view class="c01-wine-name">{{ wineName(wine) }}</view>
+							<view class="c01-wine-meta">{{ wine.summaryLine }}</view>
+						</view>
+						<view class="c01-wine-tag" :class="wineTagClass(wine.statusCode)">{{ wine.statusText }}</view>
+					</view>
+					<view class="c01-wine-expire" v-if="index === 0 && wine.expireDate">有效期至 {{ wine.expireDate }} ·
+						将过期将短信提醒</view>
+				</block>
+				<view class="c01-wine-note">已过期存酒请联系门店处理，将过期将于到期前 3 天短信提醒</view>
+			</view>
+		</view>
+
+		<!-- 常用服务 -->
+		<view class="c01-block">
+			<view class="c01-card c01-svc-card">
+				<view class="c01-title">常用服务</view>
+				<view class="c01-entry-row c01-svc-row">
+					<view class="c01-entry" v-for="(item, index) in services" :key="index" @tap="goService(item)">
+						<image class="c01-entry-icon" :src="item.icon" mode="widthFix"></image>
+						<view class="c01-entry-label">{{ item.name }}</view>
 					</view>
 				</view>
 			</view>
@@ -146,282 +98,192 @@
 
 <script>
 	import https from '../../../utils/http';
-	import GlobalConfig from '../../../utils/global-config';
 	import authService from '../../../utils/auth';
-	import toastService from '../../../utils/toast.service';
-	import dateHelper from '../../../utils/date-helper';
 	import systemStatus from '../../../utils/system-status';
 	//获取应用实例
 	let app = null;
 	export default {
 		data() {
 			return {
-				userInfo: {},
-				hasUserInfo: false,
-				canIUse: uni.canIUse('button.open-type.getUserInfo'),
-				couponsNum: 0,
-				tabList: [{
-						modeId: 0,
-						modeName: '点单订单'
-					},
-					{
-						modeId: 1,
-						modeName: '商城订单'
-					}
-				],
-				// 金刚区四态：本项目纯堂食 + 到店自提，无配送 → 去掉「待收货」（外卖口径）
-				// modeId 与订单中心子Tab 索引一一对应；跳转统一走 goOrderCenter（tabBar 页不能带参 navigateTo）
-				shopOrderTabList: [{
-						modeId: 1,
-						modeType: 'waitPayment',
-						modeName: '待付款',
-						icon: 'pending-payment'
-					},
-					{
-						modeId: 2,
+				statusBarHeight: 40,
+				member: {
+					id: '',
+					headImg: '',
+					username: '',
+					phone: '',
+					birthday: '',
+					sex: '',
+					points: 0,
+					balance: 0,
+					couponsNumber: 0,
+					type: '',
+					levelName: '',
+					growth: null,
+					nextGrowth: null
+				},
+				// 订单入口 4 项：订单中心现有筛选为 all/waitPayment/waitPickedUp/afterSales，
+				// 「待评价」「再来一单」后端暂无对应筛选/动作接口 → 本批落「全部」列表，待后续批次补
+				orderEntries: [{
+						name: '待自提',
+						icon: '/static/assets/icons/mine-pickup.png',
 						modeType: 'waitPickedUp',
-						modeName: '待自提',
-						icon: 'bag-o'
+						modeId: 2
 					},
 					{
-						modeId: 3,
-						modeType: 'afterSales',
-						modeName: '退款/售后',
-						icon: 'balance-list-o'
-					},
-					{
-						modeId: 0,
+						name: '待评价',
+						icon: '/static/assets/icons/mine-review.png',
 						modeType: 'all',
-						modeName: '全部订单',
-						icon: 'orders-o'
-					}
-				],
-				pointsOrderTabList: [{
-						modeId: 1,
-						modeType: 'waitPayment',
-						modeName: '待付款',
-						icon: 'pending-payment'
+						modeId: 0
 					},
 					{
-						modeId: 2,
-						modeType: 'waitDelivered',
-						modeName: '待发货',
-						icon: 'send-gift-o'
-					},
-					{
-						modeId: 3,
-						modeType: 'waitReceived',
-						modeName: '待收货',
-						icon: 'bag-o'
-					},
-					{
-						modeId: 4,
+						name: '退款/售后',
+						icon: '/static/assets/icons/mine-refund.png',
 						modeType: 'afterSales',
-						modeName: '退款/售后',
-						icon: 'balance-list-o'
+						modeId: 3
+					},
+					{
+						name: '再来一单',
+						icon: '/static/assets/icons/mine-reorder.png',
+						modeType: 'all',
+						modeId: 0
 					}
 				],
-				currentTab: 0,
-				isVipImages: [],
-				appVersion: 1.0,
-				statusBarHeight: '',
-				initData: {
-					headImg: '',
-					username: '',
-					vipNo: '',
-					inviteRewardAmount: '',
-					points: '',
-					couponsNumber: 0,
-					balance: '',
-					id: ''
-				},
-				data: {
-					headImg: '',
-					username: '',
-					vipNo: '',
-					inviteRewardAmount: '',
-					points: '',
-					couponsNumber: 0,
-					balance: '',
-					id: ''
-				},
-				timestamp: ''
+				services: [{
+						name: '身份认证',
+						icon: '/static/assets/icons/mine-identity.png',
+						url: '/pages/mine/security/index/index'
+					},
+					{
+						name: '发票申请',
+						icon: '/static/assets/icons/mine-invoice.png',
+						url: '/pages/mine/invoice/apply/apply'
+					},
+					{
+						name: '公告',
+						icon: '/static/assets/icons/mine-notice.png',
+						url: '/pages/notice/list/list'
+					},
+					{
+						name: '优惠券',
+						icon: '/static/assets/icons/mine-coupon.png',
+						url: '/pages/mine/coupons/coupons'
+					}
+				],
+				wineList: []
 			};
 		},
-		onLoad: function() {
+		computed: {
+			phoneLine() {
+				const phone = this.member.phone;
+				if (!phone) {
+					return '微信获取';
+				}
+				const str = String(phone);
+				if (str.length === 11) {
+					return str.substring(0, 3) + '****' + str.substring(7) + ' · 微信获取';
+				}
+				return str + ' · 微信获取';
+			},
+			profileLine() {
+				const parts = [];
+				if (this.member.birthday) {
+					const d = String(this.member.birthday);
+					parts.push('生日 ' + (d.length >= 10 ? d.substring(5, 10) : d));
+				}
+				if (this.member.sex) {
+					parts.push('性别 ' + this.member.sex);
+				}
+				return parts.join(' · ');
+			},
+			vipLevelText() {
+				// 等级名后端暂无独立字段，沿用 type 文案（1 普通用户 / 2 VIP会员）
+				return this.member.levelName ? this.member.levelName : systemStatus.typeVipText(this.member.type);
+			},
+			growthText() {
+				// 成长值字段后端未确认：有则显示「成长值 x/y」，无则退化为会员中心入口
+				if (this.member.growth !== null && this.member.growth !== undefined && this.member.nextGrowth) {
+					return '成长值 ' + this.member.growth + '/' + this.member.nextGrowth + ' ›';
+				}
+				return '会员权益 ›';
+			}
+		},
+		onLoad() {
 			app = getApp();
-			this.statusBarHeight = app.globalData.systemInfoSync.statusBarHeight * 2;
-			if (app.globalData.userInfo) {
-				console.log(1);
-				this.userInfo = app.globalData.userInfo;
-				this.hasUserInfo = true;
-			} else if (this.canIUse) {
-				console.log(2);
-				// 由于 getUserInfo 是网络请求，可能会在 Page.onLoad 之后才返回
-				// 所以此处加入 callback 以防止这种情况
-				app.globalData.userInfoReadyCallback = (res) => {
-					this.userInfo = res.userInfo;
-					this.hasUserInfo = true;
-				};
-			} else {
-				console.log(3);
-				// 在没有 open-type=getUserInfo 版本的兼容处理
+			if (app.globalData.systemInfoSync && app.globalData.systemInfoSync.statusBarHeight) {
+				this.statusBarHeight = app.globalData.systemInfoSync.statusBarHeight * 2;
 			}
 		},
 		onShow() {
 			authService.checkIsLogin().then((result) => {
-				console.log(result);
 				if (result) {
-					this.getUserInfo();
-					// this.getCouponsSelectCounts();
+					this.getMemberInfo();
 					return;
 				}
-				this.data = this.initData;
-				this.userInfo = {};
+				this.member = {
+					id: ''
+				};
+				this.wineList = [];
 				app.globalData.checkIsAuth('scope.userInfo');
 			});
-			this.getTimestamp();
-		},
-		onReady() {
-			
 		},
 		methods: {
-			// 滑动切换tab
-			bindSlideChange: function(e) {
-				this.setData({
-					currentTab: e.detail.current
-				});
-			},
-
-			getTimestamp() {
-				var timestamp = dateHelper.getTimestamp();
-				console.log(timestamp);
-				this.setData({
-					timestamp: timestamp
-				});
-			},
-			//点击切换
-			clickTab: function(e) {
-				console.log(e.target.dataset.current);
-				if (this.currentTab === e.target.dataset.current) {
-					return false;
-				} else {
-					// 显示加载图标
-					this.setData({
-						currentTab: e.target.dataset.current
-					});
-				}
-			},
-			getUserProfile(e) {
-				// 推荐使用wx.getUserProfile获取用户信息，开发者每次通过该接口获取用户个人信息均需用户确认
-				// 开发者妥善保管用户快速填写的头像昵称，避免重复弹窗
-				console.log(app.globalData.userInfo);
-
-				// #ifdef APP-PLUS||H5
-				uni.navigateTo({
-					url: '../../internal/login/code/code'
-				});
-				// #endif
-				// #ifdef MP-WEIXIN||MP-ALIPAY
-				uni.navigateTo({
-					url: '../../internal/login/choose/choose'
-				});
-				// #endif
-			},
-
-			bindUserinfoTap() {
-				uni.navigateTo({
-					url: '../userinfo/userinfo'
-				});
-			},
-
-			getUserInfo: function(e) {
+			// 会员信息（未登录/接口异常时保持空态，不阻断页面渲染）
+			getMemberInfo() {
 				https.request('/rest/member/getLoginMemberInfo', {}).then((result) => {
-					if (result.success) {
-						result.data.typeVipText = systemStatus.typeVipText(result.data.type);
-						result.data.statusVipText = systemStatus.statusVipText(result.data.vipStatus);
-						result.data.vipStartTime = dateHelper.formatDate(result.data.vipStartTime);
-						result.data.vipEndTime = dateHelper.formatDate(result.data.vipEndTime);
-						this.isVipImages = [];
-						if (result.data.type == 1) {
-							this.isVipImages.push(
-								'https://siam-hangzhou.oss-cn-hangzhou.aliyuncs.com/data/images/business/mine_page/user_1.png'
-							);
-							this.isVipImages.push(
-								'https://siam-hangzhou.oss-cn-hangzhou.aliyuncs.com/data/images/business/mine_page/user_2.png'
-							);
-							this.isVipImages.push(
-								'https://siam-hangzhou.oss-cn-hangzhou.aliyuncs.com/data/images/business/mine_page/user_3.png'
-							);
-						} else {
-							this.isVipImages.push(
-								'https://siam-hangzhou.oss-cn-hangzhou.aliyuncs.com/data/images/business/mine_page/vip_1.png'
-							);
-							this.isVipImages.push(
-								'https://siam-hangzhou.oss-cn-hangzhou.aliyuncs.com/data/images/business/mine_page/vip_2.png'
-							);
-							this.isVipImages.push(
-								'https://siam-hangzhou.oss-cn-hangzhou.aliyuncs.com/data/images/business/mine_page/vip_3.png'
-							);
-						}
-						this.setData({
-							data: result.data,
-							userInfo: this.userInfo,
-							isVipImages: this.isVipImages
-						});
+					if (result && result.success && result.data) {
+						this.member = result.data;
+						this.loadWineList();
 					}
 				});
 			},
-
-			getRequestSubscribeMessage() {
-				console.log(111);
-				let use = uni.canIUse('requestSubscribeMessage');
-				console.log(use);
-				if (typeof uni.requestSubscribeMessage === 'function') {
-					console.log(true);
+			// 存酒区：取前 3 条；表未建/无数据时静默隐藏整卡
+			loadWineList() {
+				https.request('/rest/member/wineStorage/list', {}).then((result) => {
+					if (result && result.success && result.data) {
+						this.wineList = result.data.slice(0, 3);
+					}
+				});
+			},
+			wineName(wine) {
+				const count = wine.remainCount === null || wine.remainCount === undefined ? wine.bottleCount : wine
+					.remainCount;
+				return wine.goodsName + ' × ' + count + ' 瓶';
+			},
+			// statusCode：1 存续中 / 2 已取完 / 3 已过期 / 4 将过期
+			wineTagClass(statusCode) {
+				if (statusCode === 4) {
+					return 'c01-tag-warn';
 				}
-				uni.requestSubscribeMessage({
-					tmplIds: ['N63hQksq6Rp3XlrBySkligk-pSvvpJ5fCovwUkwHVH4',
-						'eF29ugG7ZKKKHCDH2Nk48Q2JCH1qKDLBMX2LnAzCz-w',
-						'CE3V7tzt4-PSsf8s-xZg731zHtDEkQmBOedcEEv3cx8'
-					],
-					success(res) {
-						console.log(res);
-					},
-					fail(error) {
-						console.log(error);
-					}
-				});
+				if (statusCode === 3 || statusCode === 2) {
+					return 'c01-tag-off';
+				}
+				return 'c01-tag-ok';
 			},
-
-			bindAccountBalance() {
+			goMemberCenter() {
 				uni.navigateTo({
-					url: '../balance/index/index'
+					url: '/pages/mine/member/index/index'
 				});
 			},
-
-			bindMemberCenter() {
+			goWineList() {
 				uni.navigateTo({
-					url: '../member/index/index'
+					url: '/pages/mine/wine/list/list'
 				});
 			},
-
-			bindInDevelopment() {
-				app.globalData.bindInDevelopment();
+			goService(item) {
+				uni.navigateTo({
+					url: item.url
+				});
 			},
-
-			bindOrderInfo(e) {
-				// 订单中心已是 tabBar 页，switchTab 不能带参，经 globalData 传递入口状态
+			bindOrderInfo() {
 				this.goOrderCenter({
 					modeType: 'all',
 					modeId: 0
-				}, 0);
+				});
 			},
-
-			goOrderCenter(item, currentTabOverride) {
+			// 订单中心是 tabBar 页：switchTab 不能带参，经 globalData 传递入口状态（onShow 消费）
+			goOrderCenter(item) {
 				app.globalData.orderCenterEntry = {
-					currentTab: currentTabOverride !== undefined ? currentTabOverride : this
-						.currentTab,
+					currentTab: 0,
 					modeType: item.modeType,
 					currentOrderTab: item.modeId
 				};
@@ -432,335 +294,270 @@
 		}
 	};
 </script>
+
 <style>
 	page {
 		background: #f5f5f5;
-		width: 100%;
-		margin: 0;
 	}
 
-	.container {
-		height: 100%;
+	.c01 {
+		min-height: 100vh;
+		background: #f5f5f5;
+		/* 底部留出 tabBar 高度 */
+		padding-bottom: calc(140rpx + constant(safe-area-inset-bottom));
+		padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
+	}
+
+	/* ========== 绿色头部 ========== */
+	.c01-head {
+		height: 480rpx;
+		box-sizing: border-box;
+		padding: 28rpx 40rpx 40rpx 40rpx;
+	}
+
+	.c01-user-row {
+		display: flex;
+		align-items: center;
+	}
+
+	.c01-avatar {
+		width: 112rpx;
+		height: 112rpx;
+		border-radius: 50%;
+		background: #ffffff;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		overflow: hidden;
+		flex-shrink: 0;
+	}
+
+	.c01-avatar-img {
+		width: 112rpx;
+		height: 112rpx;
+	}
+
+	.c01-avatar-person {
+		width: 60rpx;
+	}
+
+	.c01-user-col {
+		margin-left: 28rpx;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.c01-nickname {
+		font-size: 34rpx;
+		font-weight: 500;
+		color: #ffffff;
+	}
+
+	.c01-user-line {
+		font-size: 24rpx;
+		color: #ffffff;
+		opacity: 0.92;
+		margin-top: 8rpx;
+	}
+
+	/* 会员卡：深绿渐变（批次5 决策 D-E，画板深青绿映射到主色深阶） */
+	.c01-vip-card {
+		margin-top: 28rpx;
+		padding: 28rpx;
+		border-radius: 24rpx;
+		background: linear-gradient(135deg, #485f1a, #3a4d15);
+		border: 1rpx solid rgba(240, 220, 171, 0.65);
+	}
+
+	.c01-vip-level-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.c01-vip-level-left {
+		display: flex;
+		align-items: center;
+	}
+
+	.c01-crown {
+		width: 32rpx;
+		margin-right: 12rpx;
+	}
+
+	.c01-vip-level-text {
+		font-size: 30rpx;
+		font-weight: 600;
+		color: #F0DCAB;
+	}
+
+	.c01-vip-growth {
+		font-size: 22rpx;
+		color: #ffffff;
+		opacity: 0.95;
+	}
+
+	.c01-vip-divider {
+		height: 2rpx;
+		background: #F0DCAB;
+		opacity: 0.85;
+		margin: 20rpx 0;
+	}
+
+	.c01-vip-data-row {
+		display: flex;
+		align-items: flex-start;
+	}
+
+	.c01-vip-data-item {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.c01-vip-value {
+		font-size: 36rpx;
+		font-weight: 700;
+		color: #F0DCAB;
+	}
+
+	.c01-vip-label {
+		font-size: 20rpx;
+		color: #ffffff;
+		margin-top: 4rpx;
+	}
+
+	/* ========== 卡片通用 ========== */
+	.c01-order-card {
+		/* 上叠绿色头部：设计稿头部底 y=284pt、卡片顶 y=248pt → 叠入 36pt = 72rpx */
+		margin: -72rpx 24rpx 0 24rpx;
+		background: #ffffff;
+		border-radius: 24rpx;
+		padding: 28rpx;
+		position: relative;
+		z-index: 2;
+	}
+
+	.c01-block {
+		margin: 20rpx 24rpx 0 24rpx;
+	}
+
+	.c01-card {
+		background: #ffffff;
+		border-radius: 24rpx;
+		padding: 24rpx;
+	}
+
+	.c01-svc-card {
+		padding: 28rpx;
+	}
+
+	.c01-title-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.c01-title {
+		font-size: 28rpx;
+		font-weight: 500;
+		color: #333333;
+	}
+
+	.c01-more {
+		font-size: 22rpx;
+		color: #999999;
+	}
+
+	/* ========== 4 宫格入口 ========== */
+	.c01-entry-row {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		margin-top: 20rpx;
+	}
+
+	.c01-svc-row {
+		margin-top: 24rpx;
+	}
+
+	.c01-entry {
+		width: 25%;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		justify-content: space-between;
-		box-sizing: border-box;
-		background: white;
 	}
 
-	.index-bg-class {
-		width: 100%;
+	.c01-entry-icon {
+		width: 44rpx;
+		height: 44rpx;
 	}
 
-	.userinfo {
-		width: 100%;
-		position: absolute;
-		top: 0;
-		/* margin-top: 50px; */
-		width: 100%;
-	}
-
-	.notlogin {
-		display: flex;
-		align-items: center;
-		padding: 40rpx 20rpx;
-		border-radius: 5rpx;
-	}
-
-	.notlogin button {
-		width: 100%;
-		padding: inherit;
-	}
-
-	.userinfo-avatar {
-		width: 128rpx;
-		height: 128rpx;
-		margin-right: 20rpx;
-		border-radius: 50%;
-		box-shadow: -2px 0px 5px 0.5px rgba(0, 0, 0, 0), 0px -2px 5px 1px rgba(0, 0, 0, 0.1), 2px 0px 5px 1px rgba(0, 0, 0, 0), 0px 2px 5px 1px rgba(0, 0, 0, 0.1);
-	}
-
-	.userinfo-name-avatar {
-		width: 80%;
-	}
-
-	.userinfo-nickname {
-		color: white;
-		font-size: 26rpx;
-		font-weight: bold;
-	}
-
-	.vip-class {
+	.c01-entry-label {
 		font-size: 22rpx;
+		color: #666666;
+		margin-top: 10rpx;
+	}
+
+	/* ========== 存酒区 ========== */
+	.c01-wine-row {
 		display: flex;
-		align-items: center;
-		justify-content: flex-start;
-	}
-
-	.vip-image-view {
-		display: flex;
-		align-items: center;
-	}
-
-	.is-vip-class {
-		background: linear-gradient(to right, #d09650, #ba7c3f);
-		padding: 2rpx 8rpx;
-		border-radius: 10rpx;
-		text-align: center;
-	}
-
-	.not-vip-class {
-		background: #8f8f8f;
-		padding: 2rpx 8rpx;
-		border-radius: 10rpx;
-		text-align: center;
-	}
-
-	.nickname-class {
-		font-size: 32rpx;
-		margin-bottom: 10rpx;
-	}
-
-	.userinfo-view {
-		width: 100%;
-		display: flex;
-		justify-content: flex-start;
-		align-items: center;
-	}
-
-	.button-view {
-		width: auto;
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		padding: 20rpx;
-	}
-
-	.userinfo-button {
-		/* width: 80%; */
-		display: flex;
-		justify-content: flex-start;
-	}
-
-	.my-order-box {
-		padding: 20rpx 20rpx 0 20rpx;
-		background-color: white;
-		margin: 0 20rpx 20rpx 20rpx;
-		border-radius: 10rpx;
-	}
-
-	.my-order-title {
-		font-size: 32rpx;
-	}
-
-	.my-order-title text {
-		font-size: 28rpx;
-	}
-
-	.my-order-all {
-		font-size: 32rpx;
-	}
-
-	.navigator-view {
-		display: flex;
+		align-items: flex-start;
 		justify-content: space-between;
-		align-items: center;
-		font-size: 28rpx;
-		font-weight: bold;
+		margin-top: 24rpx;
 	}
 
-	.navigator-userinfo {
-		/* width: 100%; */
-		padding: 40rpx 20rpx;
-		border-radius: 5rpx;
-	}
-
-	.navigator-box {
-		padding: 0 20rpx;
-		background: inherit;
-		padding-bottom: 120rpx;
-		bottom: calc(var(--window-bottom));
-	}
-
-	.navigator-radius {
-		border-radius: 15rpx;
-		background: white;
-	}
-
-	.navigator-class {
-		padding: 20rpx;
-		background: white;
-		border-radius: 10rpx;
-	}
-
-	button {
-		padding-left: 0px;
-		padding-right: 0px;
-		margin-left: 0px;
-		margin-right: 0px;
-	}
-
-	button[plain] {
-		color: black;
-		border: 0px;
-		font-size: 30rpx;
-	}
-
-	/* 个人余额和钱包等样式 */
-	.mine-blocking-view {
-		padding: 20rpx;
-	}
-
-	.mine-blocking {
+	.c01-wine-left {
 		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		background: white;
-		text-align: center;
-		border-radius: 10rpx;
+		flex-direction: column;
+		flex: 1;
 	}
 
-	.mine-navigator {
-		padding: 20rpx 0;
-		border-radius: 10rpx;
-		width: 100%;
+	.c01-wine-name {
+		font-size: 26rpx;
+		color: #333333;
 	}
 
-	.order-navigator {
-		padding: 10rpx 0;
-		width: 25%;
-		border-radius: 10rpx;
+	.c01-wine-meta {
+		font-size: 22rpx;
+		color: #999999;
+		margin-top: 6rpx;
 	}
 
-	.order-navigator .iconfont {
-		font-size: 50rpx;
+	.c01-wine-tag {
+		font-size: 20rpx;
+		height: 40rpx;
+		line-height: 40rpx;
+		padding: 0 12rpx;
+		border-radius: 8rpx;
+		flex-shrink: 0;
+		margin-left: 12rpx;
 	}
 
-	.order-title {
-		font-size: 32rpx;
+	.c01-tag-ok {
+		background: #E8F5EE;
+		color: #43A047;
 	}
 
-	.my-order-all {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
+	.c01-tag-warn {
+		background: #FFF7E6;
+		color: #E6A23C;
 	}
 
-	.order-all {
-		font-size: 28rpx;
-		color: #8f8f8f;
+	.c01-tag-off {
+		background: #F0F0F0;
+		color: #B0B0B0;
 	}
 
-	.number-tip {
-		font-size: 33rpx;
+	.c01-wine-expire {
+		font-size: 22rpx;
+		color: #999999;
+		margin-top: 12rpx;
 	}
 
-	.text-tip {
-		font-size: 28rpx;
-		color: #8f8f8f;
-	}
-
-	.line-tip {
-		color: #e3e3e3;
-	}
-
-	.is-vip-image {
-		width: 36rpx;
-		height: auto;
-		margin-right: 10rpx;
-	}
-
-	.share-button {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: 0 15rpx;
-	}
-
-	.share-button::after {
-		border: none;
-	}
-
-	.share-view {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		margin: 10rpx;
-		/* font-size: 28rpx; */
-		width: 100%;
-	}
-
-	.invite-wrapper {
-		padding: 10rpx;
-	}
-
-	.invite-image {
-		width: 100%;
-		height: auto;
-	}
-
-	.ptyh-class {
-		background: #8f8f8f;
-		padding: 2rpx 10rpx;
-		color: #f5f5f5;
-		border-radius: 10rpx;
-	}
-
-	.cjhy-class {
-		background: linear-gradient(to right, #d09650, #ba7c3f);
-		padding: 2rpx 8rpx;
-		color: white;
-		border-radius: 10rpx;
-	}
-
-	.swiper-content {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-	}
-
-	.swiper-tab-item {
-		width: 50%;
-	}
-
-	.swiper-box {
-		/* height: 400rpx; */
-		border-radius: 0 0 15rpx 15rpx;
-	}
-
-	.swiper-tab {
-		text-align: center;
-		height: 88rpx;
-		line-height: 88rpx;
-		display: flex;
-		flex-flow: row;
-		justify-content: space-between;
-		background: #fff;
-		z-index: 1;
-	}
-
-	.swiper-tab-item {
-		width: 50%;
-		margin-right: 20rpx;
-	}
-
-	.swiper-box {
-		display: block;
-		width: 100%;
-		height: 100%;
-		overflow: hidden;
-	}
-
-	.swiper-items {
-		height: 100%;
-	}
-
-	.my-order-box .navigator-class {
-		padding: 0rpx 0rpx 20rpx 0;
-	}
-	
-	#content_info{
-		bottom: calc(var(--window-bottom));
+	.c01-wine-note {
+		font-size: 20rpx;
+		color: #B0B0B0;
+		margin-top: 20rpx;
 	}
 </style>

@@ -27,6 +27,13 @@
 
     <dependencyManagement>
         <dependencies>
+            <!-- 本地声明优先于下方 BOM 导入：spring-boot-dependencies 2.3.3 将传递依赖 lombok 钉在 1.18.12，
+                 该版本在 JDK23+ 注解处理时崩溃（TypeTag :: UNKNOWN），统一提升至 1.18.38（向下兼容 JDK8） -->
+            <dependency>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>1.18.38</version>
+            </dependency>
             <!-- 控制Springboot的版本在2.1.4 -->
             <dependency>
                 <groupId>org.springframework.boot</groupId>
