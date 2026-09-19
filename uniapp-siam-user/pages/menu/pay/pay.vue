@@ -1047,7 +1047,13 @@
 						data.remark = this.remarks;
 						data.shoppingWay = this.selfOutActiveIndex == 0 ? 1 : 2;
 						data.shopId = this.initData.shopId;
-						// 堂食扫码进桌：桌位信息随订单落库（订单详情「台位」展示）
+						// 桌位信息随订单落库（订单详情「台位」展示）。
+						// ⚠️ tb_order.table_no / table_name 是 NOT NULL 且无 DEFAULT：**空串合法**，
+						// 但「字段整个不传」会被 MyBatis-Plus 的 NOT_NULL 策略从 INSERT 列清单里剔除，
+						// MySQL(strict) 报 1364 Field 'table_no' doesn't have a default value → 整单插不进去。
+						// 所以先无条件给空串兜底（外卖/未扫码自取/堂食通用），扫码进桌时再覆盖为真实桌位。
+						data.tableNo = '';
+						data.tableName = '';
 						if (data.shoppingWay == 1 && app.globalData.deliveryAndSelfTaking.dineInfo) {
 							const dineInfo = app.globalData.deliveryAndSelfTaking.dineInfo;
 							data.tableNo = dineInfo.tableId || '';
