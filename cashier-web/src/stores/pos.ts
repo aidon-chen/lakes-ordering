@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import router from '@/router'
-import type { CartLine, PosView, TableInfo, TableUiState } from '@/types'
+import type { CartLine, MenuChip, PosView, TableInfo, TableUiState } from '@/types'
 import { clearTable, changeTable as changeTableApi, fetchTableList, openTable, type ZoneRow } from '@/api/table'
 import { fetchGoods, fetchMenus, fetchSpecs, updateGoodsStatus, type GoodsRow, type MenuRow, type SpecGroupMap } from '@/api/menu'
 import { submitOrder, type OrderDetailSubmit } from '@/api/order'
@@ -29,15 +29,24 @@ export const usePosStore = defineStore('pos', {
     guestPick: 2,
     // 转台弹窗中间态（Round 5 拍板弹窗选目标台）
     changeForTableId: null as number | null,
-    // 点单数据
+    // ===== 点单区（对齐 W-04 三段式：商品区 566 ｜ 做法与备注区 290）=====
     menus: [] as MenuRow[],
-    goods: [] as GoodsRow[],
-    currentMenuId: null as number | null,
+    /** 本店全部在售商品（status ∈ 2,4），分类切换在本地过滤以便统计计数 */
+    allGoods: [] as GoodsRow[],
+    /** 当前分类：null = 全部 */
+    activeMenuId: null as number | null,
     loadingGoods: false,
-    // 规格选择弹窗态（点商品若带规格 → 先选规格再加购）
-    specGoods: null as GoodsRow | null,
+    /** 做法区当前商品（选中商品后才显示做法与备注） */
+    picked: null as GoodsRow | null,
     specGroups: {} as SpecGroupMap,
-    specSelected: {} as Record<string, string>,
+    /** 规格名 → 选中项（单选组长度为 1；多选组见 MULTI_SPEC_GROUPS） */
+    specSelected: {} as Record<string, string[]>,
+    /** 做法区数量 */
+    qty: 1,
+    /** 整单备注 */
+    remark: '',
+    /** 单品备注 */
+    itemRemark: '',
     loadingSpecs: false
   }),
 
@@ -77,6 +86,51 @@ export const usePosStore = defineStore('pos', {
     },
     addedCount(s): number {
       return s.cart.filter(l => l.added).reduce((n, l) => n + l.qty, 0)
+    },
+
+    /** 当前分类下的商品（「全部」＝本地不筛选） */
+    goods(s): GoodsRow[] {
+      return s.activeMenuId == null ? s.allGoods : s.allGoods.filter(g => g.menuId === s.activeMenuId)
+    },
+
+    /** 分类横条：分类名 + 该分类商品数，「全部 N」置顶（W-04 83:67） */
+    menuChips(s): MenuChip[] {
+      return [
+        { id: null, name: '全部', count: s.allGoods.length },
+        ...s.menus.map(m => ({
+          id: m.id,
+          name: m.name,
+          count: s.allGoods.filter(g => g.menuId === m.id).length
+        }))
+      ]
+    },
+
+    /** 做法区选中项的加价合计 */
+    pickedAddon(s): number {
+      let sum = 0
+      for (const [group, names] of Object.entries(s.specSelected)) {
+        for (const n of names) {
+          const opt = s.specGroups[group]?.find(o => o.name === n)
+          if (opt) sum += Number(opt.price || 0)
+        }
+      }
+      return sum
+    },
+
+    /** 做法区单价 = 商品价 + 规格加价 */
+    pickedPrice(s): number {
+      if (!s.picked) return 0
+      return Number(s.picked.salePrice || s.picked.price || 0) + this.pickedAddon
+    },
+
+    /** 已点商品件数（结算栏「已点商品（N 件）」） */
+    billCount(s): number {
+      return s.cart.reduce((n, l) => n + l.qty, 0)
+    },
+
+    /** 应收 = 商品合计（优惠 / 抹零本期恒为 0） */
+    receivable(s): number {
+      return s.cart.reduce((sum, l) => sum + l.price * l.qty, 0)
     }
   },
 
@@ -84,7 +138,14 @@ export const usePosStore = defineStore('pos', {
     setView(v: PosView) {
       this.view = v
       // 视图状态与 vue-router 单一事实源：跳转即导航
-      if (router.currentRoute.value.path !== `/${v}`) void router.push(`/${v}`)
+      const path = VIEW_PATH[v]
+      if (router.currentRoute.value.path !== path) void router.push(path)
+    },
+
+    /** 路由 → 视图态反向同步（router.afterEach 调用）；非三主视图则不动，避免误改状态 */
+    syncViewFromPath(path: string) {
+      const hit = (Object.keys(VIEW_PATH) as PosView[]).find(k => VIEW_PATH[k] === path)
+      if (hit && this.view !== hit) this.view = hit
     },
 
     /** 桌台图数据：GET list（Round 9 不分页全量；zone 动态化） */
@@ -211,43 +272,36 @@ export const usePosStore = defineStore('pos', {
       await this.confirmClear(tableId)
     },
 
-    /** 恢复既有会话进单（点占用桌）：进入 order 视图并加载点单数据 */
+    /** 恢复既有会话进单（W-07 点桌带入）：进入代客点单并加载点单数据 */
     resumeOrder(tableId: number) {
       const t = this.tables.find(x => x.id === tableId)
       this.currentTableId = tableId
       this.currentSessionId = t?.session?.sessionId ?? null
-      if (!this.menus.length) void this.loadMenus()
-      if (this.currentMenuId != null) void this.loadGoods(this.currentMenuId)
+      if (!this.allGoods.length) void this.loadOrderData()
       this.setView('order')
     },
 
-    /** 加载商品分类（一次） */
-    async loadMenus() {
-      try {
-        const page = await fetchMenus()
-        // 注意：Menu 实体无 isDisabled 字段（后端已按门店过滤），不过滤
-        this.menus = page?.records ?? []
-        if (!this.menus.length) return
-        const first = this.menus[0]
-        this.currentMenuId = this.currentMenuId ?? first.id
-        await this.loadGoods(this.currentMenuId)
-      } catch (e) {
-        console.error('[pos] loadMenus 失败', e)
-      }
-    },
-
-    /** 按分类加载商品 */
-    async loadGoods(menuId: number) {
-      this.currentMenuId = menuId
+    /**
+     * 加载点单数据：分类 + 本店在售全量商品
+     * 一次拉全（不分页），分类切换在本地过滤——这样「全部 N / 威士忌 6」的计数才有依据。
+     */
+    async loadOrderData() {
       this.loadingGoods = true
       try {
-        const page = await fetchGoods(menuId)
-        this.goods = page?.records ?? []
+        const [menuPage, goodsPage] = await Promise.all([fetchMenus(), fetchGoods()])
+        // 注意：Menu 实体无 isDisabled 字段（后端已按门店过滤），不过滤
+        this.menus = menuPage?.records ?? []
+        this.allGoods = goodsPage?.records ?? []
       } catch (e) {
-        console.error('[pos] loadGoods 失败', e)
+        console.error('[pos] 加载点单数据失败', e)
       } finally {
         this.loadingGoods = false
       }
+    },
+
+    /** 切换分类横条（null ＝ 全部） */
+    selectMenu(id: number | null) {
+      this.activeMenuId = id
     },
 
     /**
@@ -265,73 +319,85 @@ export const usePosStore = defineStore('pos', {
       }
     },
 
-    /** 点商品：先查规格，有规格组 → 弹规格选择窗；无规格 → 直接加购（默认价） */
-    async pickGoodsWithSpec(g: GoodsRow) {
+    /** 点商品 → 载入做法区（W-04：做法与备注常驻右栏，不再是弹窗） */
+    async pickGoods(g: GoodsRow) {
+      if (g.status === 4) return // 已沽清不可点（M-07）
+      this.picked = g
+      this.qty = 1
+      this.itemRemark = ''
+      this.specGroups = {}
+      this.specSelected = {}
+      this.loadingSpecs = true
       try {
-        this.loadingSpecs = true
         const groups = await fetchSpecs(g.id)
-        const hasSpec = groups && Object.keys(groups).length > 0
-        if (!hasSpec) {
-          // 无规格：直接加购，specText 为空（后端 specList 传 {}）
-          this.pickGoods(g.id, g.name, Number(g.salePrice || g.price || 0), '')
-          return
+        // 防御：快速连点不同商品时，丢弃过期响应
+        if (this.picked?.id !== g.id) return
+        this.specGroups = groups ?? {}
+        const selected: Record<string, string[]> = {}
+        for (const [name, opts] of Object.entries(this.specGroups)) {
+          const first = opts.find(o => o.stock !== 2)
+          if (first) selected[name] = [first.name]
         }
-        // 有规格：弹窗，每组默认选第一个有货项
-        const selected: Record<string, string> = {}
-        for (const [specName, opts] of Object.entries(groups)) {
-          const firstAvail = opts.find(o => o.stock !== 2)
-          if (firstAvail) selected[specName] = firstAvail.name
-        }
-        this.specGroups = groups
         this.specSelected = selected
-        this.specGoods = g
       } catch (e) {
-        console.error('[pos] 查询规格失败，按无规格加购', e)
-        this.pickGoods(g.id, g.name, Number(g.salePrice || g.price || 0), '')
+        console.error('[pos] 查询规格失败', e)
       } finally {
         this.loadingSpecs = false
       }
     },
 
-    /** 规格弹窗：切换某规格组选项 */
-    selectSpecOption(specName: string, optionName: string) {
-      this.specSelected = { ...this.specSelected, [specName]: optionName }
-    },
-
-    /** 规格弹窗：确认加购（specText 拼 "规格:选项" 可读串；specList JSON 由下单时生成） */
-    confirmSpec() {
-      const g = this.specGoods
-      if (!g) return
-      const base = Number(g.salePrice || g.price || 0)
-      // 计算加价：选中选项的 price 累加（与后端 selectSumPriceByGoodsIdAndName 一致）
-      let addon = 0
-      for (const [specName, optionName] of Object.entries(this.specSelected)) {
-        const opt = this.specGroups[specName]?.find(o => o.name === optionName)
-        if (opt) addon += Number(opt.price || 0)
+    /** 切换规格选项：多选组可增减（配搭/加料），单选组替换（杯型/冰量/甜度） */
+    toggleSpec(group: string, option: string) {
+      const cur = this.specSelected[group] ?? []
+      if (isMultiSpecGroup(group)) {
+        const next = cur.includes(option) ? cur.filter(v => v !== option) : [...cur, option]
+        this.specSelected = { ...this.specSelected, [group]: next }
+      } else {
+        this.specSelected = { ...this.specSelected, [group]: [option] }
       }
-      const specText = Object.values(this.specSelected).join(' / ')
-      this.pickGoods(g.id, g.name, base + addon, specText)
-      this.specGoods = null
-      this.specGroups = {}
-      this.specSelected = {}
     },
 
-    /** 取消规格弹窗 */
-    cancelSpec() {
-      this.specGoods = null
-      this.specGroups = {}
-      this.specSelected = {}
+    /** 做法区数量步进 */
+    bumpQty(delta: number) {
+      this.qty = Math.max(1, this.qty + delta)
     },
 
-    /** 加菜：同名+同规格合并 + 置 added（原型 pick 语义） */
-    pickGoods(goodsId: number, goodsName: string, price: number, specText = '') {
-      const found = this.cart.find(l => l.goodsId === goodsId && l.specText === specText)
+    /** 加入购物车（商品 + 规格组合 + 单品备注 相同才合并） */
+    addToCart() {
+      const g = this.picked
+      if (!g) return
+      const specs: Record<string, string[]> = {}
+      for (const [k, v] of Object.entries(this.specSelected)) {
+        if (v.length) specs[k] = [...v]
+      }
+      const key = JSON.stringify(specs) + '|' + this.itemRemark
+      const found = this.cart.find(l => l.goodsId === g.id && cartLineKey(l) === key)
       if (found) {
-        found.qty++
+        found.qty += this.qty
         found.added = true
       } else {
-        this.cart.push({ goodsId, goodsName, specText, price, qty: 1, added: true })
+        this.cart.push({
+          goodsId: g.id,
+          goodsName: g.name,
+          specText: Object.values(specs).flat().join(' / '),
+          specs,
+          remark: this.itemRemark,
+          price: this.pickedPrice,
+          qty: this.qty,
+          added: true
+        })
       }
+      // 加购后收起做法区，回到商品网格，贴合收银连点动线
+      this.picked = null
+      this.specGroups = {}
+      this.specSelected = {}
+      this.qty = 1
+      this.itemRemark = ''
+    },
+
+    /** 清空已点商品（结算栏「清空」） */
+    clearCart() {
+      this.cart = []
     },
 
     /** 步进器：delta 负向减到 0 时——added 行删除，已下单行拒绝（一期决策） */
@@ -360,23 +426,15 @@ export const usePosStore = defineStore('pos', {
         alert('购物车为空')
         return false
       }
-      const details: OrderDetailSubmit[] = lines.map(l => {
-        // specList JSON：无规格传 {}；有规格时 specText 存的是「选项值」用「 / 」连接，
-        // 但后端按 value(name) 查加价，需还原为 {规格名:选项值} 才能正确匹配——当前实现
-        // 简化：specText 为「选项1 / 选项2」时逐值放 {规格: 选项}，适配单规格组商品。
-        // ⚠️ 多规格组商品（如 规格+温度）需扩展 CartLine 存 {规格名:选项} 映射，二期处理。
-        const specList = l.specText
-          ? JSON.stringify(l.specText.includes(' / ') ? { 规格: l.specText } : { 规格: l.specText })
-          : '{}'
-        return {
-          goodsId: l.goodsId,
-          goodsName: l.goodsName,
-          specList,
-          number: l.qty,
-          price: l.price,
-          subtotal: l.price * l.qty
-        }
-      })
+      const details: OrderDetailSubmit[] = lines.map(l => ({
+        goodsId: l.goodsId,
+        goodsName: l.goodsName,
+        // 规格 → 后端 specList JSON（见 toSpecListJson 的多选编码说明）
+        specList: toSpecListJson(l.specs),
+        number: l.qty,
+        price: l.price,
+        subtotal: l.price * l.qty
+      }))
       const total = details.reduce((s, d) => s + d.subtotal, 0)
       try {
         await submitOrder({
@@ -411,6 +469,45 @@ function uiOf(t: TableInfo): TableUiState {
   if (t.session) return 'busy'
   if (t.status === 2) return 'busy'
   return 'idle'
+}
+
+/** 三主视图 ↔ 路由路径（对齐 config/menu.ts，批次 A 新路由表） */
+const VIEW_PATH: Record<PosView, string> = {
+  floor: '/table/floor',
+  order: '/order/cashier',
+  ticket: '/orders/today'
+}
+
+/**
+ * 多选规格组判定
+ * 库中 `tb_goods_specification` 无「是否多选」标志位，按组名约定：
+ * 「加料 / 配搭 / 配料 / 小料」可多选（W-04 画板写作「配搭（可多选）」），杯型 / 冰量 / 甜度 单选。
+ */
+const MULTI_SPEC_KEYWORDS = ['加料', '配搭', '配料', '小料']
+function isMultiSpecGroup(groupName: string): boolean {
+  return MULTI_SPEC_KEYWORDS.some(k => groupName.includes(k))
+}
+
+/** 购物车行合并键：同商品 + 同规格组合 + 同单品备注才合并 */
+function cartLineKey(l: CartLine): string {
+  return JSON.stringify(l.specs) + '|' + l.remark
+}
+
+/**
+ * 规格选择 → 后端 `specList` JSON
+ * 后端 `insertByMerchant` 以 `(String) map.get(key)` 逐值强转并交给
+ * `selectSumPriceByGoodsIdAndName(goodsId, List<String> nameList)` 按名字求和加价，
+ * 因此**值必须是字符串**（传数组会 ClassCastException）。
+ * 多选组用「组名」「组名2」「组名3」… 后缀键编码，值仍是各自的选项名，加价可正确累加。
+ */
+function toSpecListJson(specs: Record<string, string[]>): string {
+  const out: Record<string, string> = {}
+  for (const [group, names] of Object.entries(specs)) {
+    names.forEach((n, i) => {
+      out[i === 0 ? group : `${group}${i + 1}`] = n
+    })
+  }
+  return JSON.stringify(out)
 }
 
 /** 状态筛选文案 → 展示态 */

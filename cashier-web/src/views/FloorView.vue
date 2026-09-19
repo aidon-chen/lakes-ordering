@@ -53,7 +53,7 @@
   <!-- 开台弹窗（空闲共用） -->
   <Teleport to="body">
     <div v-if="openTable" class="fixed inset-0 z-50 flex items-center justify-center" style="background: rgba(23,28,15,.45)" @click.self="pos.cancelOpen()">
-      <div class="w-[380px] rounded-xl bg-white p-6 shadow-xl">
+      <div class="rounded-xl bg-white p-6 shadow-xl" style="width: min(380px, calc(100vw - 32px))">
         <div class="flex items-baseline justify-between">
           <span class="text-[20px] font-bold" style="color: var(--tc-title)">{{ openTable.tableNo }}</span>
           <span class="text-[12px]" style="color: var(--tc-sub)">{{ openTable.typeName }} · {{ openTable.zone }} · 低消 ¥{{ openTable.minSpend }}</span>
@@ -87,7 +87,7 @@
   <!-- 转台弹窗（Round 5 拍板：弹窗选空闲目标台） -->
   <Teleport to="body">
     <div v-if="changeTable" class="fixed inset-0 z-50 flex items-center justify-center" style="background: rgba(23,28,15,.45)" @click.self="pos.cancelChange()">
-      <div class="w-[420px] rounded-xl bg-white p-6 shadow-xl">
+      <div class="rounded-xl bg-white p-6 shadow-xl" style="width: min(420px, calc(100vw - 32px))">
         <div class="flex items-baseline justify-between">
           <span class="text-[20px] font-bold" style="color: var(--tc-title)">转台 · {{ changeTable.tableNo }}</span>
           <span class="text-[12px]" style="color: var(--tc-sub)">{{ changeTable.typeName }} · {{ changeTable.zone }}</span>

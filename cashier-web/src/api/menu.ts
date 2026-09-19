@@ -17,11 +17,13 @@ export interface GoodsRow {
   salePrice: number
   monthlySales: number
   stock: number
-  status: number // 2=已上架 3=下架 4=售罄
+  status: number // 2=已上架 3=下架 4=售罄（沽清）
   menuId: number
   menuName: string
   specList: string // 商品规格 JSON
   description: string
+  /** 后端改 status 时会刷新该字段，用作沽清时间的唯一数据源 */
+  updateTime?: string
 }
 
 /** 分页包装（MyBatis-Plus Page） */

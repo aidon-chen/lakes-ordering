@@ -36,15 +36,28 @@ export interface SessionBrief {
   addedCount: number
 }
 
-/** 账单明细行 */
+/** 账单明细行（对齐 W-04 结算栏行：品名（规格）／规格 ×n · 备注／小计） */
 export interface CartLine {
   goodsId: number
   goodsName: string
+  /** 可读规格串，如「加冰」（用于行内展示与后端 specList） */
   specText: string
+  /** 规格名 → 选中项集合（支持「配搭（可多选）」） */
+  specs: Record<string, string[]>
+  /** 单品备注 */
+  remark: string
   price: number
   qty: number
   /** true=新加未下单（金标「加」）；false=已下单（一期禁止调量退菜） */
   added: boolean
+}
+
+/** 分类横条项（W-04：分类名 + 该分类商品数，「全部 N」为默认项） */
+export interface MenuChip {
+  /** null = 全部 */
+  id: number | null
+  name: string
+  count: number
 }
 
 /** 收银台三视图（Odoo Screen 状态机映射） */

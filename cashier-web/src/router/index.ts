@@ -1,16 +1,35 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { defineAsyncComponent, type Component } from 'vue'
+import { DEFAULT_PATH, MENU_LEAVES } from '@/config/menu'
 import { usePosStore } from '@/stores/pos'
+import PageStub from '@/components/PageStub.vue'
 
-// 路由：login（登录）/ floor（桌台总览）/ order（点单管理）/ ticket（未结订单）
-// 对应 Odoo floor_screen / product_screen / ticket_screen 的 Screen 状态机
+/**
+ * 已落地页面对照表（批次 A 现状）
+ * 未列出的二级项一律走 PageStub 占位，随 B~H 批次逐页替换。
+ */
+const IMPLEMENTED: Record<string, Component> = {
+  '/table/floor': defineAsyncComponent(() => import('@/views/FloorView.vue')),
+  '/order/cashier': defineAsyncComponent(() => import('@/views/OrderView.vue')),
+  '/shop/account': defineAsyncComponent(() => import('@/views/AccountView.vue'))
+  // /orders/today 等 16 项尚未落地 → 统一走 PageStub（批次 D 起逐页替换）
+}
+
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/', redirect: '/floor' },
+    { path: '/', redirect: DEFAULT_PATH },
     { path: '/login', name: 'login', component: () => import('@/views/LoginView.vue') },
-    { path: '/floor', name: 'floor', component: () => import('@/views/FloorView.vue') },
-    { path: '/order', name: 'order', component: () => import('@/views/OrderView.vue') },
-    { path: '/ticket', name: 'ticket', component: () => import('@/views/TicketView.vue') }
+
+    // 7 一级 / 19 二级：全部由菜单单一事实源生成，保证侧栏、面包屑、路由三者不漂移
+    ...MENU_LEAVES.map(leaf => ({
+      path: leaf.path,
+      name: leaf.name,
+      component: IMPLEMENTED[leaf.path] ?? PageStub,
+      meta: { board: leaf.board, group: leaf.label }
+    })),
+
+    { path: '/:pathMatch(.*)*', redirect: DEFAULT_PATH }
   ]
 })
 
@@ -21,17 +40,14 @@ router.beforeEach(to => {
     return { path: '/login' }
   }
   if (to.path === '/login' && token) {
-    return { path: '/floor' }
+    return { path: DEFAULT_PATH }
   }
   return true
 })
 
-// 反向同步：侧栏/浏览器手动导航时保持 posStore.view 与路由一致（单一事实源 = 路由）
+// 反向同步：桌台图 / 代客点单 / 今日订单三页共用 pos store 的视图态，单一事实源 = 路由
 router.afterEach(to => {
-  const path = to.path.replace(/^\//, '')
-  const view = path === 'order' || path === 'ticket' || path === 'floor' ? path : 'floor'
-  const pos = usePosStore()
-  if (pos.view !== view) pos.view = view as 'floor' | 'order' | 'ticket'
+  usePosStore().syncViewFromPath(to.path)
 })
 
 export default router
