@@ -1,0 +1,239 @@
+-- ============================================================================
+-- 云端补表脚本：批次 5（公告 C-14 / 发票 C-15 / 存酒 C-16）+ 堂食台位作业
+-- 背景：2026-09-19 对比发现云库（74 表）比本地库（84 表）少 10 张：
+--       · 本文件负责 7 张：tb_notice / tb_invoice_apply / tb_wine_storage(+record)
+--                        / tb_dining_session / tb_table_zone / tb_table_type
+--       · 另 3 张 tb_mall_goods / tb_mall_order / tb_mall_order_item 按裁决**不启用**，不在本文件
+-- 生成方式：**DDL 从本地库 SHOW CREATE TABLE 直接导出**（与本地结构完全一致），
+--           非从 update.sql 拼装 —— 避免漏表（§2/§10.1 此前就不在拼装范围内）
+-- 特性：★全幂等 —— 建表用 CREATE TABLE IF NOT EXISTS（不 DROP、不动既有数据）；
+--       §9 的 13 列存量表 ALTER 走 information_schema 判断；测试数据先清 shop_id=13 再插
+-- 注意：末尾会写入 shop_id=13（商家 siam）的 3 区域 + 3 类型 + 18 桌面测试数据
+-- 执行方式：见同目录 README.md
+-- ============================================================================
+
+
+-- ---------------------------------------------------------------------------
+-- 一、缺失表建表（IF NOT EXISTS，可重复执行）
+-- ---------------------------------------------------------------------------
+
+-- tb_invoice_apply
+CREATE TABLE IF NOT EXISTS `tb_invoice_apply` (
+  `id` int NOT NULL AUTO_INCREMENT COMMENT '主键id',
+  `member_id` int NOT NULL COMMENT '用户id',
+  `order_id` int NOT NULL COMMENT '订单id',
+  `order_no` varchar(50) DEFAULT NULL COMMENT '订单编号(快照)',
+  `amount` decimal(10,2) DEFAULT '0.00' COMMENT '开票金额(=订单实付)',
+  `title_type` int DEFAULT '1' COMMENT '抬头类型 1=个人 2=企业',
+  `title` varchar(100) NOT NULL COMMENT '发票抬头',
+  `tax_no` varchar(50) DEFAULT NULL COMMENT '税号(企业抬头必填)',
+  `email` varchar(64) NOT NULL COMMENT '接收邮箱',
+  `status` int DEFAULT '1' COMMENT '状态 1=待处理 2=已开具 3=已驳回',
+  `remark` varchar(200) DEFAULT NULL COMMENT '驳回原因/备注',
+  `apply_time` datetime DEFAULT NULL COMMENT '申请时间',
+  `finish_time` datetime DEFAULT NULL COMMENT '处理完成时间',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime DEFAULT NULL COMMENT '修改时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_member_status` (`member_id`,`status`),
+  KEY `idx_order` (`order_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COMMENT='发票申请表';
+
+-- tb_notice
+CREATE TABLE IF NOT EXISTS `tb_notice` (
+  `id` int NOT NULL AUTO_INCREMENT COMMENT '主键id',
+  `shop_id` int DEFAULT NULL COMMENT '门店id NULL=全店通用',
+  `title` varchar(100) NOT NULL COMMENT '公告标题',
+  `content` text COMMENT '公告内容(富文本)',
+  `is_top` tinyint(1) DEFAULT '0' COMMENT '是否置顶 0=否 1=是',
+  `status` tinyint(1) DEFAULT '1' COMMENT '状态 0=下线 1=发布',
+  `publish_time` datetime DEFAULT NULL COMMENT '发布时间',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime DEFAULT NULL COMMENT '修改时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_shop_status` (`shop_id`,`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COMMENT='公告表';
+
+-- tb_wine_storage
+CREATE TABLE IF NOT EXISTS `tb_wine_storage` (
+  `id` int NOT NULL AUTO_INCREMENT COMMENT '主键id',
+  `member_id` int NOT NULL COMMENT '会员id',
+  `shop_id` int NOT NULL COMMENT '存入门店id',
+  `goods_name` varchar(100) NOT NULL COMMENT '品名',
+  `bottle_count` int NOT NULL COMMENT '存入瓶数',
+  `remain_count` int NOT NULL COMMENT '剩余瓶数',
+  `storage_code` varchar(16) NOT NULL COMMENT '存酒码(唯一)',
+  `storage_date` date NOT NULL COMMENT '存入日期',
+  `expire_date` date NOT NULL COMMENT '有效期截止日期',
+  `status` int DEFAULT '1' COMMENT '状态 1=在存 2=已取完 3=已过期',
+  `remark` varchar(200) DEFAULT NULL COMMENT '备注',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime DEFAULT NULL COMMENT '修改时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_storage_code` (`storage_code`),
+  KEY `idx_member_status` (`member_id`,`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COMMENT='存酒记录表';
+
+-- tb_wine_storage_record
+CREATE TABLE IF NOT EXISTS `tb_wine_storage_record` (
+  `id` int NOT NULL AUTO_INCREMENT COMMENT '主键id',
+  `storage_id` int NOT NULL COMMENT '存酒记录id',
+  `take_count` int NOT NULL COMMENT '本次取酒瓶数',
+  `operator_id` int DEFAULT NULL COMMENT '操作人id(商家端)',
+  `remark` varchar(200) DEFAULT NULL COMMENT '备注',
+  `take_time` datetime DEFAULT NULL COMMENT '取酒时间',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_storage` (`storage_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COMMENT='取酒记录表';
+
+-- tb_dining_session
+CREATE TABLE IF NOT EXISTS `tb_dining_session` (
+  `id` int NOT NULL AUTO_INCREMENT COMMENT '主键id',
+  `shop_id` int NOT NULL COMMENT '门店id',
+  `table_id` bigint NOT NULL COMMENT '台位id（tb_dining_table.id）',
+  `member_id` int DEFAULT NULL COMMENT '开台会员id（收银开台为空，扫码开台回填）',
+  `member_num` int DEFAULT '1' COMMENT '就餐人数',
+  `status` int DEFAULT '1' COMMENT '状态 1=进行中 2=已结台 3=已失效',
+  `open_time` datetime DEFAULT NULL COMMENT '开台时间',
+  `close_time` datetime DEFAULT NULL COMMENT '结台时间',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime DEFAULT NULL COMMENT '修改时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_table_status` (`table_id`,`status`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb3 COMMENT='开台会话表';
+
+-- tb_table_zone
+CREATE TABLE IF NOT EXISTS `tb_table_zone` (
+  `id` int NOT NULL AUTO_INCREMENT COMMENT '主键id',
+  `shop_id` int NOT NULL COMMENT '门店id',
+  `name` varchar(50) NOT NULL COMMENT '区域名 A区/K区/V区',
+  `description` varchar(200) DEFAULT NULL COMMENT '区域说明',
+  `sort_number` int DEFAULT '1' COMMENT '排序号',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime DEFAULT NULL COMMENT '修改时间',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb3 COMMENT='台位区域表';
+
+-- tb_table_type
+CREATE TABLE IF NOT EXISTS `tb_table_type` (
+  `id` int NOT NULL AUTO_INCREMENT COMMENT '主键id',
+  `shop_id` int NOT NULL COMMENT '门店id',
+  `name` varchar(50) NOT NULL COMMENT '类型名 散台/卡座',
+  `min_consume` decimal(10,2) DEFAULT '0.00' COMMENT '低消(元)',
+  `description` varchar(200) DEFAULT NULL COMMENT '说明',
+  `sort_number` int DEFAULT '1' COMMENT '排序号',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime DEFAULT NULL COMMENT '修改时间',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb3 COMMENT='台位类型表';
+
+
+-- ---------------------------------------------------------------------------
+-- 二、台位测试数据（shop_id=13 = 商家 siam；先清后插，幂等）
+-- ---------------------------------------------------------------------------
+
+-- tb_table_zone
+DELETE FROM `tb_table_zone` WHERE shop_id=13;
+INSERT INTO `tb_table_zone` (`id`,`shop_id`,`name`,`description`,`sort_number`,`create_time`,`update_time`) VALUES (1,13,'A区散台','散台区',1,NULL,NULL);
+INSERT INTO `tb_table_zone` (`id`,`shop_id`,`name`,`description`,`sort_number`,`create_time`,`update_time`) VALUES (2,13,'K区卡座','卡座区',2,NULL,NULL);
+INSERT INTO `tb_table_zone` (`id`,`shop_id`,`name`,`description`,`sort_number`,`create_time`,`update_time`) VALUES (3,13,'V区包间','包间区',3,NULL,NULL);
+
+-- tb_table_type
+DELETE FROM `tb_table_type` WHERE shop_id=13;
+INSERT INTO `tb_table_type` (`id`,`shop_id`,`name`,`min_consume`,`description`,`sort_number`,`create_time`,`update_time`) VALUES (1,13,'散台','0.00',NULL,1,NULL,NULL);
+INSERT INTO `tb_table_type` (`id`,`shop_id`,`name`,`min_consume`,`description`,`sort_number`,`create_time`,`update_time`) VALUES (2,13,'卡座','0.00',NULL,2,NULL,NULL);
+INSERT INTO `tb_table_type` (`id`,`shop_id`,`name`,`min_consume`,`description`,`sort_number`,`create_time`,`update_time`) VALUES (3,13,'包间','0.00',NULL,3,NULL,NULL);
+
+-- tb_dining_table
+DELETE FROM `tb_dining_table` WHERE shop_id=13;
+INSERT INTO `tb_dining_table` (`id`,`shop_id`,`table_no`,`table_name`,`type_id`,`zone_id`,`capacity`,`status`,`qr_scene`,`qr_code_url`,`create_time`,`update_time`) VALUES (1,13,'A01','A区·A01',2,1,3,2,NULL,NULL,NULL,'2026-09-19 09:47:45');
+INSERT INTO `tb_dining_table` (`id`,`shop_id`,`table_no`,`table_name`,`type_id`,`zone_id`,`capacity`,`status`,`qr_scene`,`qr_code_url`,`create_time`,`update_time`) VALUES (2,13,'A02','A区·A02',1,1,4,1,NULL,NULL,NULL,'2026-09-19 05:29:58');
+INSERT INTO `tb_dining_table` (`id`,`shop_id`,`table_no`,`table_name`,`type_id`,`zone_id`,`capacity`,`status`,`qr_scene`,`qr_code_url`,`create_time`,`update_time`) VALUES (3,13,'A03','A区·A03',1,1,4,1,NULL,NULL,NULL,'2026-09-19 05:30:13');
+INSERT INTO `tb_dining_table` (`id`,`shop_id`,`table_no`,`table_name`,`type_id`,`zone_id`,`capacity`,`status`,`qr_scene`,`qr_code_url`,`create_time`,`update_time`) VALUES (4,13,'A04','A区·A04',1,1,4,1,NULL,NULL,NULL,NULL);
+INSERT INTO `tb_dining_table` (`id`,`shop_id`,`table_no`,`table_name`,`type_id`,`zone_id`,`capacity`,`status`,`qr_scene`,`qr_code_url`,`create_time`,`update_time`) VALUES (5,13,'A05','A区·A05',1,1,4,1,NULL,NULL,NULL,NULL);
+INSERT INTO `tb_dining_table` (`id`,`shop_id`,`table_no`,`table_name`,`type_id`,`zone_id`,`capacity`,`status`,`qr_scene`,`qr_code_url`,`create_time`,`update_time`) VALUES (6,13,'A06','A区·A06',1,1,4,1,NULL,NULL,NULL,NULL);
+INSERT INTO `tb_dining_table` (`id`,`shop_id`,`table_no`,`table_name`,`type_id`,`zone_id`,`capacity`,`status`,`qr_scene`,`qr_code_url`,`create_time`,`update_time`) VALUES (7,13,'A07','A区·A07',1,1,4,1,NULL,NULL,NULL,NULL);
+INSERT INTO `tb_dining_table` (`id`,`shop_id`,`table_no`,`table_name`,`type_id`,`zone_id`,`capacity`,`status`,`qr_scene`,`qr_code_url`,`create_time`,`update_time`) VALUES (8,13,'A08','A区·A08',1,1,4,1,NULL,NULL,NULL,NULL);
+INSERT INTO `tb_dining_table` (`id`,`shop_id`,`table_no`,`table_name`,`type_id`,`zone_id`,`capacity`,`status`,`qr_scene`,`qr_code_url`,`create_time`,`update_time`) VALUES (9,13,'A09','A区·A09',1,1,4,1,NULL,NULL,NULL,NULL);
+INSERT INTO `tb_dining_table` (`id`,`shop_id`,`table_no`,`table_name`,`type_id`,`zone_id`,`capacity`,`status`,`qr_scene`,`qr_code_url`,`create_time`,`update_time`) VALUES (10,13,'A10','A区·A10',1,1,4,1,NULL,NULL,NULL,NULL);
+INSERT INTO `tb_dining_table` (`id`,`shop_id`,`table_no`,`table_name`,`type_id`,`zone_id`,`capacity`,`status`,`qr_scene`,`qr_code_url`,`create_time`,`update_time`) VALUES (11,13,'A11','A区·A11',1,1,4,1,NULL,NULL,NULL,NULL);
+INSERT INTO `tb_dining_table` (`id`,`shop_id`,`table_no`,`table_name`,`type_id`,`zone_id`,`capacity`,`status`,`qr_scene`,`qr_code_url`,`create_time`,`update_time`) VALUES (12,13,'A12','A区·A12',1,1,4,1,NULL,NULL,NULL,NULL);
+INSERT INTO `tb_dining_table` (`id`,`shop_id`,`table_no`,`table_name`,`type_id`,`zone_id`,`capacity`,`status`,`qr_scene`,`qr_code_url`,`create_time`,`update_time`) VALUES (13,13,'K01','K区·K01',2,2,6,1,NULL,NULL,NULL,NULL);
+INSERT INTO `tb_dining_table` (`id`,`shop_id`,`table_no`,`table_name`,`type_id`,`zone_id`,`capacity`,`status`,`qr_scene`,`qr_code_url`,`create_time`,`update_time`) VALUES (14,13,'K02','K区·K02',2,2,6,1,NULL,NULL,NULL,NULL);
+INSERT INTO `tb_dining_table` (`id`,`shop_id`,`table_no`,`table_name`,`type_id`,`zone_id`,`capacity`,`status`,`qr_scene`,`qr_code_url`,`create_time`,`update_time`) VALUES (15,13,'K03','K区·K03',2,2,6,1,NULL,NULL,NULL,NULL);
+INSERT INTO `tb_dining_table` (`id`,`shop_id`,`table_no`,`table_name`,`type_id`,`zone_id`,`capacity`,`status`,`qr_scene`,`qr_code_url`,`create_time`,`update_time`) VALUES (16,13,'K04','K区·K04',2,2,6,1,NULL,NULL,NULL,NULL);
+INSERT INTO `tb_dining_table` (`id`,`shop_id`,`table_no`,`table_name`,`type_id`,`zone_id`,`capacity`,`status`,`qr_scene`,`qr_code_url`,`create_time`,`update_time`) VALUES (17,13,'V01','V区·V01',3,3,10,1,NULL,NULL,NULL,NULL);
+INSERT INTO `tb_dining_table` (`id`,`shop_id`,`table_no`,`table_name`,`type_id`,`zone_id`,`capacity`,`status`,`qr_scene`,`qr_code_url`,`create_time`,`update_time`) VALUES (18,13,'V02','V区·V02',3,3,10,1,NULL,NULL,NULL,NULL);
+INSERT INTO `tb_dining_table` (`id`,`shop_id`,`table_no`,`table_name`,`type_id`,`zone_id`,`capacity`,`status`,`qr_scene`,`qr_code_url`,`create_time`,`update_time`) VALUES (19,13,'A13','A区·A13',1,1,4,1,NULL,NULL,'2026-09-19 05:29:58','2026-09-19 05:29:58');
+
+
+-- ---------------------------------------------------------------------------
+-- 三、存量表补列（update.sql §9：原段为直接 ADD COLUMN，云库重复执行会报
+--     Duplicate column → 此处**逐列幂等化**，共 13 列）
+-- ---------------------------------------------------------------------------
+
+-- tb_order.checkout_mode
+SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tb_order' AND COLUMN_NAME = 'checkout_mode');
+SET @ddl = IF(@c = 0, 'ALTER TABLE `tb_order` ADD `checkout_mode` int(2) DEFAULT ''1'' COMMENT ''''结账模式 1=先付款后就餐 2=先就餐后付款'''' AFTER `shop_logo_img`', 'SELECT 1');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- tb_order.table_id
+SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tb_order' AND COLUMN_NAME = 'table_id');
+SET @ddl = IF(@c = 0, 'ALTER TABLE `tb_order` ADD `table_id` bigint(11) DEFAULT NULL COMMENT ''''台位id（tb_dining_table.id）'''' AFTER `checkout_mode`', 'SELECT 1');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- tb_order.table_no
+SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tb_order' AND COLUMN_NAME = 'table_no');
+SET @ddl = IF(@c = 0, 'ALTER TABLE `tb_order` ADD `table_no` varchar(50) DEFAULT NULL COMMENT ''''餐桌编号(快照)'''' AFTER `table_id`', 'SELECT 1');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- tb_order.table_name
+SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tb_order' AND COLUMN_NAME = 'table_name');
+SET @ddl = IF(@c = 0, 'ALTER TABLE `tb_order` ADD `table_name` varchar(50) DEFAULT NULL COMMENT ''''餐桌名称(快照)'''' AFTER `table_no`', 'SELECT 1');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- tb_order.dining_num
+SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tb_order' AND COLUMN_NAME = 'dining_num');
+SET @ddl = IF(@c = 0, 'ALTER TABLE `tb_order` ADD `dining_num` int(11) DEFAULT 0 COMMENT ''''就餐人数(堂食)'''' AFTER `table_name`', 'SELECT 1');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- tb_order.dining_session_id
+SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tb_order' AND COLUMN_NAME = 'dining_session_id');
+SET @ddl = IF(@c = 0, 'ALTER TABLE `tb_order` ADD `dining_session_id` int(11) DEFAULT NULL COMMENT ''''开台会话id'''' AFTER `dining_num`', 'SELECT 1');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- tb_order.order_scene
+SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tb_order' AND COLUMN_NAME = 'order_scene');
+SET @ddl = IF(@c = 0, 'ALTER TABLE `tb_order` ADD `order_scene` int(2) DEFAULT 1 COMMENT ''''订单场景 1=堂食 2=外带自提'''' AFTER `dining_session_id`', 'SELECT 1');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- tb_order.is_payment
+SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tb_order' AND COLUMN_NAME = 'is_payment');
+SET @ddl = IF(@c = 0, 'ALTER TABLE `tb_order` ADD `is_payment` tinyint(1) DEFAULT ''0'' COMMENT ''''是否已支付'''' AFTER `order_scene`', 'SELECT 1');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- tb_shop.checkout_mode
+SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tb_shop' AND COLUMN_NAME = 'checkout_mode');
+SET @ddl = IF(@c = 0, 'ALTER TABLE `tb_shop` ADD `checkout_mode` int(2) DEFAULT ''1'' COMMENT ''''结账模式 1=先付款后就餐 2=先就餐后付款'''' AFTER `latitude`', 'SELECT 1');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- tb_advertisement.start_time
+SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tb_advertisement' AND COLUMN_NAME = 'start_time');
+SET @ddl = IF(@c = 0, 'ALTER TABLE `tb_advertisement` ADD `start_time` datetime DEFAULT NULL COMMENT ''''生效开始时间'''' AFTER `image_link_url`', 'SELECT 1');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- tb_advertisement.end_time
+SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tb_advertisement' AND COLUMN_NAME = 'end_time');
+SET @ddl = IF(@c = 0, 'ALTER TABLE `tb_advertisement` ADD `end_time` datetime DEFAULT NULL COMMENT ''''生效结束时间'''' AFTER `start_time`', 'SELECT 1');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- tb_advertisement.popup_frequency
+SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tb_advertisement' AND COLUMN_NAME = 'popup_frequency');
+SET @ddl = IF(@c = 0, 'ALTER TABLE `tb_advertisement` ADD `popup_frequency` int(2) DEFAULT 1 COMMENT ''''展示频次 1=每次进入 2=每天一次 3=仅一次'''' AFTER `end_time`', 'SELECT 1');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- tb_order_detail.remark
+SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tb_order_detail' AND COLUMN_NAME = 'remark');
+SET @ddl = IF(@c = 0, 'ALTER TABLE `tb_order_detail` ADD `remark` varchar(200) DEFAULT NULL COMMENT ''''单品备注'''' AFTER `after_coupons_discount_price`', 'SELECT 1');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
