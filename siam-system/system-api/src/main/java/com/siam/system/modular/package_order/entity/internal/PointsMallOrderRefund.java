@@ -20,6 +20,9 @@ public class PointsMallOrderRefund {
 
     private Long orderId;
 
+    /** 退款单号（C-10 批次 6 增量；画板 B-08「RF202609130001」口径；唯一） */
+    private String refundNo;
+
     private Integer type;
 
     private Integer refundWay;
@@ -218,5 +221,13 @@ public class PointsMallOrderRefund {
 
     public void setUpdateTime(Date updateTime) {
         this.updateTime = updateTime;
+    }
+
+    public String getRefundNo() {
+        return refundNo;
+    }
+
+    public void setRefundNo(String refundNo) {
+        this.refundNo = refundNo;
     }
 }

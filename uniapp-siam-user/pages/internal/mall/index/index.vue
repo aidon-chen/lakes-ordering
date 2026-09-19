@@ -11,19 +11,17 @@
 				</block>
 			</swiper>
 		</view>
-		<view class="menu-items">
-			<view class="menu-item" @tap="bindToMenu" :data-shopid="item.shipId" hover-class="hover-class-public"
-				v-for="(item, index) in classifyList" :key="index">
-				<image mode="aspectFit" class="menu-image" :src="item.iconUrl" v-if="item.icon"></image>
-
-				<view class="menu-title out_of_range one_row">{{ item.name }}</view>
-			</view>
+		<!-- C-10 批次6：分类宫格已按画板 B-01 移除（分类入口只在商城点单页左栏），改为「推荐好物」分区 -->
+		<view class="section-header">
+			<text class="section-title">推荐好物</text>
+			<text class="section-more theme-color" @tap="bindToMenu">查看全部</text>
 		</view>
 
 		<view class="like-items">
 			<view class="like-item" hover-class="hover-class-public" @tap="commodityDetailTap"
 				:data-shopid="item.shopId" :data-id="item.id" v-for="(item, index) in recommendGoodsList" :key="index">
-				<image :src="item.mainImage" mode="scaleToFill" class="icon-like-class"></image>
+				<image v-if="item.mainImage" :src="item.mainImage" mode="scaleToFill" class="icon-like-class"></image>
+				<view v-else class="icon-like-class icon-like-placeholder"></view>
 
 				<view class="fullname-class">
 					<text class="name-text out_of_range two_row">{{ item.name }}</text>
@@ -31,16 +29,13 @@
 
 				<view class="like-money-view">
 					<view class="like-money">
-						<text>￥</text>
-						<text>
-							{{ item.price }}
-							<text class="score-money" :decode="true">&nbsp;&nbsp;(可用积分等额兑换)</text>
-						</text>
+						<text class="price-symbol">￥</text>
+						<text class="price-value">{{ item.price }}</text>
 					</view>
 				</view>
 
 				<view class="like-money-view">
-					<text class="latelyMonthlySales out_of_range one_row">已售：{{ item.latelyMonthlySales }}</text>
+					<text class="latelyMonthlySales out_of_range one_row">已售：{{ item.latelyMonthlySales || 0 }}</text>
 					<view class="insert-car" @tap.stop.prevent="openSpecifications" :data-index="index">
 						<van-icon name="plus" class="icongouwuche1 theme-bg" />
 					</view>
@@ -51,7 +46,8 @@
 		<van-action-sheet :show="specificationsDialog" @close="close" @cancel="close" title="选择规格">
 			<view class="content_box">
 				<view class="goods-info-view">
-					<image :src="goods.mainImage" mode="aspectFill" class="commodity-image"></image>
+					<image v-if="goods.mainImage" :src="goods.mainImage" mode="aspectFill" class="commodity-image"></image>
+					<view v-else class="commodity-image commodity-image-placeholder"></view>
 					<view>
 						<view class="goods-info-name out_of_range one_row">{{ goods.name }}</view>
 						<view class="goods-info-specListString">已选：{{ specListString }}</view>
@@ -98,7 +94,8 @@
 	import authService from '../../../../utils/auth';
 	let app = null;
 	var pageNo = 1;
-	var pageSize = 10;
+	// C-10 批次6：首页「推荐好物」为固定展示位（画板 B-01 为 2 列 ×2 行 = 4 卡），不再做无限追加
+	var pageSize = 4;
 	export default {
 		data() {
 			return {
@@ -114,7 +111,6 @@
 				specList: [],
 				isMore: false,
 				carouselUrls: '',
-				classifyList: '',
 				priceAfter: '',
 				specListString: '',
 				specificationsDialog: false,
@@ -144,7 +140,8 @@
 		onShow: function() {
 			//pageNo=1;
 			app.globalData.getShoppingCarNumber();
-			this.getClassifyList();
+			// C-10 批次6：分类宫格已移除（分类入口在商城点单页左栏），不再拉取分类
+			//this.getClassifyList();
 			//this.getRecommendGoodsList();
 			this.getCarouselList();
 		},
@@ -167,36 +164,7 @@
 		 * 页面上拉触底事件的处理函数
 		 */
 		onReachBottom: function() {
-			console.log('1111111111');
-			toastService.showLoading('正在加载...');
-			var that = this;
-			pageNo = pageNo + 1;
-			https.request('/rest/pointsMall/goods/recommendGoodsList', {
-				pageNo: pageNo,
-				pageSize: pageSize
-			}).then((result) => {
-				toastService.hideLoading();
-				if (result.success) {
-					console.log(result.data);
-					if (result.data.records.length <= 0) {
-						pageNo = pageNo - 1;
-						that.setData({
-							isMore: result.data.hasNextPage ? false : true
-						});
-						//toastService.showToast("没有更多啦~");
-						return;
-					}
-					result.data.records.forEach(function(item, index) {
-						item.mainImage = GlobalConfig.ossUrl + item.mainImage;
-						that.recommendGoodsList.push(item);
-					});
-					console.log(this.recommendGoodsList);
-					this.setData({
-						recommendGoodsList: this.recommendGoodsList,
-						isMore: result.data.hasNextPage ? false : true
-					});
-				}
-			});
+			// C-10 批次6：首页「推荐好物」为固定 4 卡展示位（画板 B-01），不再触底追加
 		},
 		/**
 		 * 用户点击右上角分享
@@ -233,29 +201,17 @@
 				}).then((result) => {
 					if (result.success) {
 						result.data.records.forEach(function(item, index) {
-							item.imagePath = GlobalConfig.ossUrl + item.imagePath;
+							if (item.imagePath) {
+								item.imagePath = GlobalConfig.ossUrl + item.imagePath;
+							}
 						});
-						this.setData({
-							carouselUrls: result.data.records
-						});
+						// C-10 批次6：vue3 运行时未挂载小程序数据刷新方法（调用即抛错并中断后续语句），改响应式赋值
+						this.carouselUrls = result.data.records;
 					}
 				});
 			},
-			getClassifyList() {
-				https.request('/rest/pointsMall/menu/list', {
-					pageNo: 1,
-					pageSize: 8
-				}).then((result) => {
-					if (result.success) {
-						result.data.records.forEach(function(item, index) {
-							item.iconUrl = GlobalConfig.ossUrl + item.icon;
-						});
-						this.setData({
-							classifyList: result.data.records
-						});
-					}
-				});
-			},
+			// C-10 批次6：分类宫格已移除（画板 B-01 无宫格），getClassifyList 随之删除；
+			// 分类入口由「查看全部」→ 商城点单页左栏承载。
 
 			getRecommendGoodsList() {
 				toastService.showLoading();
@@ -267,13 +223,15 @@
 					uni.stopPullDownRefresh();
 					if (result.success) {
 						result.data.records.forEach(function(item, index) {
-							item.mainImage = GlobalConfig.ossUrl + item.mainImage;
+							// 种子商品的 main_image 可能为空 → 交由模板渲染灰底占位（画板 B-01 图位即灰块）
+							if (item.mainImage) {
+								item.mainImage = GlobalConfig.ossUrl + item.mainImage;
+							}
 						});
-						this.recommendGoodsList = [];
-						this.setData({
-							recommendGoodsList: result.data.records,
-							isMore: result.data.hasNextPage ? false : true
-						});
+						// C-10 批次6：vue3 运行时未挂载小程序数据刷新方法，改响应式赋值；
+						// 首页推荐为固定 4 卡展示位，直接显示「没有更多啦」
+						this.recommendGoodsList = result.data.records;
+						this.isMore = true;
 					}
 				});
 			},
@@ -335,11 +293,10 @@
 					}
 				}
 				console.log(specListString);
-				this.setData({
-					specList: specList,
-					priceAfter: price,
-					specListString: specListString
-				});
+				// C-10 批次6：vue3 运行时未挂载小程序数据刷新方法，改响应式赋值（勿改回）
+				this.specList = specList;
+				this.priceAfter = price;
+				this.specListString = specListString;
 			},
 
 			insertShoppingCart(e) {
@@ -366,9 +323,8 @@
 							.then((result) => {
 								if (result.success) {
 									toastService.showToast('加入购物车成功');
-									this.setData({
-										specificationsDialog: false
-									});
+									// C-10 批次6：vue3 运行时未挂载小程序数据刷新方法，改响应式赋值（勿改回）
+									this.specificationsDialog = false;
 									app.globalData.getShoppingCarNumber();
 								}
 							});
@@ -410,20 +366,18 @@
 						}
 						console.log(goods);
 						console.log(specList);
-						this.setData({
-							specListString: specListString ? specListString : '暂无规格',
-							specList: JSON.stringify(specList) == '{}' ? [] : specList,
-							goods: goods,
-							specificationsDialog: true,
-							priceAfter: price
-						});
+						// C-10 批次6：vue3 运行时未挂载小程序数据刷新方法，改响应式赋值（勿改回）
+						this.specListString = specListString ? specListString : '暂无规格';
+						this.specList = JSON.stringify(specList) == '{}' ? [] : specList;
+						this.goods = goods;
+						this.specificationsDialog = true;
+						this.priceAfter = price;
 					}
 				});
 			},
 			close() {
-				this.setData({
-					specificationsDialog: false
-				})
+				// C-10 批次6：vue3 运行时未挂载小程序数据刷新方法，改响应式赋值（勿改回）
+				this.specificationsDialog = false;
 			}
 		}
 	};
@@ -454,41 +408,28 @@
 		height: 100%;
 	}
 
-	.menu-items {
-		/* display: flex;
-   justify-content: flex-start;
-   flex-flow: row wrap;
-   align-content: space-around; */
-		padding: 20rpx;
+	/* C-10 批次6：分类宫格样式随宫格移除；新增「推荐好物」分区头（画板 B-01） */
+	.section-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 20rpx 20rpx 10rpx 20rpx;
 		background-color: #f5f5f5;
-		display: grid;
-		grid-template-columns: 1fr 1fr 1fr 1fr;
-		grid-row-gap: 10px;
-		grid-column-gap: 10px;
-		/* margin-top: 15rpx; */
 	}
 
-	.menu-item {
-		text-align: center;
-		margin: 1%;
-		border-radius: 15rpx;
-		background-color: white;
-		padding: 10rpx;
+	.section-title {
+		font-size: 32rpx;
+		font-weight: bold;
+		color: #333333;
 	}
 
-	.menu-item-first {
-		margin-bottom: 10rpx;
-	}
-
-	.menu-image {
-		width: 100rpx;
-		height: 100rpx;
-		border-radius: 50%;
-		border: 1rpx #ededed solid;
-	}
-
-	.menu-title {
+	.section-more {
 		font-size: 26rpx;
+	}
+
+	/* 商品无主图时的灰底占位（画板 B-01 图位即灰块，种子数据 main_image 可为空） */
+	.icon-like-placeholder {
+		background-color: #f2f2f2;
 	}
 
 	/* 商品推荐 */
@@ -573,6 +514,23 @@
 	.like-money {
 		font-size: 26rpx;
 		font-weight: bold;
+	}
+
+	/* C-10 批次6：价格排版（画板 B-01 为 ￥11px + 数字 18px bold） */
+	.price-symbol {
+		font-size: 22rpx;
+		font-weight: bold;
+	}
+
+	.price-value {
+		font-size: 36rpx;
+		font-weight: bold;
+		color: #333333;
+	}
+
+	/* SKU 弹层商品图占位（无主图时灰底，避免 src=null 的空白） */
+	.commodity-image-placeholder {
+		background-color: #f2f2f2;
 	}
 
 	.insert-car {

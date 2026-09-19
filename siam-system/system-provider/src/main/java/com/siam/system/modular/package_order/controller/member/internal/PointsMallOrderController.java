@@ -152,6 +152,17 @@ public class PointsMallOrderController {
     }
 
     /**
+     * 自提流程轨迹（C-10 批次 6：画板 B-09 自提凭证）
+     * 返回自提码 + 取货截止 + 门店信息 + 5 节点时间线（倒序，未到达节点 time 为 null）
+     */
+    @ApiOperation(value = "查询自提流程轨迹")
+    @PostMapping(value = "/selectPickupProcess")
+    public BasicResult selectPickupProcess(@RequestBody @Validated(value = {}) PointsMallOrderParam param){
+        Map map = orderService.selectPickupProcess(param);
+        return BasicResult.success(map);
+    }
+
+    /**
      * 查询标签页的记录数量
      *
      * @return

@@ -179,6 +179,56 @@ public class PointsMallOrder {
 
     private Date updateTime;
 
+    //------------------------ C-10 酒水商城 · 门店自提（批次 6 增量，2026-09-19） ------------------------
+    // 口径来源：update.sql §4/§5 的 tb_mall_order 字段设计，落库到 tb_points_mall_order（见 update.sql §11.1）
+
+    /** 自提码（画板 B-09「A-038」；唯一；非自提订单为 null） */
+    private String pickupCode;
+
+    /** 取货截止时间（自提订单超时后被置为已取消） */
+    private Date pickupDeadline;
+
+    /** 自提核销时间（顾客「确认取货」或商家端 M-03 核销时写入） */
+    private Date verifyTime;
+
+    /** 核销人 id（商家端商家 id；顾客自助核销为 null） */
+    private Integer verifierId;
+
+    // 支付方式补：4=到店支付（到店付款，本期主用；1=微信支付/2=平台余额/3=平台积分 见 paymentMode 原注释）
+    public static final int PAYMENT_MODE_OF_PAY_AT_STORE = 4;
+
+    public String getPickupCode() {
+        return pickupCode;
+    }
+
+    public void setPickupCode(String pickupCode) {
+        this.pickupCode = pickupCode;
+    }
+
+    public Date getPickupDeadline() {
+        return pickupDeadline;
+    }
+
+    public void setPickupDeadline(Date pickupDeadline) {
+        this.pickupDeadline = pickupDeadline;
+    }
+
+    public Date getVerifyTime() {
+        return verifyTime;
+    }
+
+    public void setVerifyTime(Date verifyTime) {
+        this.verifyTime = verifyTime;
+    }
+
+    public Integer getVerifierId() {
+        return verifierId;
+    }
+
+    public void setVerifierId(Integer verifierId) {
+        this.verifierId = verifierId;
+    }
+
     public Long getId() {
         return id;
     }

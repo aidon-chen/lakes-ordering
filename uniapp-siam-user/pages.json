@@ -283,7 +283,7 @@
 		{
 			"path": "pages/internal/mall/index/index",
 			"style": {
-				"navigationBarTitleText": "积分商城",
+				"navigationBarTitleText": "商城",
 				"enablePullDownRefresh": true
 			}
 		},
@@ -336,6 +336,13 @@
 			"style": {
 				"usingComponents": {},
 				"navigationBarTitleText": "查看物流"
+			}
+		},
+		{
+			"path": "pages/internal/mall/pickup-code/pickup-code",
+			"style": {
+				"usingComponents": {},
+				"navigationBarTitleText": "自提凭证"
 			}
 		},
 		{

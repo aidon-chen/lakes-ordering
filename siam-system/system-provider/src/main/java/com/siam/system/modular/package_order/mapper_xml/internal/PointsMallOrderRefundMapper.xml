@@ -19,6 +19,7 @@
     <result column="delivery_fee" property="deliveryFee" jdbcType="DECIMAL" />
     <result column="is_used_coupons" property="isUsedCoupons" jdbcType="BIT" />
     <result column="is_used_full_reduction_rule" property="isUsedFullReductionRule" jdbcType="BIT" />
+    <result column="refund_no" property="refundNo" jdbcType="VARCHAR" />
     <result column="create_time" property="createTime" jdbcType="TIMESTAMP" />
     <result column="update_time" property="updateTime" jdbcType="TIMESTAMP" />
   </resultMap>
@@ -40,6 +41,7 @@
     <result column="delivery_fee" property="deliveryFee" jdbcType="DECIMAL" />
     <result column="is_used_coupons" property="isUsedCoupons" jdbcType="BIT" />
     <result column="is_used_full_reduction_rule" property="isUsedFullReductionRule" jdbcType="BIT" />
+    <result column="refund_no" property="refundNo" jdbcType="VARCHAR" />
     <result column="create_time" property="createTime" jdbcType="TIMESTAMP" />
     <result column="update_time" property="updateTime" jdbcType="TIMESTAMP" />
   </resultMap>
@@ -105,7 +107,7 @@
     id, order_id, type, refund_way, refund_reason, refund_reason_description, evidence_images,
     refund_amount, refund_account, status, goods_total_quantity, goods_total_price, packing_charges,
     is_refund_delivery_fee, delivery_fee, is_used_coupons, is_used_full_reduction_rule,
-    create_time, update_time
+    refund_no, create_time, update_time
   </sql>
   <select id="selectByExample" resultMap="BaseResultMap" parameterType="com.siam.system.modular.package_order.model.example.OrderRefundExample" >
     select
@@ -146,6 +148,9 @@
       </if>
       <if test="orderId != null" >
         order_id,
+      </if>
+      <if test="refundNo != null" >
+        refund_no,
       </if>
       <if test="type != null" >
         type,
@@ -205,6 +210,9 @@
       </if>
       <if test="orderId != null" >
         #{orderId,jdbcType=INTEGER},
+      </if>
+      <if test="refundNo != null" >
+        #{refundNo,jdbcType=VARCHAR},
       </if>
       <if test="type != null" >
         #{type,jdbcType=INTEGER},
@@ -360,6 +368,9 @@
     <set >
       <if test="orderId != null" >
         order_id = #{orderId,jdbcType=INTEGER},
+      </if>
+      <if test="refundNo != null" >
+        refund_no = #{refundNo,jdbcType=VARCHAR},
       </if>
       <if test="type != null" >
         type = #{type,jdbcType=INTEGER},

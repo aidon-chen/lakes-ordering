@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +33,13 @@ public class PointsMallOrderRefundServiceImpl implements PointsMallOrderRefundSe
     }
 
     public void insertSelective(PointsMallOrderRefund record){
+        //C-10 批次 6：统一补齐退款单号（画板 B-08「退款单号 RF202609130001」口径）
+        //规则：RF + yyyyMMdd + 4 位（订单 id 后 4 位）——同一订单同日仅一条退款单（DB 唯一键 uk_refund_no 兜底）
+        if (record.getRefundNo() == null || record.getRefundNo().trim().isEmpty()) {
+            String day = new SimpleDateFormat("yyyyMMdd").format(new Date());
+            long orderId = record.getOrderId() == null ? 0L : record.getOrderId();
+            record.setRefundNo("RF" + day + String.format("%04d", orderId % 10000));
+        }
         orderRefundMapper.insertSelective(record);
     }
 

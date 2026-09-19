@@ -181,21 +181,44 @@ public class PointsMallOrderServiceImpl extends ServiceImpl<PointsMallOrderMappe
             }
         }
 
-        //根据收货地址id回写联系人信息
-        DeliveryAddress dbDeliveryAddress = deliveryAddressService.selectByPrimaryKey(param.getDeliveryAddressId());
-        if(dbDeliveryAddress == null){
-            throw new StoneCustomerException("该收货地址不存在");
+        //取货方式：1=门店自提（C-10 酒水商城）2=配送（基座原行为，默认）
+        Integer shoppingWay = param.getShoppingWay() == null ? Quantity.INT_2 : param.getShoppingWay();
+        boolean isSelfPickup = Quantity.INT_1 == shoppingWay;
+
+        //到店支付：自提订单默认走「到店支付」（本期主用）；显式传 paymentMode=1（微信支付）时走在线支付分支（二期）
+        boolean isPayAtStore = isSelfPickup
+                && (param.getPaymentMode() == null || PointsMallOrder.PAYMENT_MODE_OF_PAY_AT_STORE == param.getPaymentMode());
+
+        if (!isSelfPickup) {
+            //配送：根据收货地址id回写联系人信息（基座原逻辑，勿动）
+            DeliveryAddress dbDeliveryAddress = deliveryAddressService.selectByPrimaryKey(param.getDeliveryAddressId());
+            if(dbDeliveryAddress == null){
+                throw new StoneCustomerException("该收货地址不存在");
+            }
+            param.setContactRealname(dbDeliveryAddress.getRealname());
+            param.setContactPhone(dbDeliveryAddress.getPhone());
+            param.setContactProvince(dbDeliveryAddress.getProvince());
+            param.setContactCity(dbDeliveryAddress.getCity());
+            param.setContactArea(dbDeliveryAddress.getArea());
+            param.setContactStreet(dbDeliveryAddress.getStreet());
+            param.setContactSex(dbDeliveryAddress.getSex());
+            param.setContactHouseNumber(dbDeliveryAddress.getHouseNumber());
+            param.setContactLongitude(dbDeliveryAddress.getLongitude());
+            param.setContactLatitude(dbDeliveryAddress.getLatitude());
+        } else {
+            //门店自提：不收地址。门店信息以入参为准（前端从全局 currentShopId 带来），
+            //缺门店时兜底取会员资料联系人，保证订单可追溯。
+            if (param.getShopId() == null) {
+                throw new StoneCustomerException("请选择自提门店");
+            }
+            if (param.getContactPhone() == null || param.getContactPhone().trim().isEmpty()) {
+                param.setContactPhone(dbMember.getMobile());
+            }
+            if (param.getContactRealname() == null || param.getContactRealname().trim().isEmpty()) {
+                param.setContactRealname(dbMember.getNickname());
+            }
+            param.setDeliveryAddressId(null);
         }
-        param.setContactRealname(dbDeliveryAddress.getRealname());
-        param.setContactPhone(dbDeliveryAddress.getPhone());
-        param.setContactProvince(dbDeliveryAddress.getProvince());
-        param.setContactCity(dbDeliveryAddress.getCity());
-        param.setContactArea(dbDeliveryAddress.getArea());
-        param.setContactStreet(dbDeliveryAddress.getStreet());
-        param.setContactSex(dbDeliveryAddress.getSex());
-        param.setContactHouseNumber(dbDeliveryAddress.getHouseNumber());
-        param.setContactLongitude(dbDeliveryAddress.getLongitude());
-        param.setContactLatitude(dbDeliveryAddress.getLatitude());
 
         //1、校验前端的实付款金额是否正确
         this.validatePrice(param);
@@ -205,7 +228,12 @@ public class PointsMallOrderServiceImpl extends ServiceImpl<PointsMallOrderMappe
         //生成订单取餐号
         Integer queueNo = getNextQueueNo();
         //生成支付截止时间(五分钟内未付款的订单会被自动关闭)
-        Date paymentDeadline = DateUtilsPlus.addMinutes(new Date(), Quantity.INT_5);
+        //到店支付的自提订单没有线上支付环节 → 不设截止时间，避免被超时关单任务关闭
+        Date paymentDeadline = isPayAtStore ? null : DateUtilsPlus.addMinutes(new Date(), Quantity.INT_5);
+        //生成自提码（画板 B-09「A-038」口径：A- + 3 位序号，取餐号唯一可保证不碰撞，超 999 自然升位）
+        String pickupCode = isSelfPickup ? String.format("A-%03d", queueNo) : null;
+        //自提有效期：默认 7 天（画板未指定，取业界常规；超时由定时任务置为已取消）
+        Date pickupDeadline = isSelfPickup ? DateUtilsPlus.addDays(new Date(), Quantity.INT_7) : null;
 
         //2、添加订单记录
         PointsMallOrder insertOrder = new PointsMallOrder();
@@ -215,7 +243,7 @@ public class PointsMallOrderServiceImpl extends ServiceImpl<PointsMallOrderMappe
         insertOrder.setGoodsTotalPrice(param.getGoodsTotalPrice());
         insertOrder.setDeliveryFee(param.getDeliveryFee());
         insertOrder.setActualPrice(param.getActualPrice());
-        insertOrder.setShoppingWay(Quantity.INT_2);
+        insertOrder.setShoppingWay(shoppingWay);
         insertOrder.setDeliveryAddressId(param.getDeliveryAddressId());
         insertOrder.setContactRealname(param.getContactRealname());
         insertOrder.setContactPhone(param.getContactPhone());
@@ -227,7 +255,7 @@ public class PointsMallOrderServiceImpl extends ServiceImpl<PointsMallOrderMappe
         insertOrder.setTradeId(null);
         insertOrder.setRemark(param.getRemark());
         insertOrder.setDescription(param.getDescription());
-        insertOrder.setStatus(Quantity.INT_1);
+        insertOrder.setStatus(isPayAtStore ? PointsMallOrder.STATUS_OF_WAIT_DELIVERY : PointsMallOrder.STATUS_OF_WAIT_PAYMENT);
         insertOrder.setOrderLogisticsId(null);
         insertOrder.setIsInvoice(false);
         insertOrder.setInvoiceId(null);
@@ -239,6 +267,11 @@ public class PointsMallOrderServiceImpl extends ServiceImpl<PointsMallOrderMappe
         insertOrder.setCreateTime(new Date());
         insertOrder.setUpdateTime(new Date());
         insertOrder.setQueueNo(queueNo);
+        //C-10：门店自提要素（配送订单为 null，不影响基座行为）
+        insertOrder.setShopId(param.getShopId());
+        insertOrder.setPickupCode(pickupCode);
+        insertOrder.setPickupDeadline(pickupDeadline);
+        insertOrder.setPaymentMode(isPayAtStore ? PointsMallOrder.PAYMENT_MODE_OF_PAY_AT_STORE : param.getPaymentMode());
         insertOrder.setFullReductionRuleId(param.getFullReductionRuleId());
         insertOrder.setFullReductionRuleDescription(param.getFullReductionRuleDescription());
         insertOrder.setCouponsId(param.getCouponsId());
@@ -2599,15 +2632,27 @@ public class PointsMallOrderServiceImpl extends ServiceImpl<PointsMallOrderMappe
             throw new StoneCustomerException("该订单不是你的，不允许修改");
         }
 
-        // 当订单状态处于已签收，才可以执行确认收货操作
-        if(dbPointsMallOrder.getStatus() != Quantity.INT_3){
+        Integer shoppingWay = dbPointsMallOrder.getShoppingWay() == null ? Quantity.INT_2 : dbPointsMallOrder.getShoppingWay();
+        boolean isSelfPickup = Quantity.INT_1 == shoppingWay;
+
+        //可核销状态：4=待发货(自提场景=待自提)、5=已发货(配送场景)
+        //⚠️ 原实现判断 status==3 并置 8(=已退款，废弃选项)，两个值都不在状态值域内，属基座遗留 bug，本次一并修正
+        int status = dbPointsMallOrder.getStatus();
+        if (status != PointsMallOrder.STATUS_OF_WAIT_DELIVERY && status != PointsMallOrder.STATUS_OF_DELIVERYED) {
             throw new StoneCustomerException("该订单状态不正确，不允许修改");
         }
 
         // 更新PointsMallOrder数据
         PointsMallOrder updatePointsMallOrder = new PointsMallOrder();
         updatePointsMallOrder.setId(dbPointsMallOrder.getId());
-        updatePointsMallOrder.setStatus(Quantity.INT_8);
+        updatePointsMallOrder.setStatus(PointsMallOrder.STATUS_OF_COMPLETED);
+        updatePointsMallOrder.setOrderCompletionTime(new Date());
+        updatePointsMallOrder.setUpdateTime(new Date());
+        if (isSelfPickup) {
+            //自提核销留痕：顾客自助「确认取货」时 verifierId 留空；
+            //商家端 M-03 核销（另排批次）会写入商家 id 并复用同一状态机
+            updatePointsMallOrder.setVerifyTime(new Date());
+        }
         pointsMallOrderMapper.updateByPrimaryKeySelective(updatePointsMallOrder);
 
     }
@@ -2665,6 +2710,64 @@ public class PointsMallOrderServiceImpl extends ServiceImpl<PointsMallOrderMappe
         resultMap.put("orderRefundGoodsList", orderRefundGoodsList);
         resultMap.put("orderRefundProcessList", orderRefundProcessList);
         return resultMap;
+    }
+
+    /**
+     * 自提流程轨迹（C-10 批次 6：画板 B-09 自提凭证的 5 节点时间线）
+     * 与 B-08 退款进度同一视觉口径：**时间倒序 + 最新节点高亮**。
+     * 到店支付场景下「支付成功，订单已确认」节点暂无时间戳（本期不含在线支付），
+     * 待二期接通微信支付后由 paymentNotify 写入 paymentSuccessTime，节点自动点亮。
+     */
+    @Override
+    public Map selectPickupProcess(PointsMallOrderParam param) {
+        Member loginMember = memberSessionManager.getSession(TokenUtil.getToken());
+
+        PointsMallOrder dbOrder = pointsMallOrderMapper.selectById(param.getId());
+        if (dbOrder == null) {
+            throw new StoneCustomerException("该订单不存在");
+        }
+        if (!dbOrder.getMemberId().equals(loginMember.getId())) {
+            throw new StoneCustomerException("该订单不是你的，不允许查看");
+        }
+
+        Date createTime = dbOrder.getCreateTime();
+        Date paySuccessTime = dbOrder.getPaymentSuccessTime();
+
+        //门店接单/备货完成：状态进入 4=待发货(自提场景=待自提) 或 6=已完成 即视为已备齐，时间取订单最后更新时间
+        Date readyTime = null;
+        Integer status = dbOrder.getStatus();
+        if (status != null && (status == PointsMallOrder.STATUS_OF_WAIT_DELIVERY || status == PointsMallOrder.STATUS_OF_COMPLETED)) {
+            readyTime = dbOrder.getUpdateTime() != null ? dbOrder.getUpdateTime() : createTime;
+        }
+
+        List<Map<String, Object>> processList = new ArrayList<>();
+        processList.add(buildPickupProcessNode("商品已备齐，请凭自提码到店取货", readyTime));
+        processList.add(buildPickupProcessNode("门店已接单，正在备货", readyTime));
+        processList.add(buildPickupProcessNode("支付成功，订单已确认", paySuccessTime));
+        processList.add(buildPickupProcessNode("下单成功", createTime));
+        processList.add(buildPickupProcessNode("订单已提交，等待支付", createTime));
+
+        Map resultMap = new HashMap();
+        resultMap.put("id", dbOrder.getId());
+        resultMap.put("orderNo", dbOrder.getOrderNo());
+        resultMap.put("pickupCode", dbOrder.getPickupCode());
+        resultMap.put("pickupDeadline", dbOrder.getPickupDeadline());
+        resultMap.put("verifyTime", dbOrder.getVerifyTime());
+        resultMap.put("status", dbOrder.getStatus());
+        resultMap.put("shopId", dbOrder.getShopId());
+        resultMap.put("shopName", dbOrder.getShopName());
+        resultMap.put("shopAddress", dbOrder.getShopAddress());
+        resultMap.put("processList", processList);
+        return resultMap;
+    }
+
+    /** 组装自提流程节点（time 为 null = 尚未到达，前端不渲染该节点） */
+    private Map<String, Object> buildPickupProcessNode(String name, Date time) {
+        Map<String, Object> node = new HashMap<>();
+        node.put("name", name);
+        node.put("time", time);
+        node.put("reached", time != null);
+        return node;
     }
 
     @Override

@@ -28,6 +28,12 @@
 					申请售后
 				</button>
 
+				<!-- C-10 批次6：门店自提订单（shoppingWay=1）用「查看自提码」替代「查看物流」 -->
+				<button size="mini" class="pinglun-btn theme-color-border" hover-class="hover-class-public"
+					@tap="toPickupCode" v-if="order.shoppingWay == 1" style="font-size: 28rpx">
+					查看自提码
+				</button>
+
 				<button size="mini" class="pinglun-btn theme-color-border" hover-class="hover-class-public"
 					@tap="selectLogistics" v-if="order.isShowLogistics" style="font-size: 28rpx">
 					查看物流
@@ -865,9 +871,15 @@
 				}).catch((e) => {});
 			},
 
+			// C-10 批次6：跳转自提凭证页（画板 B-09）
+			toPickupCode() {
+				uni.navigateTo({
+					url: '../../pickup-code/pickup-code?id=' + this.order.id
+				});
+			},
+
 			selectLogistics(e) {
-				let logisticsJson = {};
-				logisticsJson.logisticsNo = this.order.logisticsNo;
+				let logisticsJson = {};				logisticsJson.logisticsNo = this.order.logisticsNo;
 				logisticsJson.logisticsWay = this.order.logisticsWay;
 				logisticsJson.courierName = this.order.courierName;
 				logisticsJson.courierPhone = this.order.courierPhone;

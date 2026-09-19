@@ -74,6 +74,10 @@
     <result column="goods_source" property="goodsSource" jdbcType="INTEGER" />
     <result column="goods_source_order_no" property="goodsSourceOrderNo" jdbcType="VARCHAR" />
     <result column="platform_remark" property="platformRemark" jdbcType="VARCHAR" />
+    <result column="pickup_code" property="pickupCode" jdbcType="VARCHAR" />
+    <result column="pickup_deadline" property="pickupDeadline" jdbcType="TIMESTAMP" />
+    <result column="verify_time" property="verifyTime" jdbcType="TIMESTAMP" />
+    <result column="verifier_id" property="verifierId" jdbcType="INTEGER" />
     <result column="create_time" property="createTime" jdbcType="TIMESTAMP" />
     <result column="update_time" property="updateTime" jdbcType="TIMESTAMP" />
   </resultMap>
@@ -150,6 +154,10 @@
     <result column="goods_source" property="goodsSource" jdbcType="INTEGER" />
     <result column="goods_source_order_no" property="goodsSourceOrderNo" jdbcType="VARCHAR" />
     <result column="platform_remark" property="platformRemark" jdbcType="VARCHAR" />
+    <result column="pickup_code" property="pickupCode" jdbcType="VARCHAR" />
+    <result column="pickup_deadline" property="pickupDeadline" jdbcType="TIMESTAMP" />
+    <result column="verify_time" property="verifyTime" jdbcType="TIMESTAMP" />
+    <result column="verifier_id" property="verifierId" jdbcType="INTEGER" />
     <result column="create_time" property="createTime" jdbcType="TIMESTAMP" />
     <result column="update_time" property="updateTime" jdbcType="TIMESTAMP" />
   </resultMap>
@@ -225,7 +233,8 @@
     delivery_way, is_pay_to_merchant, before_reduced_delivery_fee, payment_mode, logistics_way,
     logistics_no, courier_name, courier_phone, delivery_status, is_sign, delivery_last_update_time,
     take_time, contact_house_number, contact_longitude, contact_latitude, first_goods_main_image,
-    goods_source, goods_source_order_no, platform_remark, create_time, update_time
+    goods_source, goods_source_order_no, platform_remark, create_time, update_time,
+    pickup_code, pickup_deadline, verify_time, verifier_id
   </sql>
   <select id="selectByExample" resultMap="BaseResultMap" parameterType="com.siam.system.modular.package_order.model.example.internal.PointsMallOrderExample" >
     select
@@ -720,6 +729,18 @@
       </if>
       <if test="orderCompletionTime != null" >
         order_completion_time = #{orderCompletionTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="pickupCode != null" >
+        pickup_code = #{pickupCode,jdbcType=VARCHAR},
+      </if>
+      <if test="pickupDeadline != null" >
+        pickup_deadline = #{pickupDeadline,jdbcType=TIMESTAMP},
+      </if>
+      <if test="verifyTime != null" >
+        verify_time = #{verifyTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="verifierId != null" >
+        verifier_id = #{verifierId,jdbcType=INTEGER},
       </if>
       <if test="paidOrderCancelReason != null" >
         paid_order_cancel_reason = #{paidOrderCancelReason,jdbcType=INTEGER},

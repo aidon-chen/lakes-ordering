@@ -190,6 +190,14 @@ public interface PointsMallOrderService extends IService<PointsMallOrder> {
 
     Map selectRefundProcess(PointsMallOrderParam param);
 
+    /**
+     * 自提流程轨迹（C-10 批次 6：画板 B-09 自提凭证的 5 节点时间线）
+     * 返回 {orderNo, pickupCode, pickupDeadline, verifyTime, status, processList:[{name, time, reached}]}
+     * 节点按时间**倒序**（最新在上），与画板 B-08/B-09 的"最新节点高亮"一致；
+     * 未到达的节点 time 为 null（前端不渲染）。到店支付场景下「支付成功」节点在二期接通在线支付后自然出现。
+     */
+    Map selectPickupProcess(PointsMallOrderParam param);
+
     Map selectTabNumber(PointsMallOrderParam param);
 
     String selectCommissionReward(PointsMallOrderParam param);
