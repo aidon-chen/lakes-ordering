@@ -22,12 +22,12 @@ http.interceptors.request.use(config => {
   return config
 })
 
-// 响应拦截：BasicResult 解包；code!=0 抛业务错误
+// 响应拦截：BasicResult 解包；success=false 抛业务错误（判断依据 = success 字段，见 BasicResult.java 注释）
 http.interceptors.response.use(
   resp => {
     const body = resp.data
-    if (body && typeof body === 'object' && 'code' in body) {
-      if (body.code !== 0) return Promise.reject(new Error(body.msg || '业务处理失败'))
+    if (body && typeof body === 'object' && 'success' in body) {
+      if (body.success !== true) return Promise.reject(new Error(body.message || '业务处理失败'))
       return body.data
     }
     return body

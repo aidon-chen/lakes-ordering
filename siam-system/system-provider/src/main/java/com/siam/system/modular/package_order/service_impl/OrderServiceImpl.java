@@ -840,6 +840,11 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         insertOrder.setCheckoutMode(dbShop.getCheckoutMode());
         insertOrder.setTableNo(param.getTableNo());
         insertOrder.setTableName(param.getTableName());
+        // 收银台台位作业联动（2026-09-19）：会话/台位/就餐人数/订单场景随订单落库
+        insertOrder.setTableId(param.getTableId());
+        insertOrder.setDiningNum(param.getDiningNum());
+        insertOrder.setDiningSessionId(param.getDiningSessionId());
+        insertOrder.setOrderScene(param.getOrderScene() == null ? 1 : param.getOrderScene());
         orderMapper.insert(insertOrder);
 
         Order dbOrder = orderMapper.selectById(insertOrder.getId());

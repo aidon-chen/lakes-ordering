@@ -1,19 +1,30 @@
 import { http } from './http'
 
-/** 点单 / 结账接口（M1 后端交付后启用） */
+/** 点单 / 下单接口（方案 A：复用 POST /rest/merchant/order/insert 一次性提交） */
 
-/** 加菜：向会话当前未结订单追加明细（added=1） */
-export const addItems = (sessionId: number, orderId: number, items: unknown) =>
-  http.post('/rest/merchant/order/add-items', { sessionId, orderId, items })
+/** 下单明细（对齐后端 OrderDetail：goodsId/goodsName/specList/number/price/subtotal） */
+export interface OrderDetailSubmit {
+  goodsId: number
+  goodsName: string
+  /** 规格 JSON 字符串（如 {"规格":"单杯"}），无规格传空对象字符串 */
+  specList: string
+  number: number
+  price: number
+  subtotal: number
+}
 
-/** 数量调整 / 退菜：已下单（added=0）后端拒绝（一期决策） */
-export const changeItemQty = (orderId: number, detailId: number, number: number) =>
-  http.put('/rest/merchant/order/item-qty', { orderId, detailId, number })
+/** 收银台下单参数（对齐 OrderParam + 台位作业字段） */
+export interface OrderSubmitParam {
+  orderDetailListStr: string // 明细 JSON 数组字符串
+  actualPrice: number
+  tableId: number
+  tableNo: string
+  tableName: string
+  diningNum: number
+  diningSessionId: number
+  orderScene: 1 | 2 // 1=堂食
+}
 
-/** 加菜下单：当前订单 added=1 明细落为已下单（送厨打） */
-export const sendItems = (orderId: number) =>
-  http.post('/rest/merchant/order/send-items', { orderId })
-
-/** 会话结账入口 → M-02 收银支付；支付回调自动清台 */
-export const checkout = (sessionId: number) =>
-  http.post('/rest/merchant/order/checkout', { sessionId })
+/** 下单：一次性提交购物车（生成一张订单，挂到当前会话） */
+export const submitOrder = (param: OrderSubmitParam) =>
+  http.post<unknown, { id: number; orderNo: string }>('/rest/merchant/order/insert', param)

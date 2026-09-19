@@ -2,6 +2,8 @@ import { defineStore } from 'pinia'
 import router from '@/router'
 import type { CartLine, PosView, TableInfo, TableUiState } from '@/types'
 import { clearTable, changeTable as changeTableApi, fetchTableList, openTable, type ZoneRow } from '@/api/table'
+import { fetchGoods, fetchMenus, type GoodsRow, type MenuRow } from '@/api/menu'
+import { submitOrder, type OrderDetailSubmit } from '@/api/order'
 
 /**
  * 收银台全局状态（Odoo PosStore / Screen 状态机映射）
@@ -26,7 +28,12 @@ export const usePosStore = defineStore('pos', {
     openForTableId: null as number | null,
     guestPick: 2,
     // 转台弹窗中间态（Round 5 拍板弹窗选目标台）
-    changeForTableId: null as number | null
+    changeForTableId: null as number | null,
+    // 点单数据
+    menus: [] as MenuRow[],
+    goods: [] as GoodsRow[],
+    currentMenuId: null as number | null,
+    loadingGoods: false
   }),
 
   getters: {
@@ -180,10 +187,43 @@ export const usePosStore = defineStore('pos', {
       }
     },
 
-    /** 恢复既有会话进单（TicketScreen「继续点单」/ 点占用桌） */
+    /** 恢复既有会话进单（点占用桌）：进入 order 视图并加载点单数据 */
     resumeOrder(tableId: number) {
+      const t = this.tables.find(x => x.id === tableId)
       this.currentTableId = tableId
+      this.currentSessionId = t?.session?.sessionId ?? null
+      if (!this.menus.length) void this.loadMenus()
+      if (this.currentMenuId != null) void this.loadGoods(this.currentMenuId)
       this.setView('order')
+    },
+
+    /** 加载商品分类（一次） */
+    async loadMenus() {
+      try {
+        const page = await fetchMenus()
+        // 注意：Menu 实体无 isDisabled 字段（后端已按门店过滤），不过滤
+        this.menus = page?.records ?? []
+        if (!this.menus.length) return
+        const first = this.menus[0]
+        this.currentMenuId = this.currentMenuId ?? first.id
+        await this.loadGoods(this.currentMenuId)
+      } catch (e) {
+        console.error('[pos] loadMenus 失败', e)
+      }
+    },
+
+    /** 按分类加载商品 */
+    async loadGoods(menuId: number) {
+      this.currentMenuId = menuId
+      this.loadingGoods = true
+      try {
+        const page = await fetchGoods(menuId)
+        this.goods = page?.records ?? []
+      } catch (e) {
+        console.error('[pos] loadGoods 失败', e)
+      } finally {
+        this.loadingGoods = false
+      }
     },
 
     /** 加菜：同名合并 + 置 added（原型 pick 语义） */
@@ -210,9 +250,47 @@ export const usePosStore = defineStore('pos', {
       line.added = true
     },
 
-    /** M1: POST /rest/merchant/order/send-items → added 明细落库送厨打（OrderView 空壳期占位） */
-    async sendItems() {
-      // 占位
+    /** 下单送厨：方案 A 一次性提交购物车 → POST /rest/merchant/order/insert */
+    async sendItems(): Promise<boolean> {
+      const table = this.currentTable
+      const sessionId = this.currentSessionId
+      if (!table || sessionId == null) {
+        alert('未关联台位会话，无法下单')
+        return false
+      }
+      const lines = this.cart.filter(l => l.added)
+      if (!lines.length) {
+        alert('购物车为空')
+        return false
+      }
+      const details: OrderDetailSubmit[] = lines.map(l => ({
+        goodsId: l.goodsId,
+        goodsName: l.goodsName,
+        specList: JSON.stringify(l.specText ? { 规格: l.specText } : {}),
+        number: l.qty,
+        price: l.price,
+        subtotal: l.price * l.qty
+      }))
+      const total = details.reduce((s, d) => s + d.subtotal, 0)
+      try {
+        await submitOrder({
+          orderDetailListStr: JSON.stringify(details),
+          actualPrice: total,
+          tableId: table.id,
+          tableNo: table.tableNo,
+          tableName: table.tableName,
+          diningNum: table.session?.memberNum ?? 1,
+          diningSessionId: sessionId,
+          orderScene: 1
+        })
+        // 下单成功：清空已提交行（保留已下单行语义：本期无已下单行，直接全清）
+        this.cart = []
+        return true
+      } catch (e) {
+        console.error('[pos] 下单失败', e)
+        alert((e as Error).message || '下单失败')
+        return false
+      }
     },
 
     /** 暂存挂单：不清 cart（保留 added 标记），返回桌台图 */

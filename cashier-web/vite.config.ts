@@ -15,7 +15,8 @@ export default defineConfig({
   server: {
     port: 5270,
     proxy: {
-      '/rest': { target: 'http://localhost:9200', changeOrigin: true }
+      // 后端 context-path = /siam-server，vite 的 /rest 需加前缀
+      '/rest': { target: 'http://localhost:9200', changeOrigin: true, rewrite: p => '/siam-server' + p }
     }
   }
 })
