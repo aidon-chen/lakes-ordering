@@ -12,8 +12,9 @@ const IMPLEMENTED: Record<string, Component> = {
   '/table/floor': defineAsyncComponent(() => import('@/views/FloorView.vue')),
   '/order/cashier': defineAsyncComponent(() => import('@/views/OrderView.vue')),
   '/order/goods-status': defineAsyncComponent(() => import('@/views/GoodsStatusView.vue')),
+  '/orders/today': defineAsyncComponent(() => import('@/views/OrderTodayView.vue')),
   '/shop/account': defineAsyncComponent(() => import('@/views/AccountView.vue'))
-  // 其余 15 项尚未落地 → 统一走 PageStub（批次 C 起逐页替换）
+  // 其余 14 项尚未落地 → 统一走 PageStub（批次 D 起逐页替换）
 }
 
 const router = createRouter({
