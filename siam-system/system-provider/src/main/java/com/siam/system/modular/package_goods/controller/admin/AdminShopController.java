@@ -96,11 +96,30 @@ public class AdminShopController {
             }
         }
 
-        //修改店铺起送价格
+        //A-01 门店信息编辑：白名单显式 set（MyBatis-Plus updateById 忽略 null 字段，
+        //因此未提交的字段不会被覆盖；同时避免误改 auditStatus/佣金等敏感字段）
         Shop updateShop = new Shop();
         updateShop.setId(shop.getId());
-        updateShop.setStatus(shop.getStatus());
-        updateShop.setStartDeliveryPrice(shop.getStartDeliveryPrice());
+        updateShop.setStatus(shop.getStatus());                       // 启停：1=待上架 2=已上架 3=已下架
+        updateShop.setName(shop.getName());
+        updateShop.setContactPhone(shop.getContactPhone());
+        updateShop.setProvince(shop.getProvince());
+        updateShop.setCity(shop.getCity());
+        updateShop.setArea(shop.getArea());
+        updateShop.setStreet(shop.getStreet());
+        updateShop.setHouseNumber(shop.getHouseNumber());
+        updateShop.setAnnouncement(shop.getAnnouncement());
+        updateShop.setBriefIntroduction(shop.getBriefIntroduction());
+        updateShop.setManagePrimary(shop.getManagePrimary());
+        updateShop.setShopLogoImg(shop.getShopLogoImg());
+        updateShop.setShopWithinImg(shop.getShopWithinImg());
+        updateShop.setShopImg(shop.getShopImg());
+        updateShop.setBusinessLicense(shop.getBusinessLicense());
+        updateShop.setIdCardFrontSide(shop.getIdCardFrontSide());
+        updateShop.setIdCardBackSide(shop.getIdCardBackSide());
+        updateShop.setIsOperating(shop.getIsOperating());
+        updateShop.setStartTime(shop.getStartTime());
+        updateShop.setEndTime(shop.getEndTime());
         updateShop.setUpdateTime(new Date());
         shopService.updateById(updateShop);
 
