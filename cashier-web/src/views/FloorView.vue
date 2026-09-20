@@ -230,7 +230,7 @@ const changeTable = computed<TableInfo | null>(() =>
 const legends = computed(() => [
   { label: '空闲', count: pos.uiCounts.idle, bg: '#ffffff', border: 'var(--tc-line)' },
   { label: '占用', count: pos.uiCounts.busy, bg: 'var(--pl)', border: 'var(--p)' },
-  { label: '待清台', count: pos.uiCounts.toclean, bg: 'var(--bg)', border: 'var(--tc-line)' }
+  { label: '待清台', count: pos.uiCounts.toclean, bg: '#FCE3E3', border: '#F56B6B' }
 ])
 
 /** 抽屉：状态徽标 */

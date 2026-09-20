@@ -66,11 +66,12 @@ import type { TableInfo, TableUiState } from '@/types'
 const pos = usePosStore()
 const props = defineProps<{ table: TableInfo }>()
 
-/** 三态色板（批次 C）：待清台用灰底 + 危险色字 */
+/** 三态色板（批次 C）：待清台用 $2:8 危险浅底 + 危险色字 */
 const THEME: Record<TableUiState, { bg: string; border: string; fg: string }> = {
   idle: { bg: '#ffffff', border: 'var(--tc-line)', fg: 'var(--tc-sub)' },
   busy: { bg: 'var(--pl)', border: 'var(--p)', fg: 'var(--p)' },
-  toclean: { bg: 'var(--bg)', border: 'var(--tc-line)', fg: 'var(--warn)' }
+  // 底色用画板设计变量 $2:8=#FCE3E3（危险浅底）—— 原来误用 var(--bg) 灰，与画板有偏差
+  toclean: { bg: '#FCE3E3', border: '#F56B6B', fg: 'var(--warn)' }
 }
 
 const ui = computed<TableUiState>(() => props.table.ui)
