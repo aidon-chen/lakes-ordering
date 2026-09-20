@@ -68,4 +68,13 @@ public interface AppraiseMapper extends BaseMapper<Appraise> {
 
     @Select("SELECT if(COUNT(*)>0, false, true) FROM tb_appraise WHERE order_id = #{appraise.orderId} AND member_id = #{appraise.memberId}")
     boolean getIsAllowAppraise(@Param("appraise") Appraise appraise);
+
+    /**
+     * A-03-1 实时数据看板 - 待处理评价回复数（尚无商家回复的评价数）
+     */
+    @Select("<script>select count(*) from tb_appraise a " +
+            "where not exists (select 1 from tb_reply r where r.appraise_id = a.id) " +
+            "<if test=\"shopId != null\"> AND a.shop_id = #{shopId} </if>" +
+            "</script>")
+    int selectCountWaitReply(@Param("shopId") Integer shopId);
 }

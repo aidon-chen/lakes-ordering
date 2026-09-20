@@ -4,9 +4,9 @@
 		<el-col :span="24" class="toolbar" style="padding-bottom: 0px;">
 			<el-form :inline="true" :model="searchMsg">
 				<el-form-item>
-					<el-select v-model="searchMsg.shoppingWay" placeholder="请选择购物方式搜索" clearable>
-						<el-option label="自取" :value="1"></el-option>
-						<el-option label="配送" :value="2"></el-option>    
+					<el-select v-model="searchMsg.orderScene" placeholder="请选择订单类型搜索" clearable>
+						<el-option label="堂食" :value="1"></el-option>
+						<el-option label="自提" :value="2"></el-option>
 					</el-select>
 				</el-form-item>           
 				<el-form-item>
@@ -51,11 +51,13 @@
 					<span>{{(searchMsg.pageNo - 1) * searchMsg.pageSize + scope.$index + 1}}</span>
 				</template>		
 			</el-table-column>       -->
+      <el-table-column prop="orderNo" label="订单号" width="190"></el-table-column>
+      <el-table-column prop="orderScene" label="订单类型" :formatter="formatOrderScene"></el-table-column>
       <el-table-column prop="queueNo" label="取餐号"></el-table-column>
       <el-table-column prop="description" label="订单描述"></el-table-column>
       <el-table-column prop="goodsTotalPrice" label="订单总额">
 				<template scope="scope">
-					<span>{{scope.row.goodsTotalPrice + scope.row.packingCharges + scope.row.deliveryFee}}元</span>
+					<span>{{(scope.row.goodsTotalPrice + scope.row.packingCharges).toFixed(2)}}元</span>
 				</template>      
       </el-table-column>   
        <el-table-column prop="paymentMode" label="支付方式">
@@ -71,14 +73,8 @@
 				</template>    
       </el-table-column>
       <el-table-column prop="remark" label="备注"></el-table-column>      
-			<el-table-column prop="shoppingWay" label="购物方式" :formatter="formatShoppingWay"></el-table-column>      
-      <el-table-column prop="contactRealname" label="联系人姓名" width="120"></el-table-column>
-			<el-table-column prop="contactPhone" label="联系电话" width="120"></el-table-column>
-      <el-table-column prop="contactProvince" label="派送地址" width="190">
-				<template slot-scope="scope">
-					{{scope.row.contactProvince}} - {{scope.row.contactCity}} - {{scope.row.contactArea}} - {{scope.row.contactStreet}} - {{scope.row.contactHouseNumber}}
-				</template>
-      </el-table-column>			      
+      <el-table-column prop="contactRealname" label="下单人" width="120"></el-table-column>
+			<el-table-column prop="contactPhone" label="联系电话" width="120"></el-table-column>		      
       <el-table-column prop="status" label="订单状态" width="100" :formatter="formatOrder"></el-table-column>
 			<el-table-column prop="createTime" label="下单时间" :formatter="formatTime" width="190"></el-table-column>
       
@@ -407,6 +403,9 @@
       },
       formatShoppingWay(row, column) { // 添加单位
         return row.shoppingWay == 1 ? '自取' : row.shoppingWay == 2 ? '配送' : '-';
+      },           
+      formatOrderScene(row, column) { // 订单类型：1=堂食 2=自提
+        return row.orderScene == 2 ? '自提' : '堂食';
       },           
       formatDescription(row, column) { // 添加单位
         //let replaceReg = new RegExp("&nbsp;", 'g');

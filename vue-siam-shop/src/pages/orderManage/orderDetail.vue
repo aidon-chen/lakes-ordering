@@ -7,6 +7,7 @@
 					<!-- <el-button type="primary" @click="testPlayAudio">测试声音播报</el-button> -->
 					<el-button type="primary" @click="xpYunPrinterOrderDetail">打印</el-button>
 					<el-button @click="backHistory">返回</el-button>
+					<el-button type="primary" plain @click="contactCustomer">联系顾客</el-button>
 				</el-form-item>
 			</el-form>
 		</el-col>
@@ -15,11 +16,22 @@
 		<el-table :data="relatedList" highlight-current-row v-loading="relatedListLoading" style="width: 100%;"
 			:cell-style="cellStyle" :header-cell-style="getRowClass">
 			<el-table-column prop="orderNo" label="订单编号" width="200"></el-table-column>
+			<el-table-column prop="orderScene" label="订单类型" :formatter="formatOrderScene"></el-table-column>
 			<el-table-column prop="queueNo" label="取餐号"></el-table-column>
+			<el-table-column prop="tableNo" label="桌号">
+				<template scope="scope">
+					<span>{{ scope.row.orderScene == 2 ? '-' : (scope.row.tableNo || '-') }}</span>
+				</template>
+			</el-table-column>
+			<el-table-column prop="diningNum" label="就餐人数">
+				<template scope="scope">
+					<span>{{ scope.row.orderScene == 2 ? '-' : (scope.row.diningNum || '-') }}</span>
+				</template>
+			</el-table-column>
 			<el-table-column prop="description" label="订单描述"></el-table-column>
 			<el-table-column prop="goodsTotalPrice" label="订单总额">
 				<template scope="scope">
-					<span>{{ scope.row.goodsTotalPrice + scope.row.packingCharges + scope.row.deliveryFee }}元</span>
+					<span>{{ (scope.row.goodsTotalPrice + scope.row.packingCharges).toFixed(2) }}元</span>
 				</template>
 			</el-table-column>
 			<el-table-column prop="paymentMode" label="支付方式">
@@ -36,25 +48,31 @@
 			</el-table-column>
 			<el-table-column prop="goodsTotalPrice" label="商品总金额" :formatter="addUnit"></el-table-column>
 			<el-table-column prop="packingCharges" label="包装费" :formatter="addUnit"></el-table-column>
-			<el-table-column prop="deliveryFee" label="配送费" :formatter="addUnit"></el-table-column>
 			<el-table-column prop="fullReductionRuleDescription" label="使用的满减规则描述" width="190"></el-table-column>
 			<el-table-column prop="couponsDescription" label="使用的优惠卷描述" width="190"></el-table-column>
-			<el-table-column prop="remark" label="备注"></el-table-column>
-			<el-table-column prop="shoppingWay" label="购物方式" :formatter="formatShoppingWay"></el-table-column>
-			<el-table-column prop="contactRealname" label="联系人姓名" width="120"></el-table-column>
+			<el-table-column prop="contactRealname" label="下单人" width="120"></el-table-column>
 			<el-table-column prop="contactPhone" label="联系电话" width="120"></el-table-column>
-			<el-table-column prop="contactProvince" label="派送地址" width="190">
-				<template slot-scope="scope">
-					<span v-if="scope.row.shoppingWay == 1"> - </span>
-					<span v-if="scope.row.shoppingWay == 2">{{ scope.row.contactProvince }} - {{ scope.row.contactCity
-						}} -
-						{{ scope.row.contactArea }} - {{ scope.row.contactStreet }} -
-						{{ scope.row.contactHouseNumber }}</span>
-				</template>
-			</el-table-column>
 			<el-table-column prop="status" label="订单状态" width="100" :formatter="formatOrder"></el-table-column>
 			<el-table-column prop="createTime" label="下单时间" :formatter="formatTime" width="190"></el-table-column>
 		</el-table>
+
+		<!--备注区（类型驱动：堂食→桌号+就餐人数；自提→取餐号+自提门店）-->
+		<div class="remark-layout" v-if="relatedList.length > 0">
+			<div class="layout-title">备注信息</div>
+			<div class="remark-content">
+				<template v-if="relatedList[0].orderScene == 2">
+					<span class="remark-item">订单类型：自提</span>
+					<span class="remark-item">取餐号：{{ relatedList[0].queueNo || '-' }}</span>
+					<span class="remark-item">自提门店：{{ relatedList[0].shopName || '-' }}</span>
+				</template>
+				<template v-else>
+					<span class="remark-item">订单类型：堂食</span>
+					<span class="remark-item">桌号：{{ relatedList[0].tableNo || '-' }}</span>
+					<span class="remark-item">就餐人数：{{ relatedList[0].diningNum || '-' }}</span>
+				</template>
+				<span class="remark-item">订单备注：{{ relatedList[0].remark || '无' }}</span>
+			</div>
+		</div>
 
 		<br /><br />
 
@@ -205,6 +223,24 @@ export default {
 		},
 		formatShoppingWay(row, column) { // 添加单位
 			return row.shoppingWay == 1 ? '自取' : row.shoppingWay == 2 ? '配送' : '-';
+		},
+		formatOrderScene(row, column) { // 订单类型：1=堂食 2=自提
+			return row.orderScene == 2 ? '自提' : '堂食';
+		},
+		contactCustomer() { // 联系顾客：展示当前订单的下单人与联系电话
+			let order = this.relatedList && this.relatedList.length > 0 ? this.relatedList[0] : null;
+			if (!order) {
+				this.$message({
+					showClose: true,
+					message: '暂未加载到订单信息',
+					type: 'warning'
+				});
+				return;
+			}
+			let text = '下单人：' + (order.contactRealname || '-') + '，联系电话：' + (order.contactPhone || '-');
+			this.$alert(text, '联系顾客', {
+				confirmButtonText: '知道了'
+			});
 		},
 		formatDescription(row, column) { // 添加单位
 			//let replaceReg = new RegExp("&nbsp;", 'g');
@@ -972,4 +1008,24 @@ export default {
 
 </script>
 
-<style scoped></style>
+<style scoped>
+	.remark-layout {
+		margin-top: 20px;
+		border: 1px solid #DCDFE6;
+	}
+	.layout-title {
+		color: #606266;
+		padding: 15px 20px;
+		background: #F2F6FC;
+		font-weight: bold;
+	}
+	.remark-content {
+		padding: 15px 20px;
+	}
+	.remark-item {
+		display: inline-block;
+		margin-right: 30px;
+		font-size: 14px;
+		color: #606266;
+	}
+</style>

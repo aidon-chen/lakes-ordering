@@ -5,9 +5,9 @@
 		<el-col :span="24" class="toolbar" style="padding-bottom: 0px;">
 			<el-form :inline="true" :model="searchMsg">
 				<el-form-item>
-					<el-select v-model="searchMsg.shoppingWay" placeholder="请选择购物方式搜索" clearable>
-						<el-option label="自取" :value="1"></el-option>
-						<el-option label="配送" :value="2"></el-option>    
+					<el-select v-model="searchMsg.orderScene" placeholder="请选择订单类型搜索" clearable>
+						<el-option label="堂食" :value="1"></el-option>
+						<el-option label="自提" :value="2"></el-option>
 					</el-select>
 				</el-form-item>           
 				<el-form-item>
@@ -52,17 +52,27 @@
 					<span>{{(searchMsg.pageNo - 1) * searchMsg.pageSize + scope.$index + 1}}</span>
 				</template>		
 			</el-table-column>       -->
+      <el-table-column prop="orderNo" label="订单号" width="190"></el-table-column>
+      <el-table-column prop="orderScene" label="订单类型" :formatter="formatOrderScene"></el-table-column>
       <el-table-column prop="queueNo" label="取餐号"></el-table-column>
+      <el-table-column prop="tableNo" label="桌号">
+				<template scope="scope">
+					<span>{{scope.row.tableNo || '-'}}</span>
+				</template>
+      </el-table-column>
       <el-table-column prop="description" label="订单描述"></el-table-column>
       <el-table-column prop="goodsTotalPrice" label="订单总额">
 				<template scope="scope">
-					<span>{{scope.row.goodsTotalPrice + scope.row.packingCharges + scope.row.deliveryFee}}元</span>
+					<span>{{(scope.row.goodsTotalPrice + scope.row.packingCharges).toFixed(2)}}元</span>
 				</template>      
       </el-table-column>   
        <el-table-column prop="paymentMode" label="支付方式">
 				<template scope="scope">
 					<span v-if="scope.row.paymentMode == 1">微信支付</span>
-                    <span v-else-if="scope.row.paymentMode == 0">平台余额</span>
+                    <span v-else-if="scope.row.paymentMode == 2">支付宝支付</span>
+                    <span v-else-if="scope.row.paymentMode == 3 || scope.row.paymentMode == 0">平台余额</span>
+                    <span v-else-if="scope.row.paymentMode == 4">到店支付</span>
+                    <span v-else>-</span>
                </template>						
 			</el-table-column>	   
       <el-table-column prop="actualPrice" label="实付款" :formatter="addUnit"></el-table-column>
@@ -71,20 +81,19 @@
 					<span>{{scope.row.goodsTotalQuantity}}件</span>
 				</template>    
       </el-table-column>
-      <el-table-column prop="remark" label="备注"></el-table-column>      
-			<el-table-column prop="shoppingWay" label="购物方式" :formatter="formatShoppingWay"></el-table-column>      
-      <el-table-column prop="contactRealname" label="联系人姓名" width="120"></el-table-column>
-			<el-table-column prop="contactPhone" label="联系电话" width="120"></el-table-column>
-      <el-table-column prop="contactProvince" label="派送地址" width="190">
-				<template slot-scope="scope">
-					{{scope.row.contactProvince}} - {{scope.row.contactCity}} - {{scope.row.contactArea}} - {{scope.row.contactStreet}} - {{scope.row.contactHouseNumber}}
+      <el-table-column prop="remark" label="备注" width="190">
+				<template scope="scope">
+					<span>{{formatRemark(scope.row)}}</span>
 				</template>
-      </el-table-column>			      
+      </el-table-column>      
+      <el-table-column prop="contactRealname" label="下单人" width="120"></el-table-column>
+			<el-table-column prop="contactPhone" label="联系电话" width="120"></el-table-column>
       <el-table-column prop="status" label="订单状态" width="100" :formatter="formatOrder"></el-table-column>
 			<el-table-column prop="createTime" label="下单时间" :formatter="formatTime" width="190"></el-table-column>
-			<el-table-column label="操作" fixed="right">
+			<el-table-column label="操作" fixed="right" width="170">
 				<template slot-scope="scope">
           <el-button size="small" @click="gotoOtherPage('view', scope.row)">查看详情</el-button>
+					<el-button size="small" type="primary" plain @click="contactCustomer(scope.row)">联系顾客</el-button>
 					<!-- <el-button size="small" v-if="scope.row.status == 0" @click="handleEdit(scope.row)">配送</el-button> -->
 					<!-- <el-button size="small" v-if="scope.row.status == 4" @click="openDialog(scope.row.id)">申诉处理</el-button> -->
 					<!-- <el-button size="small" v-if="scope.row.status == 4" @click="openDialog(scope.row.id, 1)">退款</el-button> -->
@@ -120,6 +129,7 @@
 				<el-button @click.native="editFormVisible = false">关闭</el-button>
 			</div> -->
 		</el-dialog>
+	<!--联系顾客：与订单详情页保持同一交互（MessageBox 展示下单人与电话）-->
 	</section>
 </template>
 <script>
@@ -299,6 +309,22 @@
       },
       addUnit(row, column) { // 添加单位
         return (row[column.property] || 0) + '元'
+      },
+      contactCustomer(row) { // 联系顾客：展示下单人与联系电话
+        let text = '下单人：' + (row.contactRealname || '-') + '，联系电话：' + (row.contactPhone || '-');
+        this.$alert(text, '联系顾客', {
+          confirmButtonText: '知道了'
+        })
+      },
+      formatOrderScene(row, column) { // 订单类型：1=堂食 2=自提
+        return row.orderScene == 2 ? '自提' : '堂食'
+      },
+      formatRemark(row) { // 备注：类型驱动（堂食→桌号；自提→取餐号）+ 订单备注
+        let typeText = row.orderScene == 2
+          ? ('取餐号：' + (row.queueNo || '-'))
+          : ('桌号：' + (row.tableNo || '-'))
+        let remark = row.remark ? ('；' + row.remark) : ''
+        return typeText + remark
       },
       formatShoppingWay(row, column) { // 添加单位
         let shoppingWayText = row.shoppingWay == 1 ? '自取' : '配送';

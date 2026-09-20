@@ -32,4 +32,8 @@ public interface AppraiseService {
 
     boolean getIsAllowAppraise(Appraise appraise);
 
+    /**
+     * A-03-1 实时数据看板 - 待处理评价回复数（尚无商家回复的评价数）
+     */
+    int countWaitReply(Integer shopId);
 }

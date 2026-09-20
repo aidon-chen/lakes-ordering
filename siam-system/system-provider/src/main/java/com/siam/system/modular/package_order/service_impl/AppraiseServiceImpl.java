@@ -68,4 +68,9 @@ public class AppraiseServiceImpl implements AppraiseService {
     public boolean getIsAllowAppraise(Appraise appraise) {
         return appraiseMapper.getIsAllowAppraise(appraise);
     }
+
+    @Override
+    public int countWaitReply(Integer shopId) {
+        return appraiseMapper.selectCountWaitReply(shopId);
+    }
 }
