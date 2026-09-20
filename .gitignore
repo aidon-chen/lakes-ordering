@@ -54,3 +54,6 @@ application-siamcloud-test.yml
 application-siamcloud-show.yml
 application-siamcloud-prod.yml
 .DS_Store
+
+# 云库应用脚本产生的数据备份（含业务数据，禁止入库）
+sql/mysql/cloudrun/backup/
