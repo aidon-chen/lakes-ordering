@@ -36,15 +36,22 @@
 				</template>				
 			</el-table-column>
 			<!-- <el-table-column prop="id" label="门店编号"></el-table-column> -->
-			<el-table-column prop="name" label="门店名称"></el-table-column>			
-			<el-table-column prop="contactRealname" label="联系人姓名"></el-table-column>
-			<el-table-column prop="contactPhone" label="联系电话"></el-table-column>
-			<el-table-column prop="province" label="详细地址">
-				<template slot-scope="scope">
-					{{scope.row.province}} - {{scope.row.city}} - {{scope.row.area}} - {{scope.row.street}} - {{scope.row.houseNumber}}
-				</template>
+			<!-- 去敏：门店名称/联系人/电话/地址/营业类目 不在列表回显真实值 -->
+			<el-table-column prop="name" label="门店名称">
+				<template slot-scope="scope"><span class="masked-text">已隐藏</span></template>
+			</el-table-column>			
+			<el-table-column prop="contactRealname" label="联系人姓名">
+				<template slot-scope="scope"><span class="masked-text">已隐藏</span></template>
 			</el-table-column>
-			<el-table-column prop="managePrimary" label="营业类目"></el-table-column>
+			<el-table-column prop="contactPhone" label="联系电话">
+				<template slot-scope="scope"><span class="masked-text">已隐藏</span></template>
+			</el-table-column>
+			<el-table-column prop="province" label="详细地址">
+				<template slot-scope="scope"><span class="masked-text">已隐藏</span></template>
+			</el-table-column>
+			<el-table-column prop="managePrimary" label="营业类目">
+				<template slot-scope="scope"><span class="masked-text">已隐藏</span></template>
+			</el-table-column>
 
 			<el-table-column prop="isOperating" label="店铺是否营业">
 				<template slot-scope="scope">
@@ -92,8 +99,9 @@
 		<!--门店信息编辑界面（A-01-2：门店信息可编辑保存）-->
 		<el-dialog title="编辑门店信息" :visible.sync="editFormVisible" @close="closeDialog" :close-on-click-modal="false">
 			<el-form :model="editForm" label-width="150px" style="width: 80%;" :rules="editFormRules" ref="editForm">
+				<!-- 去敏：不回显原有值，留空即保持原值不变 -->
 				<el-form-item label="门店名称" prop="name">
-					<el-input v-model="editForm.name"></el-input>
+					<el-input v-model="editForm.name" :placeholder="maskPlaceholder"></el-input>
 				</el-form-item>
 
 				<!-- <el-form-item label="外卖电话" prop="takeOutPhone">
@@ -101,29 +109,29 @@
 				</el-form-item> -->
               
 				<el-form-item prop="contactPhone" label="联系电话">
-						<el-input type="text" v-model="editForm.contactPhone" auto-complete="off" placeholder="请填写联系电话"></el-input>
+						<el-input type="text" v-model="editForm.contactPhone" auto-complete="off" :placeholder="maskPlaceholder"></el-input>
 				</el-form-item>    
 
 				<el-form-item prop="selectedOptions" label="所在城市">
-					<el-cascader style="width:100%;" :options="options" separator="-" :props="props" clearable change-on-select placeholder="请选择所在城市"
+					<el-cascader style="width:100%;" :options="options" separator="-" :props="props" clearable change-on-select :placeholder="maskPlaceholder"
 						v-model="editForm.selectedOptions">
 					</el-cascader>
 				</el-form-item>
 
 				<el-form-item prop="street" label="门店地址" >
-					<el-input type="text" v-model="editForm.street" auto-complete="off" placeholder="请输入门店地址" ></el-input>
+					<el-input type="text" v-model="editForm.street" auto-complete="off" :placeholder="maskPlaceholder" ></el-input>
 				</el-form-item>            
 						
 				<el-form-item label="门店公告" prop="announcement">
-							<el-input v-model="editForm.announcement"></el-input>
+							<el-input v-model="editForm.announcement" :placeholder="maskPlaceholder"></el-input>
 						</el-form-item>
 
 						<el-form-item label="门店简介" prop="briefIntroduction">
-				<el-input type="textarea" :rows="6" v-model="editForm.briefIntroduction"></el-input>
+				<el-input type="textarea" :rows="6" v-model="editForm.briefIntroduction" :placeholder="maskPlaceholder"></el-input>
 						</el-form-item>       
 
 				<el-form-item prop="managePrimary" label="营业类目">
-						<el-input type="text" v-model="editForm.managePrimary" auto-complete="off" placeholder="请输入营业类目" ></el-input>
+						<el-input type="text" v-model="editForm.managePrimary" auto-complete="off" :placeholder="maskPlaceholder" ></el-input>
 				</el-form-item>
 
 				<el-form-item label="门店头像（宽400px * 高400px）" prop="shopLogoImgFile" class="shopLogoImgFileItem">
@@ -151,7 +159,13 @@
 						</el-form-item>
 
 				<el-form-item label="营业执照" prop="businessLicenseFile" class="businessLicenseFileItem">
-				<el-upload
+				<!-- 去敏：已有证照不回显原图，仅显示占位；点「重新上传」后才出现上传框 -->
+				<div v-if="masked.businessLicense" class="masked-file">
+					<i class="el-icon-lock"></i>
+					<span>已上传 · 已脱敏</span>
+					<el-button type="text" size="mini" @click="startReupload('businessLicense')">重新上传</el-button>
+				</div>
+				<el-upload v-else
 					ref="multipleUpload"
 					:file-list="editForm.businessLicenseFile"
 					class="avatar-uploader" action="" accept=".image, .png, .jpg" multiple name="businessLicenseUpload"
@@ -163,7 +177,13 @@
 				</el-form-item>
 
 				<el-form-item label="身份证正面" prop="idCardFrontSideFile" class="idCardFrontSideFileItem">
-				<el-upload
+				<!-- 去敏：已有证照不回显原图，仅显示占位；点「重新上传」后才出现上传框 -->
+				<div v-if="masked.idCardFrontSide" class="masked-file">
+					<i class="el-icon-lock"></i>
+					<span>已上传 · 已脱敏</span>
+					<el-button type="text" size="mini" @click="startReupload('idCardFrontSide')">重新上传</el-button>
+				</div>
+				<el-upload v-else
 					ref="multipleUpload"
 					:file-list="editForm.idCardFrontSideFile"
 					class="avatar-uploader" action="" accept=".image, .png, .jpg" multiple name="idCardFrontSideUpload"
@@ -175,7 +195,13 @@
 				</el-form-item>
 
 				<el-form-item label="身份证反面" prop="idCardBackSideFile" class="idCardBackSideFileItem">
-				<el-upload
+				<!-- 去敏：已有证照不回显原图，仅显示占位；点「重新上传」后才出现上传框 -->
+				<div v-if="masked.idCardBackSide" class="masked-file">
+					<i class="el-icon-lock"></i>
+					<span>已上传 · 已脱敏</span>
+					<el-button type="text" size="mini" @click="startReupload('idCardBackSide')">重新上传</el-button>
+				</div>
+				<el-upload v-else
 					ref="multipleUpload"
 					:file-list="editForm.idCardBackSideFile"
 					class="avatar-uploader" action="" accept=".image, .png, .jpg" multiple name="idCardBackSideUpload"
@@ -301,6 +327,16 @@
 
 				editFormVisible: false,//编辑界面是否显示
 				editLoading: false,
+				// 去敏占位文案：展示层留空即表示「保持原值不变」
+				maskPlaceholder: '已隐藏，如需修改请重新输入',
+				// 证照去敏开关：true 时不回显原图，仅显示占位块
+				masked: {
+					businessLicense: false,
+					idCardFrontSide: false,
+					idCardBackSide: false
+				},
+				// 原始数据：去敏后展示层不再持有真实值，提交时用于回填未修改的字段
+				originalData: {},
 				editFormRules: {
 					// isDisabled: [{ required: true, message: '请选择门店状态', trigger: 'change' }],
 					// name: [{ required: true, message: '请输入门店名称', trigger: 'blur' }],
@@ -438,11 +474,12 @@
 					} else if(option.filename === 'detailImagesUpload') {
 						vue.editForm.detailImagesFile.push(obj)
 					} else if(option.filename === 'businessLicenseUpload') {
-						vue.editForm.businessLicenseFile.push(obj)
+						// 证照单张：直接替换（去敏后原图不在列表中，避免出现两张）
+						vue.editForm.businessLicenseFile = [obj]
 					} else if(option.filename === 'idCardFrontSideUpload') {
-						vue.editForm.idCardFrontSideFile.push(obj)
+						vue.editForm.idCardFrontSideFile = [obj]
 					} else if(option.filename === 'idCardBackSideUpload') {
-						vue.editForm.idCardBackSideFile.push(obj)
+						vue.editForm.idCardBackSideFile = [obj]
 					} else if(option.filename === 'shopLogoImgUpload') {
 						vue.editForm.shopLogoImgFile.push(obj)
 					}
@@ -600,20 +637,35 @@
 				let vue = this
 				this.editFormVisible = true;
 				if(row){
-					// this.editForm = Object.assign({}, row);
-					// this.editForm.selectedOptions2 = [row.province, row.city, row.area];	
-					// this.editForm.isOperating = row.isOperating==true ? '正常营业' : '暂不营业';	
+					// 去敏：原始值只保留在 originalData，供提交时回填，不进入展示层
+					vue.originalData = Object.assign({}, row);
 
-					// obj.shopLogoImgFile = vue.resetImg(row, 'shopLogoImg')
-					// obj.shopWithinImgFile = vue.resetImg(row, 'shopWithinImg')
 					row.shopLogoImgFile = vue.resetImg(row, 'shopLogoImg')
 					row.shopWithinImgFile = vue.resetImg(row, 'shopWithinImg')
-					row.businessLicenseFile = vue.resetImg(row, 'businessLicense')      
-					row.idCardFrontSideFile = vue.resetImg(row, 'idCardFrontSide')      
-					row.idCardBackSideFile = vue.resetImg(row, 'idCardBackSide')    					
+					// 证照类不回显：文件列表留空，仅置去敏开关（提交时未重新上传则沿用原路径）
+					row.businessLicenseFile = []
+					row.idCardFrontSideFile = []
+					row.idCardBackSideFile = []
 					this.editForm = Object.assign({}, row)
-					this.editForm.selectedOptions = [row.province, row.city, row.area];	
-					this.editForm.isOperating = row.isOperating==true ? '正常营业' : '暂不营业';	
+					// 去敏：城市/地址等不回显（留空即保持原值不变）
+					this.editForm.selectedOptions = [];
+					this.editForm.isOperating = row.isOperating==true ? '正常营业' : '暂不营业';
+					[
+						'name',
+						'contactPhone',
+						'street',
+						'announcement',
+						'briefIntroduction',
+						'managePrimary'
+					].forEach((key) => {
+						vue.editForm[key] = '';
+					});
+					// 已有证照 → 展示占位块
+					vue.masked = {
+						businessLicense: !!row.businessLicense,
+						idCardFrontSide: !!row.idCardFrontSide,
+						idCardBackSide: !!row.idCardBackSide
+					};
 				}else{
 					this.editForm = {
 						name: '',
@@ -625,6 +677,11 @@
 						endTime: '19:30',			
 					}
 				}		    							
+			},
+			// 证照去敏：点「重新上传」后撤掉占位块、露出上传框（需重新选择文件，原图不展示）
+			startReupload(field) {
+				this.masked[field] = false;
+				this.editForm[field + 'File'] = [];
 			},
 			// A-01-2 门店信息保存：白名单字段提交（后端同样白名单落库，避免覆盖审核态等字段）
 			saveShopInfo: function () {
@@ -651,6 +708,32 @@
 					idCardFrontSide: vue.getIdByArr(f.idCardFrontSideFile),
 					idCardBackSide: vue.getIdByArr(f.idCardBackSideFile)
 				};
+				// 去敏回填：展示层留空的字段用原始值补回，避免提交时把线上数据覆盖成空
+				let raw = vue.originalData || {};
+				[
+					'name',
+					'contactPhone',
+					'street',
+					'announcement',
+					'briefIntroduction',
+					'managePrimary'
+				].forEach((key) => {
+					if (param[key] === '' || param[key] === null || param[key] === undefined) {
+						param[key] = raw[key];
+					}
+				});
+				// 省市区：级联选择器被清空（去敏）时回填原值
+				if (!param.province && !param.city && !param.area) {
+					param.province = raw.province;
+					param.city = raw.city;
+					param.area = raw.area;
+				}
+				// 证照：未重新上传则沿用原路径
+				['businessLicense', 'idCardFrontSide', 'idCardBackSide'].forEach((key) => {
+					if (!param[key]) {
+						param[key] = raw[key];
+					}
+				});
 				vue.editLoading = true;
 				vue.$http.put(vue, '/rest/admin/shop/update', param,
 					(vue, data) => {
@@ -683,5 +766,47 @@
 </script>
 
 <style scoped>
-
+	/* 去敏占位文案 */
+	.masked-text {
+		color: #909399;
+	}
+	/* 证照去敏占位块：不展示原图，仅提示已上传并可重新上传 */
+	.masked-file {
+		display: inline-flex;
+		align-items: center;
+		width: 148px;
+		height: 148px;
+		padding: 0 12px;
+		box-sizing: border-box;
+		border: 1px dashed #dcdfe6;
+		border-radius: 6px;
+		background: #f5f7fa;
+		color: #909399;
+		font-size: 12px;
+		line-height: 1.5;
+		flex-direction: column;
+		justify-content: center;
+	}
+	.masked-file .el-icon-lock {
+		font-size: 22px;
+		margin-bottom: 8px;
+	}
+	.masked-file span {
+		margin-bottom: 4px;
+	}
+	.avatar-uploader .el-upload {
+		border: 1px dashed #d9d9d9;
+		border-radius: 6px;
+		cursor: pointer;
+		position: relative;
+		overflow: hidden;
+	}
+	.avatar-uploader-icon {
+		font-size: 28px;
+		color: #8c939d;
+		width: 148px;
+		height: 148px;
+		line-height: 148px;
+		text-align: center;
+	}
 </style>

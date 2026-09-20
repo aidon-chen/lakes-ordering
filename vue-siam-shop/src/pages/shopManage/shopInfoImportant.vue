@@ -14,8 +14,9 @@
       :rules="editFormRules"
       ref="editForm"
     >
+      <!-- 去敏：不回显原有值，留空即保持原值不变 -->
       <el-form-item label="门店名称" prop="name">
-        <el-input v-model="editForm.name"></el-input>
+        <el-input v-model="editForm.name" :placeholder="maskPlaceholder"></el-input>
       </el-form-item>
 
       <!-- <el-form-item label="外卖电话" prop="takeOutPhone">
@@ -26,7 +27,7 @@
           type="text"
           v-model="editForm.contactPhone"
           auto-complete="off"
-          placeholder="请填写联系电话"
+          :placeholder="maskPlaceholder"
         ></el-input>
       </el-form-item>
 
@@ -50,7 +51,7 @@
           style="width: 52%"
           v-model="editForm.street"
           auto-complete="off"
-          placeholder="请输入门店地址"
+          :placeholder="maskPlaceholder"
           suffix-icon="el-icon-position"
           @input="handleSearch"
           @blur="handleBlur"
@@ -62,7 +63,7 @@
           style="width: 40%"
           v-model="editForm.houseNumber"
           auto-complete="off"
-          placeholder="请输入门牌号"
+          :placeholder="maskPlaceholder"
         ></el-input>
          <div id="searchResultPanel" style="
           border: 1px solid #c0c0c0;
@@ -76,6 +77,7 @@
           type="textarea"
           :rows="6"
           v-model="editForm.briefIntroduction"
+          :placeholder="maskPlaceholder"
         ></el-input>
       </el-form-item>
 
@@ -84,7 +86,7 @@
           type="text"
           v-model="editForm.managePrimary"
           auto-complete="off"
-          placeholder="请输入营业类目"
+          :placeholder="maskPlaceholder"
         ></el-input>
       </el-form-item>
 
@@ -136,7 +138,14 @@
         prop="businessLicenseFile"
         class="businessLicenseFileItem"
       >
+        <!-- 去敏：已有证照不回显原图，仅显示占位；点「重新上传」后才出现上传框 -->
+        <div v-if="masked.businessLicense" class="masked-file">
+          <i class="el-icon-lock"></i>
+          <span>已上传 · 已脱敏</span>
+          <el-button type="text" size="mini" @click="startReupload('businessLicense')">重新上传</el-button>
+        </div>
         <el-upload
+          v-else
           ref="multipleUpload"
           :file-list="editForm.businessLicenseFile"
           class="avatar-uploader"
@@ -158,7 +167,14 @@
         prop="idCardFrontSideFile"
         class="idCardFrontSideFileItem"
       >
+        <!-- 去敏：已有证照不回显原图，仅显示占位；点「重新上传」后才出现上传框 -->
+        <div v-if="masked.idCardFrontSide" class="masked-file">
+          <i class="el-icon-lock"></i>
+          <span>已上传 · 已脱敏</span>
+          <el-button type="text" size="mini" @click="startReupload('idCardFrontSide')">重新上传</el-button>
+        </div>
         <el-upload
+          v-else
           ref="multipleUpload"
           :file-list="editForm.idCardFrontSideFile"
           class="avatar-uploader"
@@ -180,7 +196,14 @@
         prop="idCardBackSideFile"
         class="idCardBackSideFileItem"
       >
+        <!-- 去敏：已有证照不回显原图，仅显示占位；点「重新上传」后才出现上传框 -->
+        <div v-if="masked.idCardBackSide" class="masked-file">
+          <i class="el-icon-lock"></i>
+          <span>已上传 · 已脱敏</span>
+          <el-button type="text" size="mini" @click="startReupload('idCardBackSide')">重新上传</el-button>
+        </div>
         <el-upload
+          v-else
           ref="multipleUpload"
           :file-list="editForm.idCardBackSideFile"
           class="avatar-uploader"
@@ -217,6 +240,16 @@ export default {
         children: "children",
       },
       menuList: [],
+      // 去敏占位文案：展示层留空即表示「保持原值不变」
+      maskPlaceholder: "已隐藏，如需修改请重新输入",
+      // 证照去敏开关：true 时不回显原图，仅显示占位块
+      masked: {
+        businessLicense: false,
+        idCardFrontSide: false,
+        idCardBackSide: false,
+      },
+      // 原始数据：去敏后展示层不再持有真实值，提交时用于回填未修改的字段
+      originalData: {},
       editForm: {
         name: "",
         // selectedOptions: [],
@@ -251,7 +284,8 @@ export default {
         points : ""
       },
       editFormRules: {
-        name: [{ required: true, message: "请输入门店名称", trigger: "blur" }],
+        // 去敏字段不再强制必填：留空 = 保持原值不变（提交时回填 originalData）
+        name: [{ required: false, message: "请输入门店名称", trigger: "blur" }],
         // selectedOptions: [
         //   {
         //     type: "array",
@@ -261,22 +295,22 @@ export default {
         //   },
         // ],
         street: [
-          { required: true, message: "请输入并选择下拉匹配地址", trigger: "blur" },
+          { required: false, message: "请输入并选择下拉匹配地址", trigger: "blur" },
         ],
         managePrimary: [
-          { required: true, message: "请选择主营类目", trigger: "blur" },
+          { required: false, message: "请选择主营类目", trigger: "blur" },
         ],
         takeOutPhone: [
           { required: true, message: "请输入外卖电话", trigger: "blur" },
         ],
         contactPhone: [
-          { required: true, message: "请输入联系电话", trigger: "blur" },
+          { required: false, message: "请输入联系电话", trigger: "blur" },
         ],
         announcement: [
           { required: true, message: "请输入门店公告", trigger: "blur" },
         ],
         briefIntroduction: [
-          { required: true, message: "请输入门店简介", trigger: "blur" },
+          { required: false, message: "请输入门店简介", trigger: "blur" },
         ],
         isOperating: [
           { required: true, message: "请选择店铺是否营业", trigger: "blur" },
@@ -322,7 +356,7 @@ export default {
         businessLicenseFile: [
           {
             type: "array",
-            required: true,
+            required: false,
             message: "请上传营业执照",
             trigger: "change",
           },
@@ -330,7 +364,7 @@ export default {
         idCardFrontSideFile: [
           {
             type: "array",
-            required: true,
+            required: false,
             message: "请上传身份证正面照片",
             trigger: "change",
           },
@@ -338,7 +372,7 @@ export default {
         idCardBackSideFile: [
           {
             type: "array",
-            required: true,
+            required: false,
             message: "请上传身份证反面照片",
             trigger: "change",
           },
@@ -395,7 +429,13 @@ export default {
       map.centerAndZoom(city, 12); // 初始化地图,设置城市和地图级别。
       map.clearOverlays(); //清除地图上所有覆盖物
       function myFun() {
-        var pp = local.getResults().getPoi(0).point; //获取第一个智能搜索的结果
+        // 去敏后地址为空，搜索可能无结果，需判空避免报错
+        var results = local.getResults();
+        var poi = results && results.getPoi(0);
+        if (!poi) {
+          return;
+        }
+        var pp = poi.point; //获取第一个智能搜索的结果
         map.centerAndZoom(pp, 18);
         map.addOverlay(new BMap.Marker(pp)); //添加标注
       }
@@ -403,7 +443,10 @@ export default {
         //智能搜索
         onSearchComplete: myFun,
       });
-      local.search(this.editForm.street);
+      // 去敏后地址为空时不发起搜索，仅按城市居中
+      if (this.editForm.street) {
+        local.search(this.editForm.street);
+      }
     },
     getInit(city) {
       var _this=this;
@@ -471,7 +514,13 @@ export default {
       function setPlace_() {
         map.clearOverlays(); //清除地图上所有覆盖物
         function myFun() {
-          var pp = local.getResults().getPoi(0).point; //获取第一个智能搜索的结果
+          // 去敏后地址为空，搜索可能无结果，需判空避免报错
+          var results = local.getResults();
+          var poi = results && results.getPoi(0);
+          if (!poi) {
+            return;
+          }
+          var pp = poi.point; //获取第一个智能搜索的结果
           // alert(pp);
 
           console.log("pp~~~~~~~~~~~~");
@@ -580,7 +629,8 @@ export default {
             });
             return false;
           }
-          if (!vue.editForm.businessLicenseFile.length) {
+          // 去敏：已有证照时允许留空（提交沿用原路径），仅当原本没有证照才要求上传
+          if (!vue.originalData.businessLicense && !vue.editForm.businessLicenseFile.length) {
             vue.$message({
               showClose: true,
               message: "请上传营业执照",
@@ -595,7 +645,7 @@ export default {
             });
             return false;
           }
-          if (!vue.editForm.idCardFrontSideFile.length) {
+          if (!vue.originalData.idCardFrontSide && !vue.editForm.idCardFrontSideFile.length) {
             vue.$message({
               showClose: true,
               message: "请上传身份证正面照片",
@@ -610,7 +660,7 @@ export default {
             });
             return false;
           }
-          if (!vue.editForm.idCardBackSideFile.length) {
+          if (!vue.originalData.idCardBackSide && !vue.editForm.idCardBackSideFile.length) {
             vue.$message({
               showClose: true,
               message: "请上传身份证反面照片",
@@ -640,6 +690,22 @@ export default {
           delete param.businessLicenseFile;
           delete param.idCardFrontSideFile;
           delete param.idCardBackSideFile;
+
+          // 去敏回填：展示层留空的字段用原始值补回，避免提交时把线上数据覆盖成空
+          let raw = vue.originalData || {};
+          ["name", "contactPhone", "street", "houseNumber", "managePrimary", "briefIntroduction"].forEach(
+            (key) => {
+              if (param[key] === "" || param[key] === null || param[key] === undefined) {
+                param[key] = raw[key];
+              }
+            }
+          );
+          // 证照：未重新上传则沿用原路径
+          ["businessLicense", "idCardFrontSide", "idCardBackSide"].forEach((key) => {
+            if (!param[key]) {
+              param[key] = raw[key];
+            }
+          });
 
           // let [province, city, area] = [...vue.editForm.selectedOptions];
           // delete param.selectedOptions;
@@ -689,11 +755,15 @@ export default {
         { id },
         (vue, data) => {
           let obj = data.data;
+          // 去敏：原始值只保留在 originalData，供提交时回填，不进入展示层
+          vue.originalData = Object.assign({}, obj);
+
           obj.shopLogoImgFile = vue.resetImg(obj, "shopLogoImg");
           obj.shopWithinImgFile = vue.resetImg(obj, "shopWithinImg");
-          obj.businessLicenseFile = vue.resetImg(obj, "businessLicense");
-          obj.idCardFrontSideFile = vue.resetImg(obj, "idCardFrontSide");
-          obj.idCardBackSideFile = vue.resetImg(obj, "idCardBackSide");
+          // 证照类不回显：文件列表留空，仅置去敏开关（提交时未重新上传则沿用原路径）
+          obj.businessLicenseFile = [];
+          obj.idCardFrontSideFile = [];
+          obj.idCardBackSideFile = [];
 
           obj.points = {};
           obj.points.lng = obj.longitude;
@@ -703,6 +773,24 @@ export default {
           // this.editForm.selectedOptions = [obj.province, obj.city, obj.area];
           this.editForm.isOperating =
             obj.isOperating == true ? "正常营业" : "暂不营业";
+
+          // 去敏：文字类字段展示层置空（留空即保持原值不变）
+          [
+            "name",
+            "contactPhone",
+            "street",
+            "houseNumber",
+            "managePrimary",
+            "briefIntroduction",
+          ].forEach((key) => {
+            vue.editForm[key] = "";
+          });
+          // 已有证照 → 展示占位块
+          vue.masked = {
+            businessLicense: !!obj.businessLicense,
+            idCardFrontSide: !!obj.idCardFrontSide,
+            idCardBackSide: !!obj.idCardBackSide,
+          };
         },
         (error, data) => {
           vue.$message({
@@ -732,6 +820,11 @@ export default {
       } else {
         return [];
       }
+    },
+    // 证照去敏：点「重新上传」后撤掉占位块、露出上传框（需重新选择文件，原图不展示）
+    startReupload(field) {
+      this.masked[field] = false;
+      this.editForm[field + "File"] = [];
     },
     getTypeList() {
       // 获取商品类别列表
@@ -820,11 +913,12 @@ export default {
           } else if (option.filename === "detailImagesUpload") {
             vue.editForm.detailImagesFile.push(obj);
           } else if (option.filename === "businessLicenseUpload") {
-            vue.editForm.businessLicenseFile.push(obj);
+            // 证照单张：直接替换（去敏后原图不在列表中，避免出现两张）
+            vue.editForm.businessLicenseFile = [obj];
           } else if (option.filename === "idCardFrontSideUpload") {
-            vue.editForm.idCardFrontSideFile.push(obj);
+            vue.editForm.idCardFrontSideFile = [obj];
           } else if (option.filename === "idCardBackSideUpload") {
-            vue.editForm.idCardBackSideFile.push(obj);
+            vue.editForm.idCardBackSideFile = [obj];
           } else if (option.filename === "shopLogoImgUpload") {
             vue.editForm.shopLogoImgFile.push(obj);
           }
@@ -878,6 +972,30 @@ export default {
 }
 .editForm .minInput {
   width: 240px;
+}
+/* 证照去敏占位块：不展示原图，仅提示已上传并可重新上传 */
+.masked-file {
+  display: inline-flex;
+  align-items: center;
+  width: 148px;
+  height: 148px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  border: 1px dashed #dcdfe6;
+  border-radius: 6px;
+  background: #f5f7fa;
+  color: #909399;
+  font-size: 12px;
+  line-height: 1.5;
+  flex-direction: column;
+  justify-content: center;
+}
+.masked-file .el-icon-lock {
+  font-size: 22px;
+  margin-bottom: 8px;
+}
+.masked-file span {
+  margin-bottom: 4px;
 }
 </style>
 
