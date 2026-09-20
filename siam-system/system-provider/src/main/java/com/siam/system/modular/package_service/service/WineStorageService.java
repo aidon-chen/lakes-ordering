@@ -1,5 +1,6 @@
 package com.siam.system.modular.package_service.service;
 
+import com.siam.system.modular.package_service.entity.WineStorage;
 import com.siam.system.modular.package_service.model.param.WineStorageParam;
 import com.siam.system.modular.package_service.model.vo.WineStorageVo;
 
@@ -38,8 +39,10 @@ public interface WineStorageService {
      * memberPhone 定位会员 → 生成唯一 4 位存酒码 → storage_date=今天，expire_date=今天+expireDays(默认 90)
      *
      * @param shopId 商家所在门店id（由商家端会话推导）
+     * @return 创建出的存酒记录（含自增 id 与生成的 storageCode / expireDate），
+     *         供 W-17「凭证预览」在保存后展示存酒码
      */
-    void create(WineStorageParam param, Integer shopId);
+    WineStorage create(WineStorageParam param, Integer shopId);
 
     /**
      * 商家取酒（预留接口，本批无商家端 UI）

@@ -3,6 +3,7 @@ package com.siam.system.modular.package_service.controller.merchant;
 import com.siam.package_common.entity.BasicResult;
 import com.siam.system.modular.package_log.annoation.Log;
 import com.siam.system.modular.package_log.aop.LogContext;
+import com.siam.system.modular.package_service.entity.WineStorage;
 import com.siam.system.modular.package_service.model.param.WineStorageParam;
 import com.siam.system.modular.package_service.service.WineStorageService;
 import com.siam.system.modular.package_user.auth.cache.MerchantSessionManager;
@@ -60,7 +61,7 @@ public class MerchantWineStorageController {
     @Log(module = Log.MODULE_WINE_STORAGE, moduleName = "存酒", action = "录入存酒")
     @PostMapping(value = "/create")
     public BasicResult create(@RequestBody WineStorageParam param) {
-        wineStorageService.create(param, loginMerchant().getShopId());
+        WineStorage created = wineStorageService.create(param, loginMerchant().getShopId());
         //A-08 操作日志：录入无变更前值，变更后值记本次录入内容
         Map<String, Object> after = new HashMap<>();
         after.put("memberPhone", param.getMemberPhone());
@@ -69,7 +70,13 @@ public class MerchantWineStorageController {
         after.put("bottleCount", param.getBottleCount());
         after.put("expireDays", param.getExpireDays());
         LogContext.setAfter(after);
-        return BasicResult.success();
+
+        // 回给前端创建结果（W-17 凭证预览要展示存酒码）——仅 id/存酒码/有效期，不外泄其它字段
+        Map<String, Object> data = new HashMap<>();
+        data.put("id", created.getId());
+        data.put("storageCode", created.getStorageCode());
+        data.put("expireDate", created.getExpireDate());
+        return BasicResult.success(data);
     }
 
     /**

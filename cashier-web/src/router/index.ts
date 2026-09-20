@@ -16,8 +16,9 @@ const IMPLEMENTED: Record<string, Component> = {
   '/orders/handle': defineAsyncComponent(() => import('@/views/OrderHandleView.vue')),
   '/orders/production': defineAsyncComponent(() => import('@/views/ProductionBoardView.vue')),
   '/wine/list': defineAsyncComponent(() => import('@/views/WineStorageView.vue')),
+  '/wine/create': defineAsyncComponent(() => import('@/views/WineCreateView.vue')),
   '/shop/account': defineAsyncComponent(() => import('@/views/AccountView.vue'))
-  // 其余 11 项尚未落地 → 统一走 PageStub（批次 F 起逐页替换）
+  // 其余 10 项尚未落地 → 统一走 PageStub（批次 F 起逐页替换）
 }
 
 const router = createRouter({

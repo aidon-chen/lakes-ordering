@@ -48,8 +48,25 @@ export const takeWine = (storageCode: string, takeCount: number) =>
   http.post<unknown, null>('/rest/merchant/wineStorage/take', { storageCode, takeCount })
 
 /**
+ * 手机号查会员（W-17「查询」按钮）
+ * 后端按 mobile 精确查；查不到抛业务异常「未找到该手机号对应的会员」。
+ * 只返回**脱敏**手机号（收银端当面核对够用，不外泄完整号码）。
+ */
+export interface MerchantMemberBrief {
+  id: number
+  nickname: string | null
+  name: string | null
+  /** 已脱敏，如 138****8601 */
+  mobile: string | null
+}
+
+export const lookupMemberByMobile = (mobile: string) =>
+  http.post<unknown, MerchantMemberBrief>('/rest/merchant/member/selectByMobile', { mobile })
+
+/**
  * 存酒登记（W-17）
- * 手机号定位会员 → 生成唯一存酒码 → 有效期默认 90 天（expireDays 可覆盖）
+ * 手机号定位会员 → 生成唯一存酒码 → storage_date=今天，expire_date=今天+expireDays（默认 90）
+ * @returns 创建结果 { id, storageCode, expireDate } —— 凭证预览卡要用它展示存酒码
  */
 export const createWine = (p: {
   memberPhone: string
@@ -58,4 +75,8 @@ export const createWine = (p: {
   location?: string
   remark?: string
   expireDays?: number
-}) => http.post<unknown, null>('/rest/merchant/wineStorage/create', p)
+}) =>
+  http.post<unknown, { id: number; storageCode: string; expireDate: string }>(
+    '/rest/merchant/wineStorage/create',
+    p
+  )

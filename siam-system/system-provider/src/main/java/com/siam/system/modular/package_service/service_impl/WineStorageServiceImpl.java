@@ -199,7 +199,7 @@ public class WineStorageServiceImpl implements WineStorageService {
     }
 
     @Override
-    public void create(WineStorageParam param, Integer shopId) {
+    public WineStorage create(WineStorageParam param, Integer shopId) {
         if (param.getMemberPhone() == null || param.getMemberPhone().trim().isEmpty()) {
             throw new StoneCustomerException("会员手机号不能为空");
         }
@@ -234,6 +234,8 @@ public class WineStorageServiceImpl implements WineStorageService {
         ws.setCreateTime(new Date());
         ws.setUpdateTime(new Date());
         wineStorageMapper.insert(ws);
+        // 返回创建结果：W-17 凭证预览需要展示生成的存酒码与有效期
+        return ws;
     }
 
     @Override
