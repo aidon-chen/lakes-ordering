@@ -129,7 +129,8 @@
               mobile: vue.ruleForm.mobile,
               mobileCode: vue.ruleForm.mobileCode
             }
-            vue.$http.post(vue, '/rest/merchant/loginByMobile', companyInfo,
+            // 管理端手机验证登录（与账号密码登录一致，走管理员体系）
+            vue.$http.post(vue, '/rest/admin/loginByMobile', companyInfo,
               (vue, data)=> {
                 vue.logining = false;
                 console.log("token="+data.data.token);

@@ -372,7 +372,8 @@ export default {
 						oldPassword: vue.$utils.Base64(vue.passwordForm.oldPassword),
 						newPassword: vue.$utils.Base64(vue.passwordForm.newPassword)
 					}
-					vue.$http.post(vue, '/rest/merchant/updatePassword', param,
+					// 管理端登录体系：修改的是管理员账号（tb_admin）的密码
+					vue.$http.post(vue, '/rest/admin/updatePassword', param,
 						(vue, data) => {
 							vue.logining = false;
 							vue.$message({
@@ -414,7 +415,8 @@ export default {
 			this.$confirm('确认退出吗?', '提示', {
 				//type: 'warning'
 			}).then(() => {
-				vue.$http.post(vue, '/rest/merchant/logout', {},
+				// 管理端登出（后端同时清理管理员与桥接的商家会话）
+				vue.$http.post(vue, '/rest/admin/logout', {},
 					function (vue, data) {
 						sessionStorage.removeItem('user');
 						vue.$router.push('/login');

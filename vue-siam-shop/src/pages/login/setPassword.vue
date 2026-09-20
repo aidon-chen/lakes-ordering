@@ -163,7 +163,8 @@
               mobile: vue.ruleForm.mobile,
               mobileCode: vue.ruleForm.mobileCode
             }
-            vue.$http.post(vue, '/rest/merchant/forgetPassword/step1', companyInfo,
+            // 管理员体系忘记密码（与登录体系一致）
+            vue.$http.post(vue, '/rest/admin/forgetPassword/step1', companyInfo,
               (vue, data)=> {
 
                 vue.logining = false;
@@ -197,7 +198,8 @@
               mobile: vue.ruleForm.mobile,
               password: vue.$utils.Base64(vue.ruleForm.password)
             }
-            vue.$http.post(vue, '/rest/merchant/forgetPassword/step2', companyInfo,
+            // 管理员体系忘记密码（与登录体系一致）
+            vue.$http.post(vue, '/rest/admin/forgetPassword/step2', companyInfo,
               (vue, data)=> {
                 vue.logining = false;
                 vue.$message({

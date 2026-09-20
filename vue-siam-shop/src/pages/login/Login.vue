@@ -1,7 +1,7 @@
 <template>
     <section>
         <el-form :model="ruleForm" :rules="rules" ref="ruleForm" label-position="left" label-width="0px" class="login-container">
-            <div class="title"><span>商家登录</span></div>
+            <div class="title"><span>管理端登录</span></div>
             <el-form-item prop="name">
                 <el-input prefix-icon="el-icon-myuser" type="text" v-model="ruleForm.name" @keyup.enter.native="handleSubmit" auto-complete="off" placeholder="账号"></el-input>
             </el-form-item>
@@ -12,13 +12,8 @@
                 <el-button type="primary" style="width:100%;" @click.native.prevent="handleSubmit" :loading="logining">登录</el-button>
             </el-form-item>
             <el-form-item class="handelButton">
-                <!-- <el-col :span="12" style="text-align: left;">
-                    <el-button type="text" @click.native.prevent="$router.push('/register')" :loading="logining">免费注册</el-button>
-                </el-col> -->
-                <el-col :span="12" style="text-align: left;">
-                    <el-button type="text" @click.native.prevent="$router.push('/register')">没有账号？去开店</el-button>
-                </el-col>
-                <el-col :span="12" style="text-align: right;">
+                <!-- 单店自营：不做开店注册（入口已随单店口径下线，管理员账号由 DDL 种子维护） -->
+                <el-col :span="24" style="text-align: right;">
                     <el-button style="color: #A4ABB2;" type="text" @click="$router.push('/setPassword')">忘记密码</el-button>
                 </el-col>
             </el-form-item>
@@ -96,7 +91,8 @@
               username: vue.ruleForm.name,
               password: vue.$utils.Base64(vue.ruleForm.password)
             }
-            vue.$http.post(vue, '/rest/merchant/login', user,
+            // 管理端登录（架构决策 #1：管理员账号登录，后端同 token 桥接商家会话）
+            vue.$http.post(vue, '/rest/admin/login', user,
               (vue, data)=> {
                 console.log("token="+data.data.token);
                 sessionStorage.setItem("token", data.data.token);
