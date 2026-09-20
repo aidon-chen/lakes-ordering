@@ -1,0 +1,249 @@
+<template>
+	<section>
+		<!--工具条-->
+		<el-col :span="24" class="toolbar" style="padding-bottom: 0px;">
+			<el-form :inline="true" :model="searchMsg" size="small">
+				<el-form-item label="操作模块">
+					<el-select v-model="searchMsg.module" clearable placeholder="全部模块">
+						<el-option v-for="item in moduleOptions" :key="item.value" :label="item.label" :value="item.value"></el-option>
+					</el-select>
+				</el-form-item>
+				<el-form-item label="操作人">
+					<el-input v-model="searchMsg.operator" clearable placeholder="请输入账号"></el-input>
+				</el-form-item>
+				<el-form-item label="结果">
+					<el-select v-model="searchMsg.result" clearable placeholder="全部">
+						<el-option label="成功" :value="1"></el-option>
+						<el-option label="失败" :value="2"></el-option>
+					</el-select>
+				</el-form-item>
+				<el-form-item label="">
+					<el-date-picker
+						v-model="searchMsg.createTime"
+						type="daterange"
+						align="right"
+						unlink-panels
+						range-separator="至"
+						start-placeholder="开始日期"
+						end-placeholder="结束日期"
+						:picker-options="pickerOptions">
+					</el-date-picker>
+				</el-form-item>
+				<el-form-item>
+					<el-button type="primary" @click="getList(1)">查询</el-button>
+					<el-button @click="handleExport">导出</el-button>
+				</el-form-item>
+			</el-form>
+		</el-col>
+
+		<!--列表-->
+		<el-table :data="list" highlight-current-row v-loading="listLoading" style="width: 100%;"
+			:cell-style="cellStyle" :header-cell-style="headerCellStyle"
+			:row-class-name="rowClassName">
+			<el-table-column prop="createTime" label="操作时间" :formatter="formatTime" width="170"></el-table-column>
+			<el-table-column prop="operator" label="操作人"></el-table-column>
+			<el-table-column prop="accountType" label="账号类型" :formatter="formatAccountType" width="100"></el-table-column>
+			<el-table-column prop="moduleName" label="模块" :formatter="formatModule" width="110"></el-table-column>
+			<el-table-column prop="action" label="操作动作" width="170"></el-table-column>
+			<el-table-column prop="requestUrl" label="请求地址" show-overflow-tooltip></el-table-column>
+			<el-table-column prop="ip" label="IP" width="140"></el-table-column>
+			<el-table-column prop="costMs" label="耗时(ms)" width="90">
+				<template slot-scope="scope">
+					<span>{{scope.row.costMs == null ? '-' : scope.row.costMs}}</span>
+				</template>
+			</el-table-column>
+			<el-table-column prop="result" label="结果" width="90">
+				<template slot-scope="scope">
+					<el-tag v-if="scope.row.result == 1" type="success" size="small">成功</el-tag>
+					<el-tag v-else type="danger" size="small">失败</el-tag>
+				</template>
+			</el-table-column>
+			<el-table-column label="操作" fixed="right" width="100">
+				<template slot-scope="scope">
+					<el-button size="small" @click="gotoDetail(scope.row)">详情</el-button>
+				</template>
+			</el-table-column>
+		</el-table>
+
+		<!--工具条-->
+		<el-col :span="24" class="toolbar">
+			<el-pagination
+				@size-change="handleSizeChange"
+				@current-change="handleCurrentChange"
+				:page-sizes="[10, 20, 50, 100]"
+				:page-size="searchMsg.pageSize"
+				layout="total, sizes, prev, pager, next, jumper"
+				:total="total"
+				style="float:right;">
+			</el-pagination>
+		</el-col>
+	</section>
+</template>
+
+<script>
+	export default {
+		data() {
+			return {
+				pickerOptions: {
+					shortcuts: [{
+						text: '最近一周',
+						onClick(picker) {
+							const end = new Date();
+							let start = new Date();
+							start.setTime(end.getTime() - 1000 * 60 * 60 * 24 * 7);
+							picker.$emit('pick', [start, end]);
+						}
+					}, {
+						text: '最近一月',
+						onClick(picker) {
+							const end = new Date();
+							let start = new Date();
+							start.setTime(end.getTime() - 1000 * 60 * 60 * 24 * 30);
+							picker.$emit('pick', [start, end]);
+						}
+					}]
+				},
+				searchMsg: {
+					pageNo: 1,
+					pageSize: 20
+				},
+				list: [],
+				total: 0,
+				listLoading: false,
+				//六类操作模块枚举
+				moduleOptions: [
+					{value: 'LOGIN', label: '登录'},
+					{value: 'GOODS_PRICE', label: '商品价格'},
+					{value: 'ORDER', label: '订单操作'},
+					{value: 'STOCK', label: '库存变更'},
+					{value: 'TABLE', label: '开台'},
+					{value: 'WINE_STORAGE', label: '存酒'}
+				]
+			}
+		},
+		methods: {
+			cellStyle() {
+				return "text-align:center";
+			},
+			headerCellStyle() {
+				return "text-align:center";
+			},
+			//失败记录整行标红
+			rowClassName({row}) {
+				return row.result == 2 ? 'fail-row' : '';
+			},
+			formatTime(row, column) {
+				if (!row[column.property]) {
+					return '-';
+				}
+				return this.$utils.formatDate(new Date(row[column.property]), 'yyyy-MM-dd hh:mm:ss')
+			},
+			formatAccountType(row) {
+				switch (row.accountType) {
+					case 1:
+						return '管理员';
+					case 2:
+						return '商家';
+					case 3:
+						return '用户';
+					default:
+						return '-';
+				}
+			},
+			formatModule(row) {
+				if (row.moduleName) {
+					return row.moduleName;
+				}
+				let hit = this.moduleOptions.filter(item => item.value === row.module)[0];
+				return hit ? hit.label : (row.module || '-');
+			},
+			getList(pageNoParam) {
+				if (pageNoParam) {
+					this.searchMsg.pageNo = pageNoParam;
+				}
+				let vue = this;
+				let param = this.buildParam();
+				vue.listLoading = true;
+				vue.$http.post(vue, '/rest/admin/operateLog/list', param,
+					(vue, data) => {
+						vue.list = data.data.records;
+						vue.total = data.data.total;
+						vue.listLoading = false;
+					}, (error, data) => {
+						vue.listLoading = false;
+						vue.$message({ showClose: true, message: data.message, type: 'error' });
+					}
+				)
+			},
+			buildParam() {
+				let param = Object.assign({}, this.searchMsg);
+				if (this.searchMsg.createTime && this.searchMsg.createTime.length == 2) {
+					param.startCreateTime = this.$utils.formatDate(new Date(this.searchMsg.createTime[0]), 'yyyy/MM/dd hh:mm:ss');
+					param.endCreateTime = this.$utils.formatDate(new Date(this.searchMsg.createTime[1]), 'yyyy/MM/dd hh:mm:ss');
+				}
+				delete param.createTime;
+				return param;
+			},
+			gotoDetail(row) {
+				this.$router.push({path: 'operateLogDetail', query: {id: row.id}})
+			},
+			//导出当前筛选条件下的全部日志（客户端导出 CSV）
+			handleExport() {
+				let vue = this;
+				let param = this.buildParam();
+				param.pageNo = -1;
+				param.pageSize = 100000;
+				vue.$http.post(vue, '/rest/admin/operateLog/export', param,
+					(vue, data) => {
+						let rows = data.data || [];
+						if (rows.length === 0) {
+							vue.$message({ showClose: true, message: '当前条件下没有可导出的日志', type: 'warning' });
+							return;
+						}
+						let header = ['操作时间', '操作人', '账号类型', '模块', '操作动作', '请求地址', 'IP', '耗时(ms)', '结果', '错误信息'];
+						let lines = [header.join(',')];
+						rows.forEach(item => {
+							lines.push([
+								vue.formatTime(item, {property: 'createTime'}),
+								item.operator || '',
+								vue.formatAccountType(item),
+								vue.formatModule(item),
+								item.action || '',
+								item.requestUrl || '',
+								item.ip || '',
+								item.costMs == null ? '' : item.costMs,
+								item.result == 1 ? '成功' : '失败',
+								(item.errorMsg || '').replace(/,/g, '，')
+							].join(','));
+						});
+						let blob = new Blob(['\ufeff' + lines.join('\n')], {type: 'text/csv;charset=utf-8'});
+						let link = document.createElement('a');
+						link.href = URL.createObjectURL(blob);
+						link.download = 'operate-log-' + new Date().getTime() + '.csv';
+						link.click();
+						URL.revokeObjectURL(link.href);
+					}, (error, data) => {
+						vue.$message({ showClose: true, message: data.message, type: 'error' });
+					}
+				)
+			},
+			handleSizeChange(val) {
+				this.searchMsg.pageSize = val;
+				this.getList();
+			},
+			handleCurrentChange(val) {
+				this.searchMsg.pageNo = val;
+				this.getList();
+			}
+		},
+		mounted() {
+			this.getList();
+		}
+	}
+</script>
+
+<style scoped>
+	/deep/ .fail-row {
+		color: #f56c6c;
+	}
+</style>

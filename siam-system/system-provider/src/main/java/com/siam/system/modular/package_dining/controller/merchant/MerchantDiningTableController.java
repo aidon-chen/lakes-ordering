@@ -3,6 +3,8 @@ package com.siam.system.modular.package_dining.controller.merchant;
 import com.siam.package_common.entity.BasicResult;
 import com.siam.system.modular.package_dining.model.param.DiningTableParam;
 import com.siam.system.modular.package_dining.service.DiningTableService;
+import com.siam.system.modular.package_log.annoation.Log;
+import com.siam.system.modular.package_log.aop.LogContext;
 import com.siam.system.modular.package_user.auth.cache.MerchantSessionManager;
 import com.siam.system.modular.package_user.entity.Merchant;
 import com.siam.system.util.TokenUtil;
@@ -12,6 +14,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * 收银台台位作业接口（开台/结账/清台/转台）
@@ -45,17 +50,36 @@ public class MerchantDiningTableController {
     /**
      * 开台
      */
+    @Log(module = Log.MODULE_TABLE, moduleName = "开台", action = "开台")
     @PostMapping(value = "/open")
     public BasicResult open(@RequestBody DiningTableParam param) {
-        return BasicResult.success(diningTableService.openTable(shopId(), param.getId(), param.getMemberNum()));
+        Map<String, Object> data = diningTableService.openTable(shopId(), param.getId(), param.getMemberNum());
+        //A-08 操作日志：开台无变更前值，变更后值记 台位/人数/会话
+        Map<String, Object> after = new HashMap<>();
+        after.put("tableId", param.getId());
+        after.put("memberNum", param.getMemberNum());
+        after.put("sessionId", data.get("sessionId"));
+        LogContext.setAfter(after);
+        return BasicResult.success(data);
     }
 
     /**
      * 转台
      */
+    @Log(module = Log.MODULE_TABLE, moduleName = "开台", action = "转台")
     @PostMapping(value = "/change")
     public BasicResult change(@RequestBody DiningTableParam param) {
+        //A-08 操作日志：变更前值记源台，变更后值记目标台
+        Map<String, Object> before = new HashMap<>();
+        before.put("tableId", param.getId());
+        LogContext.setBefore(before);
+
         diningTableService.changeTable(shopId(), param.getId(), param.getTargetTableId());
+
+        Map<String, Object> after = new HashMap<>();
+        after.put("tableId", param.getId());
+        after.put("targetTableId", param.getTargetTableId());
+        LogContext.setAfter(after);
         return BasicResult.success();
     }
 
@@ -74,8 +98,14 @@ public class MerchantDiningTableController {
      * 清台
      * 兼容「待清台」：会话已结台时本次仅释放台位
      */
+    @Log(module = Log.MODULE_TABLE, moduleName = "开台", action = "清台")
     @PostMapping(value = "/clear")
     public BasicResult clear(@RequestBody DiningTableParam param) {
+        //A-08 操作日志：变更前值记被释放的台位
+        Map<String, Object> before = new HashMap<>();
+        before.put("tableId", param.getId());
+        LogContext.setBefore(before);
+
         diningTableService.clearTable(shopId(), param.getId());
         return BasicResult.success();
     }

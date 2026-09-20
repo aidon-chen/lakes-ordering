@@ -12,6 +12,8 @@ import com.siam.package_common.util.OSSUtils;
 import com.siam.system.modular.package_goods.model.dto.GoodsMenuDto;
 import com.siam.system.modular.package_goods.model.example.MenuGoodsRelationExample;
 import com.siam.system.modular.package_goods.model.example.PictureUploadRecordExample;
+import com.siam.system.modular.package_log.annoation.Log;
+import com.siam.system.modular.package_log.aop.LogContext;
 import com.siam.system.modular.package_user.auth.cache.MerchantSessionManager;
 import com.siam.system.modular.package_user.entity.Merchant;
 import com.siam.system.util.TokenUtil;
@@ -36,6 +38,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -181,6 +184,9 @@ public class MerchantGoodsController {
             @ApiImplicitParam(name = "isNew", value = "是否新品", required = false, paramType = "query", dataType = "Boolean"),
             @ApiImplicitParam(name = "status", value = "状态 1=启用 0=禁用 -1=删除", required = false, paramType = "query", dataType = "int"),
     })
+    //A-08：一次修改可能同时含价格与库存（bottleStock/cupStock/stockWarningThreshold）变更，
+    //库存变更未拆分独立接口，故在同一方法内同时记录价格与库存字段（见 A-08 报告说明）
+    @Log(module = Log.MODULE_GOODS_PRICE, moduleName = "商品价格", action = "修改商品（价格/库存）")
     @PostMapping(value = "/update")
     public BasicResult update(@RequestBody @Validated(value = {}) Goods goods, HttpServletRequest request){
         BasicResult basicResult = new BasicResult();
@@ -195,6 +201,9 @@ public class MerchantGoodsController {
             throw new StoneCustomerException("您没有权限操作该商品");
         }
 
+        //A-08 操作日志：变更前值（价格 + 库存三字段，旧值取自库）
+        LogContext.setBefore(priceAndStockSnapshot(dbGoods));
+
         //商品的主图 等于 商品轮播图的第一张图
         if(StringUtils.isNotBlank(goods.getSubImages())){
             goods.setMainImage(goods.getSubImages().split(",")[0]);
@@ -203,6 +212,9 @@ public class MerchantGoodsController {
         // 修改商品信息
         goods.setUpdateTime(new Date());
         goodsService.updateById(goods);
+
+        //A-08 操作日志：变更后值（重新查库取实际落库值）
+        LogContext.setAfter(priceAndStockSnapshot(goodsService.getById(goods.getId())));
 
         //判断商品类别关系  目前不考虑一个商品有多个类别的情况
         MenuGoodsRelationExample example = new MenuGoodsRelationExample();
@@ -252,6 +264,22 @@ public class MerchantGoodsController {
         basicResult.setCode(BasicResultCode.SUCCESS);
         basicResult.setMessage("修改成功");
         return basicResult;
+    }
+
+    /**
+     * A-08 操作日志快照：商品价格 + 库存三字段（bottleStock/cupStock/stockWarningThreshold）
+     */
+    private Map<String, Object> priceAndStockSnapshot(Goods goods) {
+        Map<String, Object> snapshot = new HashMap<>();
+        if (goods == null) {
+            return snapshot;
+        }
+        snapshot.put("id", goods.getId());
+        snapshot.put("price", goods.getPrice());
+        snapshot.put("bottleStock", goods.getBottleStock());
+        snapshot.put("cupStock", goods.getCupStock());
+        snapshot.put("stockWarningThreshold", goods.getStockWarningThreshold());
+        return snapshot;
     }
 
     @MerchantPermission

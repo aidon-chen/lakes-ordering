@@ -29,6 +29,8 @@ import com.siam.system.modular.package_order.service.OrderRefundGoodsService;
 import com.siam.system.modular.package_order.service.OrderRefundProcessService;
 import com.siam.system.modular.package_order.service.OrderRefundService;
 import com.siam.system.modular.package_order.service.OrderService;
+import com.siam.system.modular.package_log.annoation.Log;
+import com.siam.system.modular.package_log.aop.LogContext;
 import com.siam.system.modular.package_user.auth.cache.MemberSessionManager;
 import com.siam.system.modular.package_user.auth.cache.MerchantSessionManager;
 import com.siam.system.modular.package_user.entity.Member;
@@ -839,9 +841,15 @@ public class MerchantOrderController {
      * @return
      * @author 暹罗
      */
+    @Log(module = Log.MODULE_ORDER, moduleName = "订单操作", action = "收银台下单")
     @PostMapping(value = "/insert")
     public BasicResult insert(@RequestBody @Validated(value = {}) OrderParam param) throws InterruptedException, RemotingException, MQClientException, MQBrokerException {
         Order order = orderService.insertByMerchant(param);
+        //A-08 操作日志：下单无变更前值，变更后值记订单编号与实付金额
+        Map<String, Object> after = new HashMap<>();
+        after.put("orderNo", order.getOrderNo());
+        after.put("actualPrice", order.getActualPrice());
+        LogContext.setAfter(after);
         return BasicResult.success(order);
     }
 

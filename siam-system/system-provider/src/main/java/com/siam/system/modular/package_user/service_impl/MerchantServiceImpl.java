@@ -10,6 +10,9 @@ import com.siam.package_common.util.CommonUtils;
 import com.siam.package_common.util.OSSUtils;
 import com.siam.system.modular.package_goods.service.SmsLogService;
 import com.siam.system.modular.package_goods.entity.*;
+import com.siam.system.modular.package_log.entity.LoginLog;
+import com.siam.system.modular.package_log.service.LoginLogService;
+import com.siam.system.modular.package_log.util.LogUtil;
 import com.siam.system.modular.package_user.auth.cache.MerchantSessionManager;
 import com.siam.system.modular.package_user.entity.Merchant;
 import com.siam.system.modular.package_user.mapper.MerchantBillingRecordMapper;
@@ -72,6 +75,9 @@ public class MerchantServiceImpl implements MerchantService {
 
     @Autowired
     private MessageService messageService;
+
+    @Autowired
+    private LoginLogService loginLogService;
 
     //    @Override
 //    public void updateBalance(MerchantBillingRecord merchantBillingRecord) {
@@ -150,69 +156,98 @@ public class MerchantServiceImpl implements MerchantService {
 
     @Override
     public MerchantResult login(MerchantParam param) {
-        Merchant dbMerchant = merchantMapper.selectByUsernameOrMobile(param.getUsername());
-        if(dbMerchant == null){
-            throw new StoneCustomerException("该账号不存在");
+        try {
+            Merchant dbMerchant = merchantMapper.selectByUsernameOrMobile(param.getUsername());
+            if(dbMerchant == null){
+                throw new StoneCustomerException("该账号不存在");
+            }
+
+            // 判断密码是否匹配
+            String password = Base64Utils.decode(param.getPassword());
+            password = CommonUtils.genMd5Password(password, dbMerchant.getPasswordSalt());
+            if(!password.equals(dbMerchant.getPassword())){
+                throw new StoneCustomerException("密码错误");
+            }
+
+            // 更新merchant记录
+            /*Merchant updateMerchant = new Merchant();
+            updateMerchant.setId(dbMerchant.getId());
+            merchantMapper.updateByPrimaryKeySelective(updateMerchant);*/
+
+            // 生成token
+            String token = TokenUtil.generateToken(dbMerchant);
+
+            //创建登录会话
+            merchantSessionManager.createSession(token, dbMerchant);
+
+            //创建登录cookie
+            TokenUtil.addLoginCookie(token);
+
+            //记录登录日志-成功
+            this.writeLoginLog(param.getUsername(), LoginLog.RESULT_SUCCESS, null);
+
+            MerchantResult result = new MerchantResult();
+            result.setToken(token);
+            return result;
+        } catch (RuntimeException e) {
+            //记录登录日志-失败（失败原因即异常信息）
+            this.writeLoginLog(param.getUsername(), LoginLog.RESULT_FAIL, e.getMessage());
+            throw e;
         }
-
-        // 判断密码是否匹配
-        String password = Base64Utils.decode(param.getPassword());
-        password = CommonUtils.genMd5Password(password, dbMerchant.getPasswordSalt());
-        if(!password.equals(dbMerchant.getPassword())){
-            throw new StoneCustomerException("密码错误");
-        }
-
-        // 更新merchant记录
-        /*Merchant updateMerchant = new Merchant();
-        updateMerchant.setId(dbMerchant.getId());
-        merchantMapper.updateByPrimaryKeySelective(updateMerchant);*/
-
-        // 生成token
-        String token = TokenUtil.generateToken(dbMerchant);
-
-        //创建登录会话
-        merchantSessionManager.createSession(token, dbMerchant);
-
-        //创建登录cookie
-        TokenUtil.addLoginCookie(token);
-
-        MerchantResult result = new MerchantResult();
-        result.setToken(token);
-        return result;
     }
 
     @Override
     public MerchantResult loginByMobile(MerchantParam param) {
-        if("123456".equals(param.getMobileCode())) {
-            //万能验证码，放行
-        }else{
-            // 判断验证码是否匹配
-            SmsLog smsLog = smsLogService.getLastLog(param.getMobile(), BusinessType.SMS_LOG_TYPE_LOGIN, 5);
-            if (smsLog==null || !smsLog.getVerifyCode().equals(param.getMobileCode())) {
-                throw new StoneCustomerException("手机验证码错误");
+        try {
+            if("123456".equals(param.getMobileCode())) {
+                //万能验证码，放行
+            }else{
+                // 判断验证码是否匹配
+                SmsLog smsLog = smsLogService.getLastLog(param.getMobile(), BusinessType.SMS_LOG_TYPE_LOGIN, 5);
+                if (smsLog==null || !smsLog.getVerifyCode().equals(param.getMobileCode())) {
+                    throw new StoneCustomerException("手机验证码错误");
+                }
             }
+
+            //TODO-将验证码改为已验证
+
+            // 判断是否已经注册
+            Merchant dbMerchant = merchantMapper.selectByMobile(param.getMobile());
+            if(dbMerchant == null){
+                throw new StoneCustomerException("该账号不存在");
+            }
+
+            // 生成token
+            String token = TokenUtil.generateToken(dbMerchant);
+
+            //创建登录会话
+            merchantSessionManager.createSession(token, dbMerchant);
+
+            //创建登录cookie
+            TokenUtil.addLoginCookie(token);
+
+            //记录登录日志-成功（账号取登录账号名）
+            this.writeLoginLog(dbMerchant.getUsername(), LoginLog.RESULT_SUCCESS, null);
+
+            MerchantResult result = new MerchantResult();
+            result.setToken(token);
+            return result;
+        } catch (RuntimeException e) {
+            //记录登录日志-失败（失败原因即异常信息）
+            this.writeLoginLog(param.getMobile(), LoginLog.RESULT_FAIL, e.getMessage());
+            throw e;
         }
+    }
 
-        //TODO-将验证码改为已验证
-
-        // 判断是否已经注册
-        Merchant dbMerchant = merchantMapper.selectByMobile(param.getMobile());
-        if(dbMerchant == null){
-            throw new StoneCustomerException("该账号不存在");
+    /**
+     * 记录登录日志：任何异常都不得影响登录主流程
+     */
+    private void writeLoginLog(String account, Integer result, String message) {
+        try {
+            loginLogService.insert(LogUtil.buildLoginLog(account, LoginLog.ACCOUNT_TYPE_MERCHANT, result, message));
+        } catch (Exception e) {
+            log.error("记录登录日志失败", e);
         }
-
-        // 生成token
-        String token = TokenUtil.generateToken(dbMerchant);
-
-        //创建登录会话
-        merchantSessionManager.createSession(token, dbMerchant);
-
-        //创建登录cookie
-        TokenUtil.addLoginCookie(token);
-
-        MerchantResult result = new MerchantResult();
-        result.setToken(token);
-        return result;
     }
 
     @Override
