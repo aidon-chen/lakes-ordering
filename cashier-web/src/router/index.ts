@@ -40,6 +40,14 @@ const router = createRouter({
       meta: { board: leaf.board, group: leaf.label }
     })),
 
+    // 非菜单页：订单详情（W-12），由 W-10/W-11 列表的「详情」进入，不出现在侧栏
+    {
+      path: '/orders/detail',
+      name: 'order-detail',
+      component: () => import('@/views/OrderDetailView.vue'),
+      meta: { board: 'W-12', group: '订单管理' }
+    },
+
     { path: '/:pathMatch(.*)*', redirect: DEFAULT_PATH }
   ]
 })

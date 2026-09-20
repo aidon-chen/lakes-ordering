@@ -85,8 +85,14 @@
           </span>
           <!-- 下单时间 -->
           <span class="px-2 truncate" style="width: 180px; color: var(--tc-sub)">{{ fmtTime(o.createTime) }}</span>
-          <!-- 操作：本期只读（W-11 管状态流转、W-12 管详情，均未开工）→ 不留点不动的按钮 -->
-          <span class="px-2 truncate" style="width: 140px; color: var(--tc-hold)">—</span>
+          <!-- 操作：详情（W-12 已落地；改单/退单/补打待实现，不放死按钮） -->
+          <span class="px-2 flex items-center" style="width: 140px">
+            <button
+              class="text-[12px]"
+              style="color: var(--p)"
+              @click="goDetail(o.id)"
+            >详情</button>
+          </span>
         </div>
       </div>
     </div>
@@ -111,13 +117,14 @@
     </div>
 
     <p class="shrink-0 text-[11px]" style="color: var(--tc-hold)">
-      操作列暂缓：状态流转归 W-11、订单详情归 W-12，两者未开工前不放无效按钮。取餐号 / 日期为客户端筛选（后端暂无这两个查询参数）。
+      操作列仅「详情」（W-12 已落地）；改单/退单/补打待实现。取餐号 / 日期为客户端筛选（后端暂无这两个查询参数）。
     </p>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   fetchMerchantOrders,
   orderStatusText,
@@ -141,6 +148,7 @@ const PAGE_SIZE = 10
 /** 取餐号/日期为客户端筛选，故一次多取（后端无对应参数） */
 const FETCH_SIZE = 200
 
+const router = useRouter()
 const rows = ref<MerchantOrderRow[]>([])
 const loading = ref(true)
 const page = ref(1)
@@ -243,6 +251,11 @@ function fmtTime(v: string | null): string {
   if (!v) return '—'
   const m = String(v).match(/(\d{4})\/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2})/)
   return m ? `${m[1]}-${m[2]}-${m[3]} ${m[4]}:${m[5]}` : String(v)
+}
+
+/** 进订单详情（W-12） */
+function goDetail(id: number) {
+  router.push({ path: '/orders/detail', query: { id } })
 }
 
 function money(v: number | null): string {

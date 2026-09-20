@@ -62,8 +62,18 @@ export interface MerchantOrderRow {
   orderScene: number | null
   contactPhone: string | null
   createTime: string | null
+  /** 支付成功时间（未支付为 null）—— W-12 时间线的真实节点 */
+  paymentSuccessTime: string | null
+  /** 订单完成时间—— W-12 时间线的真实节点 */
+  orderCompletionTime: string | null
+  /** 最近更新时间（对任何编辑都会刷新，**不代表状态变更**） */
+  updateTime: string | null
   /** 出品状态 1=待制作 2=出品中 3=已出品（批次 D 新增列，服务 M-04 出品进度跟踪） */
   productionStatus: number | null
+  /** 就餐人数 */
+  diningNum: number | null
+  /** 订单备注（整单） */
+  remark: string | null
 }
 
 export interface OrderQueryParam {
@@ -183,3 +193,10 @@ export const fetchOrderDetails = (orderId: number) =>
     pageNo: -1,
     pageSize: 200
   })
+
+/**
+ * 单张订单（W-12 详情）
+ * ⚠️ 实测：**不返回订单明细**（74 个字段里没有明细数组）→ 明细须另调 fetchOrderDetails
+ */
+export const fetchOrderById = (id: number) =>
+  http.post<unknown, MerchantOrderRow>('/rest/merchant/order/selectById', { id })

@@ -84,6 +84,8 @@
               :disabled="busyId === o.id"
               @click="doProductionDone(o)"
             >出品完成</button>
+            <!-- 详情（W-12 已落地） -->
+            <button class="text-[12px]" style="color: var(--p)" @click="goDetail(o.id)">详情</button>
             <!-- 出品状态只读展示（非「出品中」时不显示按钮，避免无意义按钮） -->
             <span class="truncate text-[11px]" style="color: var(--tc-hold)">
               {{ otherActionText(o) }}
@@ -96,13 +98,14 @@
     <p class="shrink-0 text-[11px]" style="color: var(--tc-hold)">
       标签计数为**本地自算**（不使用后端 selectAllTabWaitHandleNum —— 它会把堂食算进「自取待处理」，见计划 §6.3）。
       「待自提核销」标签未实现：其数据在 tb_points_mall_order（另一张表），属批次 E 范围。
-      「详情」待 W-12 落地后补。30 秒轮询本期未开启（避免无谓后端压力），提示文案已如实标为「关」。
+      30 秒轮询本期未开启（避免无谓后端压力），提示文案已如实标为「关」。
     </p>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   fetchMerchantOrders,
   updateOrderStatus,
@@ -131,6 +134,7 @@ const COLS = [
  */
 type TabKey = 'pending' | 'producing' | 'done' | 'all'
 
+const router = useRouter()
 const rows = ref<MerchantOrderRow[]>([])
 const loading = ref(true)
 const activeTab = ref<TabKey>('pending')
@@ -222,6 +226,11 @@ function waitedColor(o: MerchantOrderRow): string {
   const t = parseTime(o.createTime)
   if (!t) return 'var(--txt)'
   return Date.now() - t > 30 * 60000 ? 'var(--warn)' : 'var(--txt)'
+}
+
+/** 进订单详情（W-12） */
+function goDetail(id: number) {
+  router.push({ path: '/orders/detail', query: { id } })
 }
 
 function otherActionText(o: MerchantOrderRow): string {
