@@ -74,3 +74,16 @@ html, body {
   line-height: 0;
 }
 .ellipsis {overflow: hidden; white-space: nowrap; text-overflow: ellipsis;}
+
+/*
+ * v-loading 遮罩在「离开过渡」未收尾时会以 opacity:0 的状态残留在 DOM 中，
+ * 其默认 pointer-events:auto 会继续拦截表格等区域的点击（表现为页面点不动）。
+ * 同理，el-dialog / el-drawer 的 wrapper 在 leave 过渡未收尾时也会残留一层全屏容器。
+ * 这里只针对「正在离开」这一过渡态关闭指针事件：此时元素本身已不可见，
+ * 不影响正常显示中的遮罩/弹层（显示态不带 leave-active 类）。
+ */
+.el-loading-mask.el-loading-fade-leave-active,
+.el-dialog__wrapper.dialog-fade-leave-active,
+.el-drawer__wrapper.drawer-fade-leave-active {
+  pointer-events: none;
+}

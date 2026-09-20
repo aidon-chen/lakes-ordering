@@ -24,8 +24,8 @@ const editGoods = () => import( './pages/goodsManage/editGoods.vue')
 const goodsAccessoriesList = () => import( './pages/goodsManage/goodsAccessoriesList.vue')
 const rawmaterialList = () => import( './pages/goodsManage/rawmaterialList.vue')
 const goodsRawmaterialRelationList = () => import( './pages/goodsManage/goodsRawmaterialRelationList.vue')
-// const specificationList = () => import( './pages/goodsManage/specificationList.vue')
-// const stockList = () => import( './pages/goodsManage/stockList.vue')
+const specificationList = () => import( './pages/goodsManage/specificationList.vue')
+const stockList = () => import( './pages/goodsManage/stockList.vue')
 const recommendGoods = () => import( './pages/goodsManage/recommendGoods.vue')
 
 //订单管理
@@ -47,7 +47,11 @@ const appraiseList = () => import( './pages/orderManage/appraiseList.vue')
 const fullReductionRuleList = () => import( './pages/promotionManage/fullReductionRuleList.vue')
 const couponsList = () => import( './pages/promotionManage/couponsList.vue')
 
+//营销中心（M-01~M-04）
+const activityPopupList = () => import( './pages/marketing/activityPopupList.vue')
+
 //门店管理
+const shopList = () => import( './pages/shopManage/shopList.vue')   // A-01 门店信息（含启停）
 const shopInfo = () => import( './pages/shopManage/shopInfo.vue')
 const shopInfoImportant = () => import( './pages/shopManage/shopInfoImportant.vue')
 const shopChangeRecord = () => import( './pages/shopManage/shopChangeRecord.vue')
@@ -55,11 +59,29 @@ const courierList = () => import( './pages/shopManage/internal/courierList.vue')
 const ticketPrinterList = () => import( './pages/shopManage/internal/ticketPrinterList.vue')
 const labelPrinterList = () => import( './pages/shopManage/internal/labelPrinterList.vue')
 
+//系统设置（A-01 门店信息 / A-02 基础参数与业务字典 / A-08 日志审计）
+const settingList = () => import( './pages/systemSetting/settingList.vue')
+const dictList = () => import( './pages/systemSetting/dictList.vue')
+const operateLogList = () => import( './pages/systemSetting/operateLogList.vue')
+const operateLogDetail = () => import( './pages/systemSetting/operateLogDetail.vue')
+const loginLogList = () => import( './pages/systemSetting/loginLogList.vue')
+
 //轮播图管理
 const advertisementList = () => import( './pages/shopDecoration/advertisementList.vue')
 
 //台位管理（A-09）
 const tableList = () => import( './pages/dining/tableList.vue')
+
+//商城管理（A-06，迁自 vue-siam-admin 积分商城 + 自提语义改造）
+const mallMenuList = () => import( './pages/mallManage/goodsManage/menuList.vue')
+const mallAddMenu = () => import( './pages/mallManage/goodsManage/addMenu.vue')
+const mallEditMenu = () => import( './pages/mallManage/goodsManage/editMenu.vue')
+const mallGoodsList = () => import( './pages/mallManage/goodsManage/goodsList.vue')
+const mallAddGoods = () => import( './pages/mallManage/goodsManage/addGoods.vue')
+const mallEditGoods = () => import( './pages/mallManage/goodsManage/editGoods.vue')
+const mallStockList = () => import( './pages/mallManage/goodsManage/stockList.vue')
+const mallOrderList = () => import( './pages/mallManage/orderManage/orderList.vue')
+const mallFullReductionRuleList = () => import( './pages/mallManage/promotionManage/fullReductionRuleList.vue')
 
 //数据中心
 const statisticGraph = () => import( './pages/basicModule/statisticGraph.vue')
@@ -68,6 +90,10 @@ const statisticGraph = () => import( './pages/basicModule/statisticGraph.vue')
 const accountInfo = () => import( './pages/accountModule/accountInfo.vue')
 const merchantWithdrawRecord = () => import( './pages/accountModule/merchantWithdrawRecord.vue')
 const merchantBillingRecord = () => import( './pages/accountModule/merchantBillingRecord.vue')
+//A-07 报表与营收统计
+const revenueList = () => import( './pages/accountModule/revenueList.vue')
+const vipRechargeRecord = () => import( './pages/accountModule/vipRechargeRecord.vue')
+const memberWithdrawRecord = () => import( './pages/accountModule/memberWithdrawRecord.vue')
 
 
 let routes = [
@@ -125,7 +151,7 @@ let routes = [
       name: '订单管理',
       iconCls: 'el-icon-s-order',
       children: [
-          { path: '/todayOrderList', component: todayOrderList, name: '今日订单' },
+          { path: '/todayOrderList', component: todayOrderList, name: '订单查询' },
           { path: '/forHereOrderList', component: forHereOrderList, name: '自取订单' },
           // 需求外（单店堂食+自提场景）：隐藏菜单，保留页面与路由
           { path: '/takeOutOrderList', component: takeOutOrderList, name: '外卖订单', hidden: true },          
@@ -135,8 +161,8 @@ let routes = [
           // { path: '/takeOutTabsChild1', component: takeOutTabsChild1, name: '待配送订单' },
           // { path: '/takeOutTabsChild2', component: takeOutTabsChild2, name: '已配送订单' },
           // { path: '/forHereTabsChild2', component: forHereTabsChild2, name: '已完成订单' },       
-          { path: '/refundOrderList', component: refundOrderList, name: '售后处理' },          
-          { path: '/appraiseList', component: appraiseList, name: '评价管理', hidden: true },     
+          { path: '/refundOrderList', component: refundOrderList, name: '售后订单' },          
+          { path: '/appraiseList', component: appraiseList, name: '评价管理' },     
           // { path: '/forHereTabsChild3', component: forHereTabsChild3, name: '已取消订单' },          
           { path: '/orderDetail', component: orderDetail, name: '查看订单详情', hidden: true },   
          // { path: '/CoreImage', component: CoreImage, name: '裁剪图片' },        
@@ -156,19 +182,37 @@ let routes = [
           // { path: '/goodsAccessoriesList', component: goodsAccessoriesList, name: '商品辅料' },          
           // { path: '/rawmaterialList', component: rawmaterialList, name: '商品原料' },  
           // { path: '/goodsRawmaterialRelationList', component: goodsRawmaterialRelationList, name: '原料配比' },  
-          // { path: '/specificationList', component: specificationList, name: '商品规格' },
-          // { path: '/stockList', component: stockList, name: '商品库存' },          
+          { path: '/specificationList', component: specificationList, name: '商品规格' },
+          { path: '/stockList', component: stockList, name: '商品库存' },          
       ]
     },        
     {
       path: '/',
       component: Home,
-      name: '活动中心',
+      name: '商城管理',
+      iconCls: 'el-icon-shopping-bag-1',
+      children: [
+          { path: '/pointsMall_menuList', component: mallMenuList, name: '商城分类' },
+          { path: '/pointsMall_goodsList', component: mallGoodsList, name: '商城商品' },
+          { path: '/pointsMall_stockList', component: mallStockList, name: '商城库存' },
+          { path: '/pointsMall_orderList', component: mallOrderList, name: '商城订单' },
+          { path: '/pointsMall_fullReductionRuleList', component: mallFullReductionRuleList, name: '满减规则' },
+          // 隐藏路由（弹层外置页）：路径名沿用 admin 源页内的跳转目标，保证页面内导航零改动
+          { path: '/pointsMall_addMenu', component: mallAddMenu, name: '新增分类', hidden: true },
+          { path: '/pointsMall_editMenu', component: mallEditMenu, name: '编辑分类', hidden: true },
+          { path: '/pointsMall_addGoods', component: mallAddGoods, name: '新增商品', hidden: true },
+          { path: '/pointsMall_editGoods', component: mallEditGoods, name: '编辑商品', hidden: true },
+      ]
+    },        
+    {
+      path: '/',
+      component: Home,
+      name: '营销中心',
       iconCls: 'el-icon-s-order',
       children: [
-          // { path: '/unpaidOrderList', component: unpaidOrderList, name: '未付款' },
+          { path: '/activityPopupList', component: activityPopupList, name: '首页活动弹窗' },//M-01/M-02
+          { path: '/couponsList', component: couponsList, name: '优惠券管理' },
           { path: '/fullReductionRuleList', component: fullReductionRuleList, name: '满减' },
-          { path: '/couponsList', component: couponsList, name: '优惠券' },
       ]
     },     
     {
@@ -182,6 +226,20 @@ let routes = [
           { path: '/shopChangeRecord', component: shopChangeRecord, name: '门店信息变更记录' },          
           { path: '/advertisementList', component: advertisementList, name: '门店装修' },
           { path: '/courierList', component: courierList, name: '骑手信息', hidden: true },
+      ]
+    },
+    {
+      path: '/',
+      component: Home,
+      name: '系统设置',
+      iconCls: 'el-icon-setting',
+      children: [
+          { path: '/settingList', component: settingList, name: '基础参数配置' },
+          { path: '/dictList', component: dictList, name: '业务字典' },
+          { path: '/shopList', component: shopList, name: '门店信息' },
+          { path: '/operateLogList', component: operateLogList, name: '操作日志' },
+          { path: '/operateLogDetail', component: operateLogDetail, name: '操作日志详情', hidden: true },
+          { path: '/loginLogList', component: loginLogList, name: '登录日志' },
       ]
     },
     {
@@ -209,9 +267,12 @@ let routes = [
       name: '财务报表',
       iconCls: 'el-icon-user',
       children: [
+          { path: '/revenueList', component: revenueList, name: '营收统计' },
           { path: '/accountInfo', component: accountInfo, name: '账户信息' },          
           { path: '/merchantBillingRecord', component: merchantBillingRecord, name: '账单记录' },//交易明细          
           { path: '/merchantWithdrawRecord', component: merchantWithdrawRecord, name: '提现记录' },
+          { path: '/vipRechargeRecord', component: vipRechargeRecord, name: '会员充值记录' },
+          { path: '/memberWithdrawRecord', component: memberWithdrawRecord, name: '奖励金提现记录' },
       ]
     },        
     {
