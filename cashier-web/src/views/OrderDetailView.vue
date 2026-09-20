@@ -102,7 +102,7 @@
           <div class="flex text-[12px]"><span style="color: var(--tc-sub)">商品合计</span><span class="ml-auto" style="color: var(--txt)">¥{{ money(order.goodsTotalPrice) }}</span></div>
           <div class="flex text-[12px]"><span style="color: var(--tc-sub)">实付款</span><span class="ml-auto" style="color: var(--txt)">¥{{ money(order.actualPrice) }}</span></div>
           <div class="flex text-[12px]"><span style="color: var(--tc-sub)">支付方式</span><span class="ml-auto" style="color: var(--txt)">{{ payingText }}</span></div>
-          <div class="flex text-[13px] font-medium"><span style="color: var(--tc-sub)">出品状态</span><span class="ml-auto" style="color: var(--p)">{{ productionStatusText(order.productionStatus) }}</span></div>
+          <div class="flex text-[13px] font-medium"><span style="color: var(--tc-sub)">出品状态</span><span class="ml-auto" style="color: var(--p)">{{ productionStatusText(order.productionStatus ?? 1) }}</span></div>
         </div>
 
         <!-- 状态变更记录 -->
@@ -250,7 +250,7 @@ const timeline = computed<Node[]>(() => {
   push(o.orderCompletionTime, h => `已完成 ${h}`, 'var(--p)')
   nodes.push({
     t: Number.MAX_SAFE_INTEGER,
-    text: `当前：${orderStatusText(o.status)} · 出品 ${productionStatusText(o.productionStatus)}`,
+    text: `当前：${orderStatusText(o.status)} · 出品 ${productionStatusText(o.productionStatus ?? 1)}`,
     color: 'var(--p)'
   })
   return nodes
@@ -259,7 +259,7 @@ const timeline = computed<Node[]>(() => {
 async function advanceProduction() {
   const o = order.value
   if (!o) return
-  const cur = o.productionStatus ?? 1
+  const cur = o.productionStatus ?? 1 // null（后端列未就绪）视为待制作
   if (cur >= 3) return
   busy.value = true
   try {

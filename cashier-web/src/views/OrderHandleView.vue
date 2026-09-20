@@ -161,7 +161,7 @@ async function load() {
 /** 标签计数：本地自算（见模板底部说明） */
 const counts = computed(() => ({
   pending: rows.value.filter(o => o.status === 2).length,
-  producing: rows.value.filter(o => o.productionStatus === 2).length,
+  producing: rows.value.filter(o => o.productionStatus === 2).length, // 只有明确「出品中」才计入
   done: rows.value.filter(o => o.status === 6).length,
   all: rows.value.length
 }))

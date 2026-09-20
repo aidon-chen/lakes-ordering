@@ -100,7 +100,7 @@ async function load() {
     typeByTableNo.value = map
 
     // 明细（品项）按需拉取：只为看板会显示的订单取，避免全量 N+1
-    const needDetail = orders.value.filter(o => o.productionStatus === 1 || o.productionStatus === 2)
+    const needDetail = orders.value.filter(o => (o.productionStatus ?? 1) === 1 || o.productionStatus === 2)
     const results = await Promise.all(
       needDetail.map(async o => {
         try {
@@ -122,7 +122,9 @@ async function load() {
 
 /** 三列：待制作 / 出品中 / 已出品（列名与计数口径见画板 2:992~2:997） */
 const columns = computed(() => {
-  const pick = (s: number) => orders.value.filter(o => o.productionStatus === s).map(o => item(o))
+  // ⚠️ productionStatus 可能为 null（后端列未就绪时）→ 按 DB 默认值 1=待制作 兜底，避免看板三列全空
+  const psOf = (o: MerchantOrderRow) => o.productionStatus ?? 1
+  const pick = (s: number) => orders.value.filter(o => psOf(o) === s).map(o => item(o))
   return [
     { key: 'todo', title: `待制作（${pick(1).length}）`, items: pick(1), nextLabel: '点击开始出品' },
     { key: 'doing', title: `出品中（${pick(2).length}）`, items: pick(2), nextLabel: '点击标记已出品' },
@@ -208,7 +210,7 @@ async function advance(o: MerchantOrderRow, key: string) {
 /** 最近完成（画板底部说明口径）：取已出品订单按更新时间倒序前 5 */
 const noteText = computed(() => {
   const done = orders.value
-    .filter(o => o.productionStatus === 3)
+    .filter(o => (o.productionStatus ?? 1) === 3)
     .slice(0, 5)
     .map(o => `${o.queueNo ?? o.tableNo ?? '—'} ${hhmm(o.createTime)}`)
   const head = done.length ? `最近出品：${done.join(' ｜ ')}` : '暂无已出品订单'
