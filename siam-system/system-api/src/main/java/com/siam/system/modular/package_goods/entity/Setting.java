@@ -90,6 +90,16 @@ public class Setting {
 
     private String vipRule;
 
+    private String businessHoursDesc;
+
+    private String userServiceAgreement;
+
+    private String privacyPolicy;
+
+    private String platformLogo;
+
+    private String homePoster;
+
     private Date createTime;
 
     private Date updateTime;
@@ -410,6 +420,46 @@ public class Setting {
 
     public void setVipRule(String vipRule) {
         this.vipRule = vipRule == null ? null : vipRule.trim();
+    }
+
+    public String getBusinessHoursDesc() {
+        return businessHoursDesc;
+    }
+
+    public void setBusinessHoursDesc(String businessHoursDesc) {
+        this.businessHoursDesc = businessHoursDesc == null ? null : businessHoursDesc.trim();
+    }
+
+    public String getUserServiceAgreement() {
+        return userServiceAgreement;
+    }
+
+    public void setUserServiceAgreement(String userServiceAgreement) {
+        this.userServiceAgreement = userServiceAgreement == null ? null : userServiceAgreement.trim();
+    }
+
+    public String getPrivacyPolicy() {
+        return privacyPolicy;
+    }
+
+    public void setPrivacyPolicy(String privacyPolicy) {
+        this.privacyPolicy = privacyPolicy == null ? null : privacyPolicy.trim();
+    }
+
+    public String getPlatformLogo() {
+        return platformLogo;
+    }
+
+    public void setPlatformLogo(String platformLogo) {
+        this.platformLogo = platformLogo == null ? null : platformLogo.trim();
+    }
+
+    public String getHomePoster() {
+        return homePoster;
+    }
+
+    public void setHomePoster(String homePoster) {
+        this.homePoster = homePoster == null ? null : homePoster.trim();
     }
 
     public Date getCreateTime() {

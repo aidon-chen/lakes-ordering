@@ -40,6 +40,11 @@
     <result column="invite_friends_activity_rule" property="inviteFriendsActivityRule" jdbcType="VARCHAR" />
     <result column="commission_rule" property="commissionRule" jdbcType="VARCHAR" />
     <result column="vip_rule" property="vipRule" jdbcType="VARCHAR" />
+    <result column="business_hours_desc" property="businessHoursDesc" jdbcType="VARCHAR" />
+    <result column="user_service_agreement" property="userServiceAgreement" jdbcType="VARCHAR" />
+    <result column="privacy_policy" property="privacyPolicy" jdbcType="VARCHAR" />
+    <result column="platform_logo" property="platformLogo" jdbcType="VARCHAR" />
+    <result column="home_poster" property="homePoster" jdbcType="VARCHAR" />
     <result column="create_time" property="createTime" jdbcType="TIMESTAMP" />
     <result column="update_time" property="updateTime" jdbcType="TIMESTAMP" />
   </resultMap>
@@ -155,7 +160,8 @@
     points_mall_invitee_consume_commission, points_mall_caseone_own_commission, points_mall_casetwo_own_commission,
     points_mall_casetwo_first_level_inviter_commission, points_mall_casethree_own_commission,
     points_mall_casethree_first_level_inviter_commission, points_mall_casethree_second_level_inviter_commission,
-    invite_friends_activity_rule, commission_rule, vip_rule, create_time, update_time
+    invite_friends_activity_rule, commission_rule, vip_rule, business_hours_desc, user_service_agreement,
+    privacy_policy, platform_logo, home_poster, create_time, update_time
   </sql>
   <select id="selectByExample" resultMap="BaseResultMap" parameterType="com.siam.system.modular.package_goods.model.example.SettingExample" >
     select
@@ -305,6 +311,21 @@
       <if test="vipRule != null" >
         vip_rule,
       </if>
+      <if test="businessHoursDesc != null" >
+        business_hours_desc,
+      </if>
+      <if test="userServiceAgreement != null" >
+        user_service_agreement,
+      </if>
+      <if test="privacyPolicy != null" >
+        privacy_policy,
+      </if>
+      <if test="platformLogo != null" >
+        platform_logo,
+      </if>
+      <if test="homePoster != null" >
+        home_poster,
+      </if>
       <if test="createTime != null" >
         create_time,
       </if>
@@ -426,6 +447,21 @@
       </if>
       <if test="vipRule != null" >
         #{vipRule,jdbcType=VARCHAR},
+      </if>
+      <if test="businessHoursDesc != null" >
+        #{businessHoursDesc,jdbcType=VARCHAR},
+      </if>
+      <if test="userServiceAgreement != null" >
+        #{userServiceAgreement,jdbcType=VARCHAR},
+      </if>
+      <if test="privacyPolicy != null" >
+        #{privacyPolicy,jdbcType=VARCHAR},
+      </if>
+      <if test="platformLogo != null" >
+        #{platformLogo,jdbcType=VARCHAR},
+      </if>
+      <if test="homePoster != null" >
+        #{homePoster,jdbcType=VARCHAR},
       </if>
       <if test="createTime != null" >
         #{createTime,jdbcType=TIMESTAMP},
@@ -729,6 +765,21 @@
       <if test="vipRule != null" >
         vip_rule = #{vipRule,jdbcType=VARCHAR},
       </if>
+      <if test="businessHoursDesc != null" >
+        business_hours_desc = #{businessHoursDesc,jdbcType=VARCHAR},
+      </if>
+      <if test="userServiceAgreement != null" >
+        user_service_agreement = #{userServiceAgreement,jdbcType=VARCHAR},
+      </if>
+      <if test="privacyPolicy != null" >
+        privacy_policy = #{privacyPolicy,jdbcType=VARCHAR},
+      </if>
+      <if test="platformLogo != null" >
+        platform_logo = #{platformLogo,jdbcType=VARCHAR},
+      </if>
+      <if test="homePoster != null" >
+        home_poster = #{homePoster,jdbcType=VARCHAR},
+      </if>
       <if test="createTime != null" >
         create_time = #{createTime,jdbcType=TIMESTAMP},
       </if>
@@ -777,6 +828,11 @@
       invite_friends_activity_rule = #{inviteFriendsActivityRule,jdbcType=VARCHAR},
       commission_rule = #{commissionRule,jdbcType=VARCHAR},
       vip_rule = #{vipRule,jdbcType=VARCHAR},
+      business_hours_desc = #{businessHoursDesc,jdbcType=VARCHAR},
+      user_service_agreement = #{userServiceAgreement,jdbcType=VARCHAR},
+      privacy_policy = #{privacyPolicy,jdbcType=VARCHAR},
+      platform_logo = #{platformLogo,jdbcType=VARCHAR},
+      home_poster = #{homePoster,jdbcType=VARCHAR},
       create_time = #{createTime,jdbcType=TIMESTAMP},
       update_time = #{updateTime,jdbcType=TIMESTAMP}
     where id = #{id,jdbcType=INTEGER}
