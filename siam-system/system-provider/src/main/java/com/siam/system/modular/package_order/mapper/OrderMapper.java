@@ -172,6 +172,7 @@ public interface OrderMapper extends BaseMapper<Order> {
             "<if test=\"orderDto.cancelReason != null\"> AND o.cancel_reason = #{orderDto.cancelReason} </if>" +
             "<if test=\"orderDto.isPrinted != null\"> AND o.is_printed = #{orderDto.isPrinted} </if>" +
             "<if test=\"orderDto.queueNo != null\"> AND o.queue_no = #{orderDto.queueNo} </if>" +
+            "<if test=\"orderDto.orderScene != null\"> AND o.order_scene = #{orderDto.orderScene} </if>" +
             "<if test=\"orderDto.fullReductionRuleId != null\"> AND o.full_reduction_rule_id = #{orderDto.fullReductionRuleId} </if>" +
             "<if test=\"orderDto.fullReductionRuleDescription != null and orderDto.fullReductionRuleDescription !=''\"> AND o.full_reduction_rule_description like '%${orderDto.fullReductionRuleDescription}%' </if>" +
             "<if test=\"orderDto.couponsId != null\"> AND o.coupons_id = #{orderDto.couponsId} </if>" +
@@ -338,7 +339,8 @@ public interface OrderMapper extends BaseMapper<Order> {
             "</script>")
     int selectCountOrderPeoples(@Param("order") OrderParam param);
 
-    @Select("<script>select IFNULL(sum(o.actual_price), 0) as totalActualPrice, IFNULL(sum(o.delivery_fee), 0) as totalDeliveryFee from tb_order as o "+
+    @Select("<script>select IFNULL(sum(o.actual_price), 0) as totalActualPrice, IFNULL(sum(o.delivery_fee), 0) as totalDeliveryFee, " +
+            "IFNULL(sum(o.packing_charges), 0) as totalPackingCharges from tb_order as o "+
             "<where> 1=1 and STATUS not in (1, 10)" +
             "</where>"+
             "</script>")
@@ -370,5 +372,57 @@ public interface OrderMapper extends BaseMapper<Order> {
                              @Param("targetTableId") Long targetTableId,
                              @Param("targetTableNo") String targetTableNo,
                              @Param("targetTableName") String targetTableName);
+
+    /**
+     * A-07 营收看板 - 营业额/订单量趋势（按日/周/月聚合）
+     * 口径：已成交订单 status in (6,7,9)；dateFormat 由统计维度决定（%Y-%m-%d / %x-W%v / %Y-%m）
+     */
+    @Select("<script>SELECT DATE_FORMAT(o.create_time, #{dateFormat}) AS statDate, COUNT(*) AS orderCount, IFNULL(SUM(o.actual_price), 0) AS orderAmount " +
+            "FROM tb_order o <where> o.status in (6, 7, 9) " +
+            "<if test=\"shopId != null\"> AND o.shop_id = #{shopId} </if>" +
+            "<if test=\"startTime != null\"> AND o.create_time &gt;= #{startTime} </if>" +
+            "<if test=\"endTime != null\"> AND o.create_time &lt;= #{endTime} </if>" +
+            "</where> GROUP BY statDate ORDER BY statDate ASC</script>")
+    List<Map<String, Object>> selectRevenueTrend(@Param("shopId") Integer shopId, @Param("startTime") Date startTime,
+                                                 @Param("endTime") Date endTime, @Param("dateFormat") String dateFormat);
+
+    /**
+     * A-07 营收看板 - 支付方式分布（payment_mode 为空视为「到店支付」=4）
+     */
+    @Select("<script>SELECT CASE WHEN o.payment_mode IS NULL THEN 4 ELSE o.payment_mode END AS paymentMode, " +
+            "COUNT(*) AS orderCount, IFNULL(SUM(o.actual_price), 0) AS orderAmount " +
+            "FROM tb_order o <where> o.status in (6, 7, 9) " +
+            "<if test=\"shopId != null\"> AND o.shop_id = #{shopId} </if>" +
+            "<if test=\"startTime != null\"> AND o.create_time &gt;= #{startTime} </if>" +
+            "<if test=\"endTime != null\"> AND o.create_time &lt;= #{endTime} </if>" +
+            "</where> GROUP BY paymentMode</script>")
+    List<Map<String, Object>> selectRevenuePaymentDistribution(@Param("shopId") Integer shopId, @Param("startTime") Date startTime,
+                                                               @Param("endTime") Date endTime);
+
+    /**
+     * A-07 营收看板 - 订单类型分布（1=堂食 2=自提）
+     */
+    @Select("<script>SELECT IFNULL(o.order_scene, 1) AS orderScene, COUNT(*) AS orderCount, IFNULL(SUM(o.actual_price), 0) AS orderAmount " +
+            "FROM tb_order o <where> o.status in (6, 7, 9) " +
+            "<if test=\"shopId != null\"> AND o.shop_id = #{shopId} </if>" +
+            "<if test=\"startTime != null\"> AND o.create_time &gt;= #{startTime} </if>" +
+            "<if test=\"endTime != null\"> AND o.create_time &lt;= #{endTime} </if>" +
+            "</where> GROUP BY orderScene</script>")
+    List<Map<String, Object>> selectRevenueSceneDistribution(@Param("shopId") Integer shopId, @Param("startTime") Date startTime,
+                                                             @Param("endTime") Date endTime);
+
+    /**
+     * A-07 营收看板 - 商品销售 TOP10（按销量倒序，明细表 join 主表取已成交订单）
+     */
+    @Select("<script>SELECT d.goods_id AS goodsId, d.goods_name AS goodsName, IFNULL(SUM(d.number), 0) AS goodsQuantity, " +
+            "IFNULL(SUM(d.subtotal), 0) AS goodsAmount " +
+            "FROM tb_order_detail d JOIN tb_order o ON o.id = d.order_id " +
+            "<where> o.status in (6, 7, 9) AND d.is_deleted = 0 " +
+            "<if test=\"shopId != null\"> AND o.shop_id = #{shopId} </if>" +
+            "<if test=\"startTime != null\"> AND o.create_time &gt;= #{startTime} </if>" +
+            "<if test=\"endTime != null\"> AND o.create_time &lt;= #{endTime} </if>" +
+            "</where> GROUP BY d.goods_id, d.goods_name ORDER BY goodsQuantity DESC, goodsAmount DESC LIMIT 10</script>")
+    List<Map<String, Object>> selectRevenueTopGoods(@Param("shopId") Integer shopId, @Param("startTime") Date startTime,
+                                                    @Param("endTime") Date endTime);
 
 }

@@ -349,4 +349,40 @@ public interface PointsMallOrderMapper extends BaseMapper<PointsMallOrder> {
     @ResultMap("BaseResultMap")
     @Select("SELECT o.* FROM tb_points_mall_order o where o.status in (5, 6, 7) and o.is_sign = 0")
     List<PointsMallOrderResult> selectByNeedSyncOrderLogisticsInfo();
+
+    /**
+     * A-07 营收看板 - 商城自提单：营业额/订单量趋势（按日/周/月聚合）
+     * 单店口径：商城订单不按门店过滤（历史单 shop_id 为空，A-07 不做门店维度）
+     */
+    @Select("<script>SELECT DATE_FORMAT(o.create_time, #{dateFormat}) AS statDate, COUNT(*) AS orderCount, IFNULL(SUM(o.actual_price), 0) AS orderAmount " +
+            "FROM tb_points_mall_order o <where> o.status in (6, 7, 9) " +
+            "<if test=\"startTime != null\"> AND o.create_time &gt;= #{startTime} </if>" +
+            "<if test=\"endTime != null\"> AND o.create_time &lt;= #{endTime} </if>" +
+            "</where> GROUP BY statDate ORDER BY statDate ASC</script>")
+    List<Map<String, Object>> selectRevenueTrend(@Param("startTime") Date startTime,
+                                                 @Param("endTime") Date endTime, @Param("dateFormat") String dateFormat);
+
+    /**
+     * A-07 营收看板 - 商城自提单：支付方式分布（payment_mode 为空视为「到店支付」=4）
+     */
+    @Select("<script>SELECT CASE WHEN o.payment_mode IS NULL THEN 4 ELSE o.payment_mode END AS paymentMode, " +
+            "COUNT(*) AS orderCount, IFNULL(SUM(o.actual_price), 0) AS orderAmount " +
+            "FROM tb_points_mall_order o <where> o.status in (6, 7, 9) " +
+            "<if test=\"startTime != null\"> AND o.create_time &gt;= #{startTime} </if>" +
+            "<if test=\"endTime != null\"> AND o.create_time &lt;= #{endTime} </if>" +
+            "</where> GROUP BY paymentMode</script>")
+    List<Map<String, Object>> selectRevenuePaymentDistribution(@Param("startTime") Date startTime,
+                                                               @Param("endTime") Date endTime);
+
+    /**
+     * A-07 营收看板 - 商城自提单：商品销售 TOP10
+     */
+    @Select("<script>SELECT d.goods_id AS goodsId, d.goods_name AS goodsName, IFNULL(SUM(d.number), 0) AS goodsQuantity, " +
+            "IFNULL(SUM(d.subtotal), 0) AS goodsAmount " +
+            "FROM tb_points_mall_order_detail d JOIN tb_points_mall_order o ON o.id = d.order_id " +
+            "<where> o.status in (6, 7, 9) AND d.is_deleted = 0 " +
+            "<if test=\"startTime != null\"> AND o.create_time &gt;= #{startTime} </if>" +
+            "<if test=\"endTime != null\"> AND o.create_time &lt;= #{endTime} </if>" +
+            "</where> GROUP BY d.goods_id, d.goods_name ORDER BY goodsQuantity DESC, goodsAmount DESC LIMIT 10</script>")
+    List<Map<String, Object>> selectRevenueTopGoods(@Param("startTime") Date startTime, @Param("endTime") Date endTime);
 }

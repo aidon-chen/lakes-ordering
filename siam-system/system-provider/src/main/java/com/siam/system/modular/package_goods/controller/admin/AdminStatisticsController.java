@@ -33,4 +33,15 @@ public class AdminStatisticsController {
         Map result = statisticsService.todayStatisticByAdmin(param);
         return BasicResult.success(result);
     }
+
+    /**
+     * A-07 营收看板：营收统计（日/周/月维度 + 核心指标 + 趋势 + 支付方式分布 + 订单类型分布 + 商品TOP10）
+     *
+     * @author 暹罗
+     */
+    @PostMapping(value = "/revenue")
+    public BasicResult revenue(@RequestBody @Validated(value = {}) StatisticsParam param) {
+        Map result = statisticsService.revenueStatistic(param);
+        return BasicResult.success(result);
+    }
 }

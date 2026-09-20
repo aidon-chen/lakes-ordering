@@ -130,6 +130,26 @@ public interface OrderService extends IService<Order> {
 
     List<Map<String, Object>> selectStatisticOrder(Integer shopId);
 
+    /**
+     * A-07 营收看板 - 营业额/订单量趋势（按日/周/月聚合）
+     */
+    List<Map<String, Object>> selectRevenueTrend(Integer shopId, Date startTime, Date endTime, String dateFormat);
+
+    /**
+     * A-07 营收看板 - 支付方式分布
+     */
+    List<Map<String, Object>> selectRevenuePaymentDistribution(Integer shopId, Date startTime, Date endTime);
+
+    /**
+     * A-07 营收看板 - 订单类型分布（1=堂食 2=自提）
+     */
+    List<Map<String, Object>> selectRevenueSceneDistribution(Integer shopId, Date startTime, Date endTime);
+
+    /**
+     * A-07 营收看板 - 商品销售 TOP10
+     */
+    List<Map<String, Object>> selectRevenueTopGoods(Integer shopId, Date startTime, Date endTime);
+
     String selectStartDateOrder(Integer shopId);
 
     int selectCountPayers(OrderParam param);

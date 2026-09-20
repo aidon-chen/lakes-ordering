@@ -8,8 +8,11 @@ import com.siam.package_common.util.DateUtilsPlus;
 import com.siam.system.modular.package_goods.entity.Shop;
 import com.siam.system.modular.package_order.entity.Order;
 import com.siam.system.modular.package_order.model.example.OrderRefundExample;
+import com.siam.system.modular.package_order.model.param.internal.PointsMallOrderParam;
+import com.siam.system.modular.package_order.service.AppraiseService;
 import com.siam.system.modular.package_order.service.OrderService;
 import com.siam.system.modular.package_order.service.OrderRefundService;
+import com.siam.system.modular.package_order.service.internal.PointsMallOrderService;
 import com.siam.system.modular.package_user.model.example.MemberExample;
 import com.siam.system.modular.package_user.service.MemberService;
 import com.siam.system.modular.package_user.service.MemberTradeRecordService;
@@ -29,9 +32,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -70,6 +76,12 @@ public class StatisticsServiceImpl implements StatisticsService {
 
     @Autowired
     private GoodsService goodsService;
+
+    @Autowired
+    private PointsMallOrderService pointsMallOrderService;
+
+    @Autowired
+    private AppraiseService appraiseService;
 
     @Override
     public Map todayStatisticByAdmin(StatisticsParam param) {
@@ -119,11 +131,12 @@ public class StatisticsServiceImpl implements StatisticsService {
 
         BigDecimal balance = totalSumIncome.subtract(totalSumExpense).setScale(2, BigDecimal.ROUND_HALF_UP);
 
-        //商品支付金额、配送费金额、退款金额、配送费退款金额 -- 针对于所有店铺、现金/余额都算
+        //商品支付金额、配送费金额、包装费金额、退款金额、配送费退款金额 -- 针对于所有店铺、现金/余额都算
         Map<String, Object> orderSumField = orderService.selectSumField(order);
         Map<String, Object> orderRefundSumField = orderRefundService.selectSumField(new OrderRefund());
         BigDecimal totalActualPrice = (BigDecimal) orderSumField.get("totalActualPrice");
         BigDecimal totalDeliveryFee = (BigDecimal) orderSumField.get("totalDeliveryFee");
+        BigDecimal totalPackingCharges = (BigDecimal) orderSumField.get("totalPackingCharges");
         BigDecimal totalRefundAmount = (BigDecimal) orderRefundSumField.get("totalRefundAmount");
         BigDecimal totalRefundDeliveryFee = (BigDecimal) orderRefundSumField.get("totalRefundDeliveryFee");
 
@@ -180,10 +193,13 @@ public class StatisticsServiceImpl implements StatisticsService {
         resultMap.put("allMemberCount", allMemberCount);
         resultMap.put("totalActualPrice", totalActualPrice);
         resultMap.put("totalDeliveryFee", totalDeliveryFee);
+        resultMap.put("totalPackingCharges", totalPackingCharges);
         resultMap.put("totalRefundAmount", totalRefundAmount);
         resultMap.put("totalRefundDeliveryFee", totalRefundDeliveryFee);
         resultMap.put("unCompletedNum", unCompletedNum);
         resultMap.put("waitHandleRefundNum", waitHandleRefundNum);
+        //A-03-1 实时数据看板：待处理评价回复数（尚无商家回复的评价）
+        resultMap.put("waitReplyAppraiseCount", appraiseService.countWaitReply(null));
         resultMap.put("balance", balance);
         resultMap.put("daySumIncome", daySumIncome);
         resultMap.put("daySumExpense", daySumExpense);
@@ -452,5 +468,222 @@ public class StatisticsServiceImpl implements StatisticsService {
         resultMap.put("yesterdayCountGoodsNumber", yesterdayCountGoodsNumber);
 
         return resultMap;
+    }
+
+    /**
+     * A-07 营收看板：营收统计（单店口径，不做门店维度）
+     * 数据源：tb_order（堂食/自提） + tb_points_mall_order（商城自提单），两者均取已成交订单 status in (6, 7, 9)
+     */
+    @Override
+    public Map revenueStatistic(StatisticsParam param) {
+        Map resultMap = new HashMap();
+
+        //1、维度与统计区间（缺省区间：日=近30天、周=近12周、月=近12月）
+        String timeType = (param.getTimeType() == null || param.getTimeType().trim().isEmpty())
+                ? "DAY" : param.getTimeType().trim().toUpperCase();
+        String dateFormat;
+        if ("WEEK".equals(timeType)) {
+            dateFormat = "%x-W%v";
+        } else if ("MONTH".equals(timeType)) {
+            dateFormat = "%Y-%m";
+        } else {
+            timeType = "DAY";
+            dateFormat = "%Y-%m-%d";
+        }
+        Date endTime = (param.getEndCreateTime() != null) ? param.getEndCreateTime() : DateUtilsExtend.getDayEnd();
+        Date startTime = param.getStartCreateTime();
+        if (startTime == null) {
+            Calendar calendar = Calendar.getInstance();
+            calendar.setTime(endTime);
+            if ("WEEK".equals(timeType)) {
+                calendar.add(Calendar.DAY_OF_MONTH, -7 * 12);
+            } else if ("MONTH".equals(timeType)) {
+                calendar.add(Calendar.MONTH, -12);
+            } else {
+                calendar.add(Calendar.DAY_OF_MONTH, -30);
+            }
+            startTime = calendar.getTime();
+        }
+
+        //2、取数门店：管理端经桥接的商家会话取当前门店（单店口径）
+        Merchant loginMerchant = merchantSessionManager.getSession(TokenUtil.getToken());
+        Integer shopId = (loginMerchant == null) ? null : loginMerchant.getShopId();
+
+        //3、核心指标：营业额 = 店内单 + 商城自提单；订单数同理
+        OrderParam orderParam = new OrderParam();
+        orderParam.setShopId(shopId);
+        orderParam.setStartTime(startTime);
+        orderParam.setEndTime(endTime);
+        int shopOrderCount = orderService.selectCountCompleted(orderParam);
+        BigDecimal shopOrderAmount = orderService.selectSumActualPrice(orderParam);
+
+        PointsMallOrderParam mallParam = new PointsMallOrderParam();
+        int mallOrderCount = pointsMallOrderService.selectCountCompleted(mallParam, startTime, endTime);
+        BigDecimal mallOrderAmount = pointsMallOrderService.selectSumActualPrice(mallParam, startTime, endTime);
+
+        int totalOrderCount = shopOrderCount + mallOrderCount;
+        BigDecimal totalOrderAmount = shopOrderAmount.add(mallOrderAmount).setScale(2, BigDecimal.ROUND_HALF_UP);
+
+        //客单价 = 营业额 ÷ 订单数（PRD A-07-1 口径）
+        BigDecimal perCustomerTransaction = (totalOrderCount == 0)
+                ? BigDecimal.ZERO
+                : totalOrderAmount.divide(BigDecimal.valueOf(totalOrderCount), 2, BigDecimal.ROUND_HALF_UP);
+
+        //退款额 = 售后处理完成(status=7)的退款金额合计（原路退回 + 退至平台余额/积分）
+        OrderRefund orderRefund = new OrderRefund();
+        BigDecimal refundAmount = orderRefundService.selectSumRefundAmount(orderRefund, startTime, endTime)
+                .add(orderRefundService.selectSumRefundAmountByPlatformCoin(orderRefund, startTime, endTime))
+                .setScale(2, BigDecimal.ROUND_HALF_UP);
+
+        //4、趋势折线：店内单与商城单按同一维度分桶后合并
+        Map<String, Map<String, Object>> trendMap = new LinkedHashMap<>();
+        for (Map<String, Object> row : orderService.selectRevenueTrend(shopId, startTime, endTime, dateFormat)) {
+            mergeTrendRow(trendMap, row);
+        }
+        for (Map<String, Object> row : pointsMallOrderService.selectRevenueTrend(startTime, endTime, dateFormat)) {
+            mergeTrendRow(trendMap, row);
+        }
+
+        //5、支付方式分布（饼图）：payment_mode 为空按「到店支付」归类
+        Map<Integer, Map<String, Object>> paymentMap = new LinkedHashMap<>();
+        for (Map<String, Object> row : orderService.selectRevenuePaymentDistribution(shopId, startTime, endTime)) {
+            mergeDistributionRow(paymentMap, row, "paymentMode");
+        }
+        for (Map<String, Object> row : pointsMallOrderService.selectRevenuePaymentDistribution(startTime, endTime)) {
+            mergeDistributionRow(paymentMap, row, "paymentMode");
+        }
+        List<Map<String, Object>> paymentModeList = new ArrayList<>();
+        for (Map.Entry<Integer, Map<String, Object>> entry : paymentMap.entrySet()) {
+            Map<String, Object> item = entry.getValue();
+            item.put("name", getPaymentModeName(entry.getKey()));
+            paymentModeList.add(item);
+        }
+
+        //6、订单类型分布（环形图）：1=堂食、2=自提（tb_order.order_scene），商城自提单单列一类
+        Map<Integer, Map<String, Object>> sceneMap = new LinkedHashMap<>();
+        for (Map<String, Object> row : orderService.selectRevenueSceneDistribution(shopId, startTime, endTime)) {
+            mergeDistributionRow(sceneMap, row, "orderScene");
+        }
+        List<Map<String, Object>> orderSceneList = new ArrayList<>();
+        for (Map.Entry<Integer, Map<String, Object>> entry : sceneMap.entrySet()) {
+            Map<String, Object> item = entry.getValue();
+            item.put("name", entry.getKey() == Quantity.INT_2 ? "自提" : "堂食");
+            orderSceneList.add(item);
+        }
+        if (mallOrderCount > 0) {
+            Map<String, Object> mallItem = new HashMap<>();
+            mallItem.put("name", "商城自提");
+            mallItem.put("orderCount", mallOrderCount);
+            mallItem.put("orderAmount", mallOrderAmount);
+            orderSceneList.add(mallItem);
+        }
+
+        //7、商品销售 TOP10：店内单与商城单按商品名合并后取前10
+        Map<String, Map<String, Object>> goodsMap = new LinkedHashMap<>();
+        for (Map<String, Object> row : orderService.selectRevenueTopGoods(shopId, startTime, endTime)) {
+            mergeTopGoodsRow(goodsMap, row);
+        }
+        for (Map<String, Object> row : pointsMallOrderService.selectRevenueTopGoods(startTime, endTime)) {
+            mergeTopGoodsRow(goodsMap, row);
+        }
+        List<Map<String, Object>> topGoodsList = new ArrayList<>(goodsMap.values());
+        //合并后按销量倒序（跨来源合并会打乱原有序），再取前10
+        topGoodsList.sort((o1, o2) -> ((Integer) o2.get("goodsQuantity")).compareTo((Integer) o1.get("goodsQuantity")));
+        if (topGoodsList.size() > 10) {
+            topGoodsList = topGoodsList.subList(0, 10);
+        }
+
+        resultMap.put("timeType", timeType);
+        resultMap.put("startTime", startTime);
+        resultMap.put("endTime", endTime);
+        resultMap.put("orderAmount", totalOrderAmount);
+        resultMap.put("orderCount", totalOrderCount);
+        resultMap.put("perCustomerTransaction", perCustomerTransaction);
+        resultMap.put("refundAmount", refundAmount);
+        resultMap.put("trendList", new ArrayList<>(trendMap.values()));
+        resultMap.put("paymentModeList", paymentModeList);
+        resultMap.put("orderSceneList", orderSceneList);
+        resultMap.put("topGoodsList", topGoodsList);
+        return resultMap;
+    }
+
+    /**
+     * 合并趋势行（按 statDate 累加订单数与金额，同一分桶跨来源合并）
+     */
+    private void mergeTrendRow(Map<String, Map<String, Object>> trendMap, Map<String, Object> row) {
+        String statDate = row.get("statDate") == null ? "" : row.get("statDate").toString();
+        Map<String, Object> item = trendMap.get(statDate);
+        if (item == null) {
+            item = new HashMap<>();
+            item.put("statDate", statDate);
+            item.put("orderCount", 0);
+            item.put("orderAmount", BigDecimal.ZERO);
+            trendMap.put(statDate, item);
+        }
+        item.put("orderCount", (Integer) item.get("orderCount") + toInt(row.get("orderCount")));
+        item.put("orderAmount", ((BigDecimal) item.get("orderAmount")).add(toDecimal(row.get("orderAmount"))));
+    }
+
+    /**
+     * 合并分布行（按维度值累加订单数与金额），维度值统一转 Integer
+     */
+    private void mergeDistributionRow(Map<Integer, Map<String, Object>> distributionMap, Map<String, Object> row, String dimensionField) {
+        Integer dimensionValue = toInt(row.get(dimensionField));
+        Map<String, Object> item = distributionMap.get(dimensionValue);
+        if (item == null) {
+            item = new HashMap<>();
+            item.put("value", dimensionValue);
+            item.put("orderCount", 0);
+            item.put("orderAmount", BigDecimal.ZERO);
+            distributionMap.put(dimensionValue, item);
+        }
+        item.put("orderCount", (Integer) item.get("orderCount") + toInt(row.get("orderCount")));
+        item.put("orderAmount", ((BigDecimal) item.get("orderAmount")).add(toDecimal(row.get("orderAmount"))));
+    }
+
+    /**
+     * 合并 TOP 商品行（按商品名累加销量与销售额）
+     */
+    private void mergeTopGoodsRow(Map<String, Map<String, Object>> goodsMap, Map<String, Object> row) {
+        String goodsName = row.get("goodsName") == null ? "" : row.get("goodsName").toString();
+        Map<String, Object> item = goodsMap.get(goodsName);
+        if (item == null) {
+            item = new HashMap<>();
+            item.put("goodsName", goodsName);
+            item.put("goodsQuantity", 0);
+            item.put("goodsAmount", BigDecimal.ZERO);
+            goodsMap.put(goodsName, item);
+        }
+        item.put("goodsQuantity", (Integer) item.get("goodsQuantity") + toInt(row.get("goodsQuantity")));
+        item.put("goodsAmount", ((BigDecimal) item.get("goodsAmount")).add(toDecimal(row.get("goodsAmount"))));
+    }
+
+    /**
+     * 支付方式名称（与前端订单列表口径一致，payment_mode 为空按「到店支付」处理）
+     */
+    private String getPaymentModeName(Integer paymentMode) {
+        if (paymentMode == null) {
+            return "到店支付";
+        }
+        switch (paymentMode) {
+            case 1:
+                return "微信支付";
+            case 2:
+                return "支付宝支付";
+            case 3:
+                return "平台余额";
+            case 4:
+                return "到店支付";
+            default:
+                return "其他";
+        }
+    }
+
+    private int toInt(Object value) {
+        return value == null ? 0 : ((Number) value).intValue();
+    }
+
+    private BigDecimal toDecimal(Object value) {
+        return value == null ? BigDecimal.ZERO : new BigDecimal(value.toString());
     }
 }

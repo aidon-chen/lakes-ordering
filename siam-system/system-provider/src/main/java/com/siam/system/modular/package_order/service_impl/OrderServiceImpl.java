@@ -2443,6 +2443,26 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     }
 
     @Override
+    public List<Map<String, Object>> selectRevenueTrend(Integer shopId, Date startTime, Date endTime, String dateFormat) {
+        return orderMapper.selectRevenueTrend(shopId, startTime, endTime, dateFormat);
+    }
+
+    @Override
+    public List<Map<String, Object>> selectRevenuePaymentDistribution(Integer shopId, Date startTime, Date endTime) {
+        return orderMapper.selectRevenuePaymentDistribution(shopId, startTime, endTime);
+    }
+
+    @Override
+    public List<Map<String, Object>> selectRevenueSceneDistribution(Integer shopId, Date startTime, Date endTime) {
+        return orderMapper.selectRevenueSceneDistribution(shopId, startTime, endTime);
+    }
+
+    @Override
+    public List<Map<String, Object>> selectRevenueTopGoods(Integer shopId, Date startTime, Date endTime) {
+        return orderMapper.selectRevenueTopGoods(shopId, startTime, endTime);
+    }
+
+    @Override
     public String selectStartDateOrder(Integer shopId) {
         return orderMapper.selectStartDateOrder(shopId);
     }
