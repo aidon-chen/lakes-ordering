@@ -62,6 +62,8 @@ export interface MerchantOrderRow {
   orderScene: number | null
   contactPhone: string | null
   createTime: string | null
+  /** 出品状态 1=待制作 2=出品中 3=已出品（批次 D 新增列，服务 M-04 出品进度跟踪） */
+  productionStatus: number | null
 }
 
 export interface OrderQueryParam {
@@ -109,6 +111,45 @@ export function paymentModeText(mode: number | null | undefined): string {
     case 2: return '余额支付'
     case 3: return '积分支付'
     case 4: return '到店支付'
+    default: return '—'
+  }
+}
+
+/* ==================== W-11 / W-14 订单作业 ==================== */
+
+/**
+ * 订单状态流转
+ * ⚠️⚠️ 实测踩坑：动作码的**参数名是 `flag`，不是 `status`**！
+ *   读 `MerchantOrderController.updateStatus` 实现：`switch (param.getFlag())`。
+ *   而该方法的 @ApiImplicitParam 把 `status` 注释成了状态枚举 —— **注释是误导**：
+ *   传 `{status:1}` 时 `getFlag()` 为 null → switch 落 default → **静默什么都不做**（不报错！）。
+ *
+ *   动作码（flag）：
+ *     1 = 处理/接单    要求订单 status=2；堂食/自取(shoppingWay=1) → 3
+ *     2 = 完成(自取)   要求 status=3 → 6
+ *     3 = 标记配送     要求 status=4 → 5
+ *     4 = 完成(配送)   要求 status=5 → 6
+ *     5 = 收银台结算   **已注释停用**
+ *   前置状态不匹配会抛业务异常（如「该订单状态非待处理，不允许修改」）
+ */
+export type OrderStatusAction = 1 | 2 | 3 | 4
+
+export const updateOrderStatus = (id: number, flag: OrderStatusAction) =>
+  http.post<unknown, null>('/rest/merchant/order/updateStatus', { id, flag })
+
+/**
+ * 出品状态流转（批次 D 新增接口）
+ * 1=待制作 2=出品中 3=已出品；仅改该字段（MP 非空更新，不动订单其它资料）
+ */
+export const updateProductionStatus = (id: number, productionStatus: 1 | 2 | 3) =>
+  http.post<unknown, null>('/rest/merchant/order/updateProductionStatus', { id, productionStatus })
+
+/** 出品状态文案 */
+export function productionStatusText(v: number | null | undefined): string {
+  switch (v) {
+    case 1: return '待制作'
+    case 2: return '出品中'
+    case 3: return '已出品'
     default: return '—'
   }
 }

@@ -324,6 +324,42 @@ public class MerchantOrderController {
         return basicResult;
     }
 
+    @ApiOperation(value = "修改订单出品状态（批次D：支撑 W-11「出品中」标签页与 W-14「出品进度看板」）")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "id", value = "订单表主键id", required = true, paramType = "query", dataType = "int"),
+            @ApiImplicitParam(name = "productionStatus", value = "出品状态 1=待制作 2=出品中 3=已出品", required = true, paramType = "query", dataType = "int"),
+    })
+    @PostMapping(value = "/updateProductionStatus")
+    public BasicResult updateProductionStatus(@RequestBody @Validated(value = {}) OrderParam param){
+        BasicResult basicResult = new BasicResult();
+        //获取当前登录用户绑定的门店编号
+        Merchant loginMerchant = merchantSessionManager.getSession(TokenUtil.getToken());
+
+        if (param.getId() == null) {
+            throw new StoneCustomerException("订单id不能为空");
+        }
+        Integer target = param.getProductionStatus();
+        if (target == null || target < 1 || target > 3) {
+            throw new StoneCustomerException("出品状态取值需为 1=待制作 / 2=出品中 / 3=已出品");
+        }
+        Order dbOrder = orderService.getById(param.getId());
+        if (dbOrder == null) {
+            throw new StoneCustomerException("该订单不存在");
+        } else if (loginMerchant.getShopId() != dbOrder.getShopId()) {
+            throw new StoneCustomerException("您没有权限操作该订单");
+        }
+        // 仅改出品状态一个字段（MP 非空更新，不动订单其它资料）
+        Order upd = new Order();
+        upd.setId(dbOrder.getId());
+        upd.setProductionStatus(target);
+        orderService.updateById(upd);
+
+        basicResult.setSuccess(true);
+        basicResult.setCode(BasicResultCode.SUCCESS);
+        basicResult.setMessage("修改成功");
+        return basicResult;
+    }
+
     @ApiOperation(value = "今日订单列表")
     @ApiImplicitParams({
             @ApiImplicitParam(name = "id", value = "订单表主键id", required = false, paramType = "query", dataType = "int"),

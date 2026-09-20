@@ -110,6 +110,14 @@ public class Order {
 
     private Boolean isPrinted;
 
+    /**
+     * 出品状态 1=待制作 2=出品中 3=已出品
+     * <p>批次 D（2026-09-20）新增，服务需求书 M-04「出品进度跟踪」：
+     * 支撑 W-11「出品中」标签页与 W-14「出品进度看板」三列。
+     * 列定义见 sql/mysql/cloudrun/20-订单出品状态-加列.sql
+     */
+    private Integer productionStatus;
+
     private Integer queueNo;
 
     private Integer fullReductionRuleId;

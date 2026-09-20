@@ -58,6 +58,10 @@ public class OrderParam extends Order {
     @ApiModelProperty(notes = "主键id")
     private Integer id;
 
+    /** 出品状态 1=待制作 2=出品中 3=已出品（批次D 2026-09-20 新增，服务 M-04 出品进度跟踪） */
+    @ApiModelProperty(notes = "出品状态 1=待制作 2=出品中 3=已出品")
+    private Integer productionStatus;
+
     /**
      * 审核状态(1=通过 2=不通过)
      */
