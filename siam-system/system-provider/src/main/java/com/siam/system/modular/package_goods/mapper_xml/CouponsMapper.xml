@@ -15,6 +15,9 @@
     <result column="valid_days" property="validDays" jdbcType="INTEGER" />
     <result column="is_delete" property="isDelete" jdbcType="BIT" />
     <result column="source" property="source" jdbcType="INTEGER" />
+    <result column="issue_type" property="issueType" jdbcType="INTEGER" />
+    <result column="notice" property="notice" jdbcType="VARCHAR" />
+    <result column="target_type" property="targetType" jdbcType="INTEGER" />
     <result column="create_time" property="createTime" jdbcType="TIMESTAMP" />
     <result column="update_time" property="updateTime" jdbcType="TIMESTAMP" />
   </resultMap>
@@ -32,6 +35,9 @@
     <result column="valid_days" property="validDays" jdbcType="INTEGER" />
     <result column="is_delete" property="isDelete" jdbcType="BIT" />
     <result column="source" property="source" jdbcType="INTEGER" />
+    <result column="issue_type" property="issueType" jdbcType="INTEGER" />
+    <result column="notice" property="notice" jdbcType="VARCHAR" />
+    <result column="target_type" property="targetType" jdbcType="INTEGER" />
     <result column="create_time" property="createTime" jdbcType="TIMESTAMP" />
     <result column="update_time" property="updateTime" jdbcType="TIMESTAMP" />
   </resultMap>
@@ -95,8 +101,8 @@
   </sql>
   <sql id="Base_Column_List" >
     id, name, preferential_type, discount_amount, limited_price, reduced_price, description,
-    valid_type, valid_start_time, valid_end_time, valid_days, is_delete, source, create_time,
-    update_time
+    valid_type, valid_start_time, valid_end_time, valid_days, is_delete, source, issue_type,
+    notice, target_type, create_time, update_time
   </sql>
   <select id="selectByExample" resultMap="BaseResultMap" parameterType="com.siam.system.modular.package_goods.model.example.CouponsExample" >
     select
@@ -171,6 +177,15 @@
       <if test="source != null" >
         source,
       </if>
+      <if test="issueType != null" >
+        issue_type,
+      </if>
+      <if test="notice != null" >
+        notice,
+      </if>
+      <if test="targetType != null" >
+        target_type,
+      </if>
       <if test="createTime != null" >
         create_time,
       </if>
@@ -217,6 +232,15 @@
       </if>
       <if test="source != null" >
         #{source,jdbcType=INTEGER},
+      </if>
+      <if test="issueType != null" >
+        #{issueType,jdbcType=INTEGER},
+      </if>
+      <if test="notice != null" >
+        #{notice,jdbcType=VARCHAR},
+      </if>
+      <if test="targetType != null" >
+        #{targetType,jdbcType=INTEGER},
       </if>
       <if test="createTime != null" >
         #{createTime,jdbcType=TIMESTAMP},
@@ -345,6 +369,15 @@
       <if test="source != null" >
         source = #{source,jdbcType=INTEGER},
       </if>
+      <if test="issueType != null" >
+        issue_type = #{issueType,jdbcType=INTEGER},
+      </if>
+      <if test="notice != null" >
+        notice = #{notice,jdbcType=VARCHAR},
+      </if>
+      <if test="targetType != null" >
+        target_type = #{targetType,jdbcType=INTEGER},
+      </if>
       <if test="createTime != null" >
         create_time = #{createTime,jdbcType=TIMESTAMP},
       </if>
@@ -368,6 +401,9 @@
       valid_days = #{validDays,jdbcType=INTEGER},
       is_delete = #{isDelete,jdbcType=BIT},
       source = #{source,jdbcType=INTEGER},
+      issue_type = #{issueType,jdbcType=INTEGER},
+      notice = #{notice,jdbcType=VARCHAR},
+      target_type = #{targetType,jdbcType=INTEGER},
       create_time = #{createTime,jdbcType=TIMESTAMP},
       update_time = #{updateTime,jdbcType=TIMESTAMP}
     where id = #{id,jdbcType=INTEGER}

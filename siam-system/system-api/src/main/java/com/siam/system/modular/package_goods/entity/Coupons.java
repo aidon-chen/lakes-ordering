@@ -80,6 +80,15 @@ public class Coupons {
 
     private Integer source;
 
+    //券型 1=统一发放 2=自行领取
+    private Integer issueType;
+
+    //使用须知（客户端展示）
+    private String notice;
+
+    //发放对象 1=全部用户 2=新用户 3=会员（仅统一发放券型使用）
+    private Integer targetType;
+
     private Date createTime;
 
     private Date updateTime;

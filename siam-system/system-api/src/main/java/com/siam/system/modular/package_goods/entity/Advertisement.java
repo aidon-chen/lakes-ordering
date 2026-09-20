@@ -35,6 +35,15 @@ public class Advertisement {
     @ApiModelProperty(notes = "点击轮播图跳转的链接")
     private String imageLinkUrl;
 
+    @ApiModelProperty(notes = "活动开始时间")
+    private Date startTime;
+
+    @ApiModelProperty(notes = "活动结束时间")
+    private Date endTime;
+
+    @ApiModelProperty(notes = "展示频次 1=每次进入 2=每天一次 3=仅一次")
+    private Integer popupFrequency;
+
     @ApiModelProperty(notes = "创建时间")
     private Date createTime;
 
@@ -95,6 +104,30 @@ public class Advertisement {
 
     public void setImageLinkUrl(String imageLinkUrl) {
         this.imageLinkUrl = imageLinkUrl == null ? null : imageLinkUrl.trim();
+    }
+
+    public Date getStartTime() {
+        return startTime;
+    }
+
+    public void setStartTime(Date startTime) {
+        this.startTime = startTime;
+    }
+
+    public Date getEndTime() {
+        return endTime;
+    }
+
+    public void setEndTime(Date endTime) {
+        this.endTime = endTime;
+    }
+
+    public Integer getPopupFrequency() {
+        return popupFrequency;
+    }
+
+    public void setPopupFrequency(Integer popupFrequency) {
+        this.popupFrequency = popupFrequency;
     }
 
     public Date getCreateTime() {

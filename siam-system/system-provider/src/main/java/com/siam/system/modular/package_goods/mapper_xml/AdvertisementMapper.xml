@@ -9,6 +9,9 @@
     <result column="type" property="type" jdbcType="INTEGER" />
     <result column="sort_number" property="sortNumber" jdbcType="INTEGER" />
     <result column="image_link_url" property="imageLinkUrl" jdbcType="VARCHAR" />
+    <result column="start_time" property="startTime" jdbcType="TIMESTAMP" />
+    <result column="end_time" property="endTime" jdbcType="TIMESTAMP" />
+    <result column="popup_frequency" property="popupFrequency" jdbcType="INTEGER" />
     <result column="create_time" property="createTime" jdbcType="TIMESTAMP" />
     <result column="update_time" property="updateTime" jdbcType="TIMESTAMP" />
   </resultMap>
@@ -20,6 +23,9 @@
     <result column="type" property="type" jdbcType="INTEGER" />
     <result column="sort_number" property="sortNumber" jdbcType="INTEGER" />
     <result column="image_link_url" property="imageLinkUrl" jdbcType="VARCHAR" />
+    <result column="start_time" property="startTime" jdbcType="TIMESTAMP" />
+    <result column="end_time" property="endTime" jdbcType="TIMESTAMP" />
+    <result column="popup_frequency" property="popupFrequency" jdbcType="INTEGER" />
     <result column="create_time" property="createTime" jdbcType="TIMESTAMP" />
     <result column="update_time" property="updateTime" jdbcType="TIMESTAMP" />
   </resultMap>
@@ -82,8 +88,8 @@
     </where>
   </sql>
   <sql id="Base_Column_List" >
-    id, image_name, image_path, description, type, sort_number, image_link_url, create_time,
-    update_time
+    id, image_name, image_path, description, type, sort_number, image_link_url, start_time,
+    end_time, popup_frequency, create_time, update_time
   </sql>
   <select id="selectByExample" resultMap="BaseResultMap" parameterType="com.siam.system.modular.package_goods.model.example.AdvertisementExample" >
     select
@@ -140,6 +146,15 @@
       <if test="imageLinkUrl != null" >
         image_link_url,
       </if>
+      <if test="startTime != null" >
+        start_time,
+      </if>
+      <if test="endTime != null" >
+        end_time,
+      </if>
+      <if test="popupFrequency != null" >
+        popup_frequency,
+      </if>
       <if test="createTime != null" >
         create_time,
       </if>
@@ -168,6 +183,15 @@
       </if>
       <if test="imageLinkUrl != null" >
         #{imageLinkUrl,jdbcType=VARCHAR},
+      </if>
+      <if test="startTime != null" >
+        #{startTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="endTime != null" >
+        #{endTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="popupFrequency != null" >
+        #{popupFrequency,jdbcType=INTEGER},
       </if>
       <if test="createTime != null" >
         #{createTime,jdbcType=TIMESTAMP},
@@ -254,6 +278,15 @@
       <if test="imageLinkUrl != null" >
         image_link_url = #{imageLinkUrl,jdbcType=VARCHAR},
       </if>
+      <if test="startTime != null" >
+        start_time = #{startTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="endTime != null" >
+        end_time = #{endTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="popupFrequency != null" >
+        popup_frequency = #{popupFrequency,jdbcType=INTEGER},
+      </if>
       <if test="createTime != null" >
         create_time = #{createTime,jdbcType=TIMESTAMP},
       </if>
@@ -271,6 +304,9 @@
       type = #{type,jdbcType=INTEGER},
       sort_number = #{sortNumber,jdbcType=INTEGER},
       image_link_url = #{imageLinkUrl,jdbcType=VARCHAR},
+      start_time = #{startTime,jdbcType=TIMESTAMP},
+      end_time = #{endTime,jdbcType=TIMESTAMP},
+      popup_frequency = #{popupFrequency,jdbcType=INTEGER},
       create_time = #{createTime,jdbcType=TIMESTAMP},
       update_time = #{updateTime,jdbcType=TIMESTAMP}
     where id = #{id,jdbcType=INTEGER}

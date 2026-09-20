@@ -12,6 +12,12 @@
 						<!-- <el-option label="满减优惠券" :value="2"></el-option> -->
 					</el-select>
 				</el-form-item>
+				<el-form-item label="券型" prop="issueType">
+					<el-select v-model="searchMsg.issueType" clearable>
+						<el-option label="统一发放" :value="1"></el-option>
+						<el-option label="自行领取" :value="2"></el-option>
+					</el-select>
+				</el-form-item>
 				<el-form-item>
 					<el-button type="primary" @click="getList(1)">查询</el-button>
 				</el-form-item>
@@ -39,6 +45,22 @@
 			<el-table-column prop="discountAmount" label="折扣额度" :formatter="formatPreferentialType1"></el-table-column>
 			<el-table-column prop="limitedPrice" label="满足价格" :formatter="formatPreferentialType2"></el-table-column>
 			<el-table-column prop="reducedPrice" label="减价额度" :formatter="formatPreferentialType2"></el-table-column>
+			<el-table-column prop="issueType" label="券型">
+				<template scope="scope">
+					<span v-if="scope.row.issueType == 1">统一发放</span>
+					<span v-else>自行领取</span>
+				</template>
+			</el-table-column>
+			<el-table-column prop="targetType" label="发放对象">
+				<template scope="scope">
+					<span v-if="scope.row.issueType != 1">-</span>
+					<span v-else-if="scope.row.targetType == 1">全部用户</span>
+					<span v-else-if="scope.row.targetType == 2">新用户</span>
+					<span v-else-if="scope.row.targetType == 3">会员</span>
+					<span v-else>未指定</span>
+				</template>
+			</el-table-column>
+			<el-table-column prop="notice" label="使用须知" width="190" show-overflow-tooltip></el-table-column>
 			<el-table-column prop="description" label="使用规则描述" width="190"></el-table-column>
 			<el-table-column prop="validType" label="时效">
 				<template scope="scope">
@@ -64,7 +86,7 @@
 					<el-button size="small" @click="handleRelationGoods(scope.row.id)">关联商品</el-button>
 					<el-button size="small" @click="handleEdit(scope.$index, scope.row)">编辑</el-button>
 					<el-button type="danger" size="small" @click="handleDel(scope.row.id)">删除</el-button>
-					<el-button size="small" @click="handleGiveCoupons(scope.row.id)">群发优惠券</el-button>
+					<el-button v-if="scope.row.issueType == 1" size="small" type="primary" plain @click="handleGiveCoupons(scope.row)">发放</el-button>
 				</template>
 				<!-- scope.$index, scope.row -->
 			</el-table-column>
@@ -90,14 +112,30 @@
 					<el-input v-model="editForm.name"></el-input>
 				</el-form-item>
 				<!-- <el-form-item label="优惠类型" prop="preferentialType">
-					<el-radio-group v-model="editForm.preferentialType" size="medium">
-						<el-radio-button label="折扣" value="1"></el-radio-button>
-						<el-radio-button label="满减" value="2"></el-radio-button>
-					</el-radio-group>				
-				</el-form-item>						 -->
-				<el-form-item label="折扣额度（0折=0、5折=0.5）" prop="discountAmount">
-					<el-input type="number" v-model="editForm.discountAmount"></el-input>
-				</el-form-item>				
+						<el-radio-group v-model="editForm.preferentialType" size="medium">
+							<el-radio-button label="折扣" value="1"></el-radio-button>
+							<el-radio-button label="满减" value="2"></el-radio-button>
+						</el-radio-group>				
+					</el-form-item>						 -->
+					<el-form-item label="券型" prop="issueType">
+						<el-radio-group v-model="editForm.issueType" size="medium">
+							<el-radio-button :label="1">统一发放</el-radio-button>
+							<el-radio-button :label="2">自行领取</el-radio-button>
+						</el-radio-group>
+					</el-form-item>
+					<el-form-item v-if="editForm.issueType == 1" label="发放对象" prop="targetType">
+						<el-select v-model="editForm.targetType" placeholder="请选择发放对象">
+							<el-option label="全部用户" :value="1"></el-option>
+							<el-option label="新用户" :value="2"></el-option>
+							<el-option label="会员" :value="3"></el-option>
+						</el-select>
+					</el-form-item>
+					<el-form-item label="使用须知" prop="notice">
+						<el-input type="textarea" v-model="editForm.notice" :rows="3" placeholder="客户端展示的使用须知"></el-input>
+					</el-form-item>
+					<el-form-item label="折扣额度（0折=0、5折=0.5）" prop="discountAmount">
+						<el-input type="number" v-model="editForm.discountAmount"></el-input>
+					</el-form-item>				
 				<!-- <el-form-item label="满足价格" prop="limitedPrice">
 					<el-input v-model="editForm.limitedPrice"></el-input>
 				</el-form-item>
@@ -259,6 +297,9 @@
 				editFormRules: {
 					name: [{ required: true, message: '请输入优惠券名称', trigger: 'blur' }],
 					preferentialType: [{ required: true, message: '请输入优惠类型', trigger: 'blur' }],
+					issueType: [{ required: true, message: '请选择券型', trigger: 'change' }],
+					targetType: [{ required: false, message: '请选择发放对象', trigger: 'change' }],
+					notice: [{ required: true, message: '请输入使用须知', trigger: 'blur' }],
 					discountAmount: [{ required: true, message: '请输入折扣额度', trigger: 'blur' }],
 					limitedPrice: [{ required: true, message: '请输入满足价格', trigger: 'blur' }],
 					reducedPrice: [{ required: true, message: '请输入减价额度', trigger: 'blur' }],
@@ -272,6 +313,9 @@
 				editForm: {
 					name: '',
 					preferentialType: '',
+					issueType: 2, //券型 1=统一发放 2=自行领取
+					targetType: '',
+					notice: '',
 					discountAmount: '',
 					limitedPrice: '',
 					reducedPrice: '',
@@ -426,24 +470,27 @@
 					)
 				}).catch(() => {});
 			},
-			handleGiveCoupons (id) { // 派发优惠券
+			handleGiveCoupons (row) { // 发放（统一发放券型：按券配置的发放对象群发）
 					let vue = this;
-					vue.$http.post(vue, '/rest/merchant/couponsMemberRelation/giveCoupons', {"couponsId" : id},
-						function(vue, data) {
-							vue.$message({
-								showClose: true,
-								message: data.message,
-								type: 'success'
-							});
-							vue.getList()
-						}, function(error, data) {
-							vue.$message({
-								showClose: true,
-								message: data.message,
-								type: 'error'
-							});
-						}
-					)
+					let targetText = row.targetType == 2 ? '新用户' : (row.targetType == 3 ? '会员' : '全部用户');
+					vue.$confirm('确认向【' + targetText + '】发放优惠券「' + row.name + '」吗?', '发放确认', { type: 'warning' }).then(() => {
+						vue.$http.post(vue, '/rest/merchant/couponsMemberRelation/giveCoupons', {"couponsId" : row.id},
+							function(vue, data) {
+								vue.$message({
+									showClose: true,
+									message: data.message,
+									type: 'success'
+								});
+								vue.getList()
+							}, function(error, data) {
+								vue.$message({
+									showClose: true,
+									message: data.message,
+									type: 'error'
+								});
+							}
+						)
+					}).catch(() => {});
 
 				// vue.$http.post(vue, url, param,
 				// 	(vue, data) => {
@@ -476,6 +523,9 @@
 						id: row.id,
 						name: row.name,
 						preferentialType: row.preferentialType == 1 ? '折扣' : '满减',
+						issueType: row.issueType || 2,
+						targetType: row.targetType || '',
+						notice: row.notice || '',
 						discountAmount: row.preferentialType == 1 ? row.discountAmount : '',
 						limitedPrice: row.preferentialType == 2 ? row.limitedPrice : '',
 						reducedPrice: row.preferentialType == 2 ? row.reducedPrice : '',
@@ -489,6 +539,9 @@
 					this.editForm = {
 						name: '',
 						preferentialType: '',
+						issueType: 2,
+						targetType: '',
+						notice: '',
 						discountAmount: '',
 						limitedPrice: '',
 						reducedPrice: '',
@@ -507,6 +560,9 @@
 						id: row.id,
 						name: row.name,
 						preferentialType: row.preferentialType == 1 ? '折扣' : '满减',
+						issueType: row.issueType || 2,
+						targetType: row.targetType || '',
+						notice: row.notice || '',
 						discountAmount: row.preferentialType == 1 ? row.discountAmount : '',
 						limitedPrice: row.preferentialType == 2 ? row.limitedPrice : '',
 						reducedPrice: row.preferentialType == 2 ? row.reducedPrice : '',
@@ -520,6 +576,9 @@
 					this.editForm = {
 						name: '',
 						preferentialType: '',
+						issueType: 2,
+						targetType: '',
+						notice: '',
 						discountAmount: '',
 						limitedPrice: '',
 						reducedPrice: '',
@@ -571,6 +630,19 @@
 
 						//优惠券发放来源为商家中心
 						param.source = 1;
+
+						//M-04：统一发放券型必须指定发放对象
+						if (param.issueType == 1 && !param.targetType) {
+							vue.$message({
+								showClose: true,
+								message: '统一发放的优惠券必须选择发放对象',
+								type: 'error'
+							});
+							return false
+						}
+						if (param.issueType != 1) {
+							delete param.targetType;
+						}
 
 						param.preferentialType = 1;
 						// param.preferentialType = (param.preferentialType == '折扣') ? 1 : 2;
