@@ -153,3 +153,33 @@ export function productionStatusText(v: number | null | undefined): string {
     default: return '—'
   }
 }
+
+/* ==================== W-12 / W-14 订单明细 ==================== */
+
+/** 订单明细行（/rest/merchant/orderDetail/list 返回；已核 ApiImplicitParam 字段清单） */
+export interface OrderDetailRow {
+  id: number
+  orderId: number
+  goodsId: number | null
+  goodsName: string | null
+  /** 规格 JSON 字符串 */
+  specList: string | null
+  goodsSpecs: string | null
+  price: number | null
+  number: number | null
+  subtotal: number | null
+  remark: string | null
+  status: number | null
+}
+
+/**
+ * 订单明细列表（按 orderId 过滤，不分页）
+ * ⚠️ 注意：该端点按 orderId 查，**未见 shopId 归属校验**（读实现只有分页查询）
+ *    → 属既有权限面，收银端只用自己店的订单 id，不放大范围。
+ */
+export const fetchOrderDetails = (orderId: number) =>
+  http.post<unknown, { records: OrderDetailRow[] }>('/rest/merchant/orderDetail/list', {
+    orderId,
+    pageNo: -1,
+    pageSize: 200
+  })
