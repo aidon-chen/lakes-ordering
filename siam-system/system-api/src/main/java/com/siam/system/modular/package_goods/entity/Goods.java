@@ -57,6 +57,15 @@ public class Goods {
     @ApiModelProperty(notes = "库存")
     private Integer stock;
 
+    @ApiModelProperty(notes = "按瓶库存（A-05，人工维护，无自动扣减）")
+    private Integer bottleStock;
+
+    @ApiModelProperty(notes = "按杯库存（A-05，人工维护，无自动扣减）")
+    private Integer cupStock;
+
+    @ApiModelProperty(notes = "库存预警阈值（仅前端标色：充足/预警/售罄）")
+    private Integer stockWarningThreshold;
+
     @ApiModelProperty(notes = "是否热门")
     private Boolean isHot;
 
@@ -184,6 +193,30 @@ public class Goods {
 
     public void setStock(Integer stock) {
         this.stock = stock;
+    }
+
+    public Integer getBottleStock() {
+        return bottleStock;
+    }
+
+    public void setBottleStock(Integer bottleStock) {
+        this.bottleStock = bottleStock;
+    }
+
+    public Integer getCupStock() {
+        return cupStock;
+    }
+
+    public void setCupStock(Integer cupStock) {
+        this.cupStock = cupStock;
+    }
+
+    public Integer getStockWarningThreshold() {
+        return stockWarningThreshold;
+    }
+
+    public void setStockWarningThreshold(Integer stockWarningThreshold) {
+        this.stockWarningThreshold = stockWarningThreshold;
     }
 
     public Boolean getIsHot() {

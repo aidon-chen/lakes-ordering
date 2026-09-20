@@ -37,6 +37,8 @@ public interface MenuMapper extends BaseMapper<Menu> {
             "<if test=\"menu.name != null and menu.name !=''\"> AND m.name like '%${menu.name}%' </if>" +
             "<if test=\"menu.sortNumber != null\"> AND m.sort_number = #{menu.sortNumber} </if>" +
             "<if test=\"menu.description != null and menu.description != ''\"> AND m.description like '%${menu.description}' </if>" +
+            //A-05 分类「可否点单」：C 端菜单仅返回可点单分类（NULL 视为可点单，兼容历史数据）
+            " AND (m.is_can_order IS NULL OR m.is_can_order = 1)" +
             "</where> order by m.id desc" +
             "</script>")
     List<Map<String, Object>> getList(@Param("menu") Menu menu);
@@ -52,6 +54,8 @@ public interface MenuMapper extends BaseMapper<Menu> {
             "<if test=\"menu.name != null and menu.name !=''\"> AND m.name like '%${menu.name}%' </if>" +
             "<if test=\"menu.sortNumber != null\"> AND m.sort_number = #{menu.sortNumber} </if>" +
             "<if test=\"menu.description != null and menu.description != ''\"> AND m.description like '%${menu.description}' </if>" +
+            //A-05 分类「可否点单」：C 端菜单仅返回可点单分类（NULL 视为可点单，兼容历史数据）
+            " AND (m.is_can_order IS NULL OR m.is_can_order = 1)" +
             "</where> order by m.id desc" +
             "</script>")
     List<Map<String, Object>> getListJoinGoods(@Param("menu") Menu menu);

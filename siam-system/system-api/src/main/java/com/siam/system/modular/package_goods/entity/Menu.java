@@ -42,6 +42,9 @@ public class Menu {
     @ApiModelProperty(notes = "排序号")
     private Integer sortNumber;
 
+    @ApiModelProperty(notes = "分类是否可点单（A-05：1=可点单 0=不可点单；C 端菜单接口按此过滤）")
+    private Integer isCanOrder;
+
     @ApiModelProperty(notes = "创建时间")
     private Date createTime;
 
@@ -94,6 +97,14 @@ public class Menu {
 
     public void setSortNumber(Integer sortNumber) {
         this.sortNumber = sortNumber;
+    }
+
+    public Integer getIsCanOrder() {
+        return isCanOrder;
+    }
+
+    public void setIsCanOrder(Integer isCanOrder) {
+        this.isCanOrder = isCanOrder;
     }
 
     public Date getCreateTime() {

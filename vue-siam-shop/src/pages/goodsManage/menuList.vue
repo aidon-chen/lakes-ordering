@@ -28,6 +28,13 @@
 				</template>		
 			</el-table-column> -->
 			<el-table-column prop="name" label="分类名称"></el-table-column>
+			<!-- 可否点单（A-05）：开关即时保存，C 端菜单接口按 is_can_order 过滤，即时生效 -->
+			<el-table-column label="可否点单" width="110">
+				<template slot-scope="scope">
+					<el-switch v-model="scope.row.isCanOrder" :active-value="1" :inactive-value="0"
+						active-color="#13ce66" @change="changeIsCanOrder(scope.row)"></el-switch>
+				</template>
+			</el-table-column>
 			<!-- <el-table-column prop="isDisabled" label="状态" width="100" :formatter="formatType"></el-table-column> -->
 			<el-table-column prop="detail" label="描述"></el-table-column>
 			<el-table-column prop="createTime" label="创建时间" :formatter="formatTime"></el-table-column>
@@ -159,6 +166,28 @@
 						});
 					}
 				)
+			},
+			// 可否点单开关（A-05-1）：变更即时保存，C 端菜单按 is_can_order 过滤，无需等缓存刷新
+			changeIsCanOrder(row) {
+				let vue = this;
+				let target = row.isCanOrder;
+				vue.$http.put(vue, '/rest/merchant/menu/update', { id: row.id, isCanOrder: target },
+					(vue, data) => {
+						vue.$message({
+							showClose: true,
+							message: '已' + (target === 1 ? '开启' : '关闭') + '「' + row.name + '」点单，C 端即时生效',
+							type: 'success'
+						});
+					}, (error, data) => {
+						//保存失败回滚开关状态
+						row.isCanOrder = target === 1 ? 0 : 1;
+						vue.$message({
+							showClose: true,
+							message: data.message,
+							type: 'error'
+						});
+					}
+				);
 			},
 			handleDel (id) { // 删除
 				this.$confirm('确认删除该记录吗?', '提示', {

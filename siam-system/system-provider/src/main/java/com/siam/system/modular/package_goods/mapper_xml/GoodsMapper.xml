@@ -11,6 +11,9 @@
     <result column="detail_images" property="detailImages" jdbcType="VARCHAR" />
     <result column="price" property="price" jdbcType="DECIMAL" />
     <result column="stock" property="stock" jdbcType="INTEGER" />
+    <result column="bottle_stock" property="bottleStock" jdbcType="INTEGER" />
+    <result column="cup_stock" property="cupStock" jdbcType="INTEGER" />
+    <result column="stock_warning_threshold" property="stockWarningThreshold" jdbcType="INTEGER" />
     <result column="is_hot" property="isHot" jdbcType="BIT" />
     <result column="is_new" property="isNew" jdbcType="BIT" />
     <result column="status" property="status" jdbcType="INTEGER" />
@@ -39,6 +42,9 @@
     <result column="detail_images" property="detailImages" jdbcType="VARCHAR" />
     <result column="price" property="price" jdbcType="DECIMAL" />
     <result column="stock" property="stock" jdbcType="INTEGER" />
+    <result column="bottle_stock" property="bottleStock" jdbcType="INTEGER" />
+    <result column="cup_stock" property="cupStock" jdbcType="INTEGER" />
+    <result column="stock_warning_threshold" property="stockWarningThreshold" jdbcType="INTEGER" />
     <result column="is_hot" property="isHot" jdbcType="BIT" />
     <result column="is_new" property="isNew" jdbcType="BIT" />
     <result column="status" property="status" jdbcType="INTEGER" />
@@ -116,7 +122,8 @@
     </where>
   </sql>
   <sql id="Base_Column_List" >
-    id, shop_id, name, main_image, sub_images, detail, detail_images, price, stock, is_hot,
+    id, shop_id, name, main_image, sub_images, detail, detail_images, price, stock,
+    bottle_stock, cup_stock, stock_warning_threshold, is_hot,
     is_new, status, is_sale, sale_price, monthly_sales, total_sales, total_comments,
     preferential_name, packing_charges, product_time, exchange_points, sort_number, create_time,
     update_time
@@ -188,6 +195,15 @@
       <if test="record.stock != null" >
         stock = #{record.stock,jdbcType=INTEGER},
       </if>
+      <if test="record.bottleStock != null" >
+        bottle_stock = #{record.bottleStock,jdbcType=INTEGER},
+      </if>
+      <if test="record.cupStock != null" >
+        cup_stock = #{record.cupStock,jdbcType=INTEGER},
+      </if>
+      <if test="record.stockWarningThreshold != null" >
+        stock_warning_threshold = #{record.stockWarningThreshold,jdbcType=INTEGER},
+      </if>
       <if test="record.isHot != null" >
         is_hot = #{record.isHot,jdbcType=BIT},
       </if>
@@ -249,6 +265,9 @@
     detail_images = #{record.detailImages,jdbcType=VARCHAR},
     price = #{record.price,jdbcType=DECIMAL},
     stock = #{record.stock,jdbcType=INTEGER},
+    bottle_stock = #{record.bottleStock,jdbcType=INTEGER},
+    cup_stock = #{record.cupStock,jdbcType=INTEGER},
+    stock_warning_threshold = #{record.stockWarningThreshold,jdbcType=INTEGER},
     is_hot = #{record.isHot,jdbcType=BIT},
     is_new = #{record.isNew,jdbcType=BIT},
     status = #{record.status,jdbcType=INTEGER},
@@ -294,6 +313,15 @@
       </if>
       <if test="stock != null" >
         stock = #{stock,jdbcType=INTEGER},
+      </if>
+      <if test="bottleStock != null" >
+        bottle_stock = #{bottleStock,jdbcType=INTEGER},
+      </if>
+      <if test="cupStock != null" >
+        cup_stock = #{cupStock,jdbcType=INTEGER},
+      </if>
+      <if test="stockWarningThreshold != null" >
+        stock_warning_threshold = #{stockWarningThreshold,jdbcType=INTEGER},
       </if>
       <if test="isHot != null" >
         is_hot = #{isHot,jdbcType=BIT},
@@ -353,6 +381,9 @@
       detail_images = #{detailImages,jdbcType=VARCHAR},
       price = #{price,jdbcType=DECIMAL},
       stock = #{stock,jdbcType=INTEGER},
+      bottle_stock = #{bottleStock,jdbcType=INTEGER},
+      cup_stock = #{cupStock,jdbcType=INTEGER},
+      stock_warning_threshold = #{stockWarningThreshold,jdbcType=INTEGER},
       is_hot = #{isHot,jdbcType=BIT},
       is_new = #{isNew,jdbcType=BIT},
       status = #{status,jdbcType=INTEGER},
