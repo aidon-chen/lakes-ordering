@@ -29,9 +29,11 @@ import com.siam.system.modular.package_order.model.vo.internal.PointsMallOrderVo
 import com.siam.system.modular.package_order.service.*;
 import com.siam.system.modular.package_order.service.internal.*;
 import com.siam.system.modular.package_user.auth.cache.MemberSessionManager;
+import com.siam.system.modular.package_user.auth.cache.MerchantSessionManager;
 import com.siam.system.modular.package_user.entity.Member;
 import com.siam.system.modular.package_user.entity.MemberBillingRecord;
 import com.siam.system.modular.package_user.entity.MemberTradeRecord;
+import com.siam.system.modular.package_user.entity.Merchant;
 import com.siam.system.modular.package_user.model.example.MemberBillingRecordExample;
 import com.siam.system.util.TokenUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -108,6 +110,9 @@ public class PointsMallOrderServiceImpl extends ServiceImpl<PointsMallOrderMappe
 
     @Autowired
     private MemberSessionManager memberSessionManager;
+
+    @Autowired
+    private MerchantSessionManager merchantSessionManager;
 
     @Autowired
     private CommonService commonService;
@@ -964,6 +969,21 @@ public class PointsMallOrderServiceImpl extends ServiceImpl<PointsMallOrderMappe
     public int selectCountCompleted(PointsMallOrderParam order,Date startTime, Date endTime) {
         Integer integer = pointsMallOrderMapper.selectCountCompleted(order, startTime, endTime);
         return integer!=null ? integer : 0;
+    }
+
+    @Override
+    public List<Map<String, Object>> selectRevenueTrend(Date startTime, Date endTime, String dateFormat) {
+        return pointsMallOrderMapper.selectRevenueTrend(startTime, endTime, dateFormat);
+    }
+
+    @Override
+    public List<Map<String, Object>> selectRevenuePaymentDistribution(Date startTime, Date endTime) {
+        return pointsMallOrderMapper.selectRevenuePaymentDistribution(startTime, endTime);
+    }
+
+    @Override
+    public List<Map<String, Object>> selectRevenueTopGoods(Date startTime, Date endTime) {
+        return pointsMallOrderMapper.selectRevenueTopGoods(startTime, endTime);
     }
 
     @Override
@@ -2661,6 +2681,39 @@ public class PointsMallOrderServiceImpl extends ServiceImpl<PointsMallOrderMappe
         }
         pointsMallOrderMapper.updateByPrimaryKeySelective(updatePointsMallOrder);
 
+    }
+
+    @Override
+    public void confirmPickupByMerchant(PointsMallOrderParam param) {
+        //商家端核销（管理端 A-06-4 先落地；收银端 收银-M-03 复用本方法）：
+        //与顾客自助「确认取货」共用同一状态机（4=待自提 → 6=已完成），并写 verifier_id 留痕
+        Merchant loginMerchant = merchantSessionManager.getSession(TokenUtil.getToken());
+        if (loginMerchant == null) {
+            throw new StoneCustomerException("您暂未登录，请登陆后查看");
+        }
+
+        PointsMallOrder dbPointsMallOrder = pointsMallOrderMapper.selectById(param.getId());
+        if (dbPointsMallOrder == null) {
+            throw new StoneCustomerException("该订单不存在");
+        }
+
+        Integer status = dbPointsMallOrder.getStatus();
+        //幂等：已完成直接返回成功，避免重复点击报错
+        if (status != null && status == PointsMallOrder.STATUS_OF_COMPLETED) {
+            return;
+        }
+        if (status == null || status != PointsMallOrder.STATUS_OF_WAIT_DELIVERY) {
+            throw new StoneCustomerException("该订单当前状态不可核销，仅「待自提」订单可核销");
+        }
+
+        PointsMallOrder updatePointsMallOrder = new PointsMallOrder();
+        updatePointsMallOrder.setId(dbPointsMallOrder.getId());
+        updatePointsMallOrder.setStatus(PointsMallOrder.STATUS_OF_COMPLETED);
+        updatePointsMallOrder.setOrderCompletionTime(new Date());
+        updatePointsMallOrder.setVerifyTime(new Date());
+        updatePointsMallOrder.setVerifierId(loginMerchant.getId());
+        updatePointsMallOrder.setUpdateTime(new Date());
+        pointsMallOrderMapper.updateByPrimaryKeySelective(updatePointsMallOrder);
     }
 
     @Override

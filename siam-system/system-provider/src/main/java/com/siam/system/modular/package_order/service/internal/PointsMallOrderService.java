@@ -128,6 +128,21 @@ public interface PointsMallOrderService extends IService<PointsMallOrder> {
      */
     int selectCountCompleted(PointsMallOrderParam order,Date startTime, Date endTime);
 
+    /**
+     * A-07 营收看板 - 商城自提单：营业额/订单量趋势（按日/周/月聚合）
+     */
+    List<Map<String, Object>> selectRevenueTrend(Date startTime, Date endTime, String dateFormat);
+
+    /**
+     * A-07 营收看板 - 商城自提单：支付方式分布
+     */
+    List<Map<String, Object>> selectRevenuePaymentDistribution(Date startTime, Date endTime);
+
+    /**
+     * A-07 营收看板 - 商城自提单：商品销售 TOP10
+     */
+    List<Map<String, Object>> selectRevenueTopGoods(Date startTime, Date endTime);
+
     boolean getIsAllowApplyRefund(PointsMallOrderParam order);
 
     boolean getIsAllowApplyAfterSales(PointsMallOrderParam order);
@@ -185,6 +200,12 @@ public interface PointsMallOrderService extends IService<PointsMallOrder> {
     void returnGoodsWithRefund(PointsMallOrderParam param);
 
     void confirmReceipt(PointsMallOrderParam param);
+
+    /**
+     * 商家端自提核销（管理端 A-06-4 / 收银端 收银-M-03 共用）
+     * 状态机：待自提(4) → 已完成(6)，写 verify_time + verifier_id(商家 id)；幂等（已完成直接返回）
+     */
+    void confirmPickupByMerchant(PointsMallOrderParam param);
 
     void delete(PointsMallOrderParam param);
 
