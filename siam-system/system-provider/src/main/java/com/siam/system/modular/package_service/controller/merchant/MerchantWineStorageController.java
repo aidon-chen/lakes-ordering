@@ -43,6 +43,18 @@ public class MerchantWineStorageController {
     }
 
     /**
+     * 存酒列表（W-18 存酒列表与取酒核销）
+     *
+     * <p>按登录商家所在门店限定；支持「存酒码」模糊、「顾客手机号」精确筛选。
+     * 四态口径与顾客侧 C-16 完全一致（存续中 / 将过期 / 已过期 / 已取完），
+     * 并额外填充会员姓名与**脱敏**手机号供列表「顾客」列展示。
+     */
+    @PostMapping(value = "/list")
+    public BasicResult list(@RequestBody(required = false) WineStorageParam param) {
+        return BasicResult.success(wineStorageService.listByShop(loginMerchant().getShopId(), param));
+    }
+
+    /**
      * 录入存酒：手机号定位会员 → 生成唯一 4 位存酒码 → 有效期默认 90 天
      */
     @Log(module = Log.MODULE_WINE_STORAGE, moduleName = "存酒", action = "录入存酒")

@@ -5323,6 +5323,7 @@ CREATE TABLE `tb_wine_storage_record` (
   `remark` varchar(200) DEFAULT NULL COMMENT '备注',
   `take_time` datetime DEFAULT NULL COMMENT '取酒时间',
   `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime DEFAULT NULL COMMENT '修改时间',
   PRIMARY KEY (`id`),
   KEY `idx_storage` (`storage_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='取酒记录表';

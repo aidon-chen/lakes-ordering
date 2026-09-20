@@ -25,6 +25,15 @@ public interface WineStorageService {
     WineStorageVo detailByMember(Integer memberId, Long id);
 
     /**
+     * 商家侧存酒列表（W-18 存酒列表与取酒核销）
+     *
+     * <p>复用顾客侧的四态口径与排序；**按 shopId 限定本门店**（顾客侧只按 memberId）。
+     * 支持筛选：storageCode（精确/模糊）、memberPhone（精确定位会员）。
+     * 同时填充 memberName / memberPhone（脱敏），供列表「顾客」列展示。
+     */
+    List<WineStorageVo> listByShop(Integer shopId, WineStorageParam param);
+
+    /**
      * 商家录入存酒（预留接口，本批无商家端 UI）
      * memberPhone 定位会员 → 生成唯一 4 位存酒码 → storage_date=今天，expire_date=今天+expireDays(默认 90)
      *

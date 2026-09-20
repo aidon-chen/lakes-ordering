@@ -121,7 +121,82 @@ public class WineStorageServiceImpl implements WineStorageService {
         return toVo(ws, shopNames);
     }
 
-    /* ==================== 商家侧（预留，本批无 UI） ==================== */
+    /* ==================== 商家侧（W-17 登记 / W-18 列表与取酒核销） ==================== */
+
+    @Override
+    public List<WineStorageVo> listByShop(Integer shopId, WineStorageParam param) {
+        if (shopId == null) {
+            throw new StoneCustomerException("门店信息缺失");
+        }
+        // 惰性过期：与顾客侧同口径，查询前先把过期但仍标为在存(1)的记录置为已过期(3)
+        wineStorageMapper.expireOutdated();
+
+        QueryWrapper<WineStorage> qw = new QueryWrapper<>();
+        qw.eq("shop_id", shopId);
+        if (param != null) {
+            String code = param.getStorageCode() == null ? null : param.getStorageCode().trim();
+            if (code != null && !code.isEmpty()) {
+                qw.like("storage_code", code);
+            }
+            String phone = param.getMemberPhone() == null ? null : param.getMemberPhone().trim();
+            if (phone != null && !phone.isEmpty()) {
+                Member m = memberMapper.selectOne(new QueryWrapper<Member>()
+                        .eq("mobile", phone).last("limit 1"));
+                if (m == null) {
+                    // 手机号无对应会员 → 该筛选必然为空，直接返回，不做无谓全扫
+                    return new ArrayList<>();
+                }
+                qw.eq("member_id", m.getId());
+            }
+        }
+        qw.orderByAsc("expire_date");
+        List<WineStorage> list = wineStorageMapper.selectList(qw);
+
+        Map<Integer, String> shopNames = shopNameMap(list);
+        Map<Integer, Member> members = memberMap(list);
+        List<WineStorageVo> vos = new ArrayList<>();
+        for (WineStorage ws : list) {
+            WineStorageVo vo = toVo(ws, shopNames);
+            if (ws.getMemberId() != null) {
+                Member m = members.get(ws.getMemberId());
+                if (m != null) {
+                    vo.setMemberId(m.getId());
+                    vo.setMemberName(m.getNickname());
+                    vo.setMemberPhone(maskMobile(m.getMobile()));
+                }
+            }
+            vos.add(vo);
+        }
+        // 与顾客侧同序：存续中 → 将过期 → 已过期 → 已取完
+        vos.sort(Comparator.comparingInt((WineStorageVo vo) -> displayRank(vo.getStatusCode())));
+        return vos;
+    }
+
+    /** 批量取会员（供商家侧列表填「顾客」列，避免 N+1） */
+    private Map<Integer, Member> memberMap(List<WineStorage> list) {
+        List<Integer> ids = new ArrayList<>();
+        for (WineStorage ws : list) {
+            if (ws.getMemberId() != null && !ids.contains(ws.getMemberId())) {
+                ids.add(ws.getMemberId());
+            }
+        }
+        Map<Integer, Member> map = new HashMap<>();
+        if (ids.isEmpty()) {
+            return map;
+        }
+        for (Member m : memberMapper.selectBatchIds(ids)) {
+            map.put(m.getId(), m);
+        }
+        return map;
+    }
+
+    /** 手机号脱敏：138****8601；非 11 位原样返回 */
+    private String maskMobile(String mobile) {
+        if (mobile == null || mobile.length() < 11) {
+            return mobile;
+        }
+        return mobile.substring(0, 3) + "****" + mobile.substring(7);
+    }
 
     @Override
     public void create(WineStorageParam param, Integer shopId) {

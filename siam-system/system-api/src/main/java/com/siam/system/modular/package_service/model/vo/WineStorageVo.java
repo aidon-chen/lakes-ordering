@@ -31,6 +31,15 @@ public class WineStorageVo {
     /** 存放柜位 */
     private String location;
 
+    /** 会员姓名（**商家侧 W-18 专用**；顾客侧不填充，保持为 null） */
+    private String memberName;
+
+    /** 会员手机号（商家侧 W-18 专用，**已脱敏** 如 138****8601） */
+    private String memberPhone;
+
+    /** 会员id（商家侧 W-18 专用） */
+    private Integer memberId;
+
     /** 门店名 */
     private String shopName;
 
