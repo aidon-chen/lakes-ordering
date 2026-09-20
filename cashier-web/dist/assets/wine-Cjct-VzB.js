@@ -1,0 +1,1 @@
+import{L as t}from"./index-D8_7OL4i.js";const r=(e={})=>t.post("/rest/merchant/wineStorage/list",e),a=(e,s)=>t.post("/rest/merchant/wineStorage/take",{storageCode:e,takeCount:s}),n=e=>t.post("/rest/merchant/member/selectByMobile",{mobile:e}),c=e=>t.post("/rest/merchant/wineStorage/create",e);export{c,r as f,n as l,a as t};

@@ -58,11 +58,17 @@ export const updatePrinter = (p: PrinterSaveParam) =>
   http.put<unknown, null>('/rest/merchant/printer/update', p)
 
 /**
- * 删除打印机（**DELETE**；后端是 @RequestBody，故 ids 必须放在 body 里）
- * ⚠️ axios 的 delete 第二参是 config，body 要写成 { data: {...} }，直接传 { ids } 不会发出去
+ * 删除打印机（**DELETE** + @RequestBody）
+ *
+ * ⚠️⚠️ 实测踩坑（两处，都很隐蔽）：
+ *  ①  的类型是 **List<Integer>（数组）**，不是逗号分隔字符串 ——
+ *     虽然该接口的 @ApiImplicitParam 写着「批量删除时id以逗号分隔」（**又一处误导注释**），
+ *     但实体字段是 List → 传 `{"ids":"5"}` 会让 Jackson 反序列化失败 → **500「系统异常」**；
+ *     传 `{"ids":[5]}` 才成功（线上对照实测：字符串 500 / 数组「删除成功」）。
+ *  ② axios 的 delete 第二参是 **config**，body 必须写成 `{ data: {...} }`。
  */
 export const deletePrinters = (ids: number[]) =>
-  http.delete<unknown, null>('/rest/merchant/printer/delete', { data: { ids: ids.join(',') } })
+  http.delete<unknown, null>('/rest/merchant/printer/delete', { data: { ids } })
 
 /** 品牌文案（工程枚举，**不是**画板样例里的「芯烨」） */
 export function printerBrandText(brand: number | null | undefined): string {
