@@ -34,6 +34,26 @@ public @interface Log {
 
     /* ##################################### END 模块code常量 #################################### */
 
+    /* ##################################### START 操作类型常量 #################################### */
+    /* 口径对齐 RuoYi sys_oper_log.business_type，落库 tb_operate_log.business_type */
+
+    /** 其它 */
+    int TYPE_OTHER = 0;
+    /** 新增 */
+    int TYPE_INSERT = 1;
+    /** 修改 */
+    int TYPE_UPDATE = 2;
+    /** 删除 */
+    int TYPE_DELETE = 3;
+    /** 授权 */
+    int TYPE_AUTH = 4;
+    /** 导出 */
+    int TYPE_EXPORT = 5;
+    /** 导入 */
+    int TYPE_IMPORT = 6;
+
+    /* ##################################### END 操作类型常量 #################################### */
+
     /** 模块code */
     String module();
 
@@ -42,4 +62,7 @@ public @interface Log {
 
     /** 动作 */
     String action();
+
+    /** 操作类型，取值见本注解 TYPE_* 常量，默认「其它」 */
+    int businessType() default TYPE_OTHER;
 }

@@ -186,7 +186,7 @@ public class MerchantGoodsController {
     })
     //A-08：一次修改可能同时含价格与库存（bottleStock/cupStock/stockWarningThreshold）变更，
     //库存变更未拆分独立接口，故在同一方法内同时记录价格与库存字段（见 A-08 报告说明）
-    @Log(module = Log.MODULE_GOODS_PRICE, moduleName = "商品价格", action = "修改商品（价格/库存）")
+    @Log(module = Log.MODULE_GOODS_PRICE, moduleName = "商品价格", action = "修改商品（价格/库存）", businessType = Log.TYPE_UPDATE)
     @PostMapping(value = "/update")
     public BasicResult update(@RequestBody @Validated(value = {}) Goods goods, HttpServletRequest request){
         BasicResult basicResult = new BasicResult();

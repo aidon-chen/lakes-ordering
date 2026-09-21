@@ -50,7 +50,7 @@ public class MerchantDiningTableController {
     /**
      * 开台
      */
-    @Log(module = Log.MODULE_TABLE, moduleName = "开台", action = "开台")
+    @Log(module = Log.MODULE_TABLE, moduleName = "开台", action = "开台", businessType = Log.TYPE_INSERT)
     @PostMapping(value = "/open")
     public BasicResult open(@RequestBody DiningTableParam param) {
         Map<String, Object> data = diningTableService.openTable(shopId(), param.getId(), param.getMemberNum());
@@ -66,7 +66,7 @@ public class MerchantDiningTableController {
     /**
      * 转台
      */
-    @Log(module = Log.MODULE_TABLE, moduleName = "开台", action = "转台")
+    @Log(module = Log.MODULE_TABLE, moduleName = "开台", action = "转台", businessType = Log.TYPE_UPDATE)
     @PostMapping(value = "/change")
     public BasicResult change(@RequestBody DiningTableParam param) {
         //A-08 操作日志：变更前值记源台，变更后值记目标台
@@ -98,7 +98,7 @@ public class MerchantDiningTableController {
      * 清台
      * 兼容「待清台」：会话已结台时本次仅释放台位
      */
-    @Log(module = Log.MODULE_TABLE, moduleName = "开台", action = "清台")
+    @Log(module = Log.MODULE_TABLE, moduleName = "开台", action = "清台", businessType = Log.TYPE_DELETE)
     @PostMapping(value = "/clear")
     public BasicResult clear(@RequestBody DiningTableParam param) {
         //A-08 操作日志：变更前值记被释放的台位

@@ -30,4 +30,10 @@ public class AdminLoginLogController {
         Page<LoginLog> page = loginLogService.getListByPage(param);
         return BasicResult.success(page);
     }
+
+    @ApiOperation(value = "登录日志导出（全量，不分页）")
+    @PostMapping(value = "/export")
+    public BasicResult export(@RequestBody LoginLog param) {
+        return BasicResult.success(loginLogService.exportList(param));
+    }
 }

@@ -20,25 +20,26 @@
 				</el-row>
 				<el-row :gutter="20">
 					<el-col :span="8" class="info-item"><span class="info-label">操作模块：</span>{{detail.moduleName || detail.module || '-'}}</el-col>
+					<el-col :span="8" class="info-item"><span class="info-label">操作类型：</span>{{formatBusinessType()}}</el-col>
 					<el-col :span="8" class="info-item"><span class="info-label">操作动作：</span>{{detail.action || '-'}}</el-col>
+				</el-row>
+				<el-row :gutter="20">
 					<el-col :span="8" class="info-item">
 						<span class="info-label">执行结果：</span>
 						<el-tag v-if="detail.result == 1" type="success" size="small">成功</el-tag>
 						<el-tag v-else-if="detail.result == 2" type="danger" size="small">失败</el-tag>
 						<span v-else>-</span>
 					</el-col>
-				</el-row>
-				<el-row :gutter="20">
 					<el-col :span="8" class="info-item"><span class="info-label">请求方式：</span>{{detail.requestMethod || '-'}}</el-col>
-					<el-col :span="16" class="info-item"><span class="info-label">请求地址：</span>{{detail.requestUrl || '-'}}</el-col>
-				</el-row>
-				<el-row :gutter="20">
-					<el-col :span="8" class="info-item"><span class="info-label">IP：</span>{{detail.ip || '-'}}</el-col>
 					<el-col :span="8" class="info-item"><span class="info-label">耗时：</span>{{detail.costMs == null ? '-' : detail.costMs + ' ms'}}</el-col>
-					<el-col :span="8" class="info-item"><span class="info-label">业务ID：</span>{{detail.businessId || '-'}}</el-col>
 				</el-row>
 				<el-row :gutter="20">
-					<el-col :span="24" class="info-item"><span class="info-label">User-Agent：</span>{{detail.ua || '-'}}</el-col>
+					<el-col :span="16" class="info-item"><span class="info-label">请求地址：</span>{{detail.requestUrl || '-'}}</el-col>
+					<el-col :span="8" class="info-item"><span class="info-label">IP：</span>{{detail.ip || '-'}}</el-col>
+				</el-row>
+				<el-row :gutter="20">
+					<el-col :span="8" class="info-item"><span class="info-label">业务ID：</span>{{detail.businessId || '-'}}</el-col>
+					<el-col :span="16" class="info-item"><span class="info-label">User-Agent：</span>{{detail.ua || '-'}}</el-col>
 				</el-row>
 				<el-row :gutter="20" v-if="detail.result == 2 && detail.errorMsg">
 					<el-col :span="24" class="info-item error-text"><span class="info-label">错误信息：</span>{{detail.errorMsg}}</el-col>
@@ -89,6 +90,21 @@
 							<p class="json-title">变更后：</p>
 							<pre>{{prettyJson(detail.afterValue)}}</pre>
 						</div>
+					</el-collapse-item>
+				</el-collapse>
+			</div>
+		</div>
+
+		<!--请求参数与返回结果：非变更类操作（下单/取酒/导出等）无 before/after，靠这里留痕-->
+		<div class="section-layout" v-if="detail.requestParam || detail.responseResult">
+			<div class="layout-title">请求参数与返回结果（JSON）</div>
+			<div class="section-content">
+				<el-collapse>
+					<el-collapse-item title="请求参数" v-if="detail.requestParam">
+						<pre class="json-pre">{{prettyJson(detail.requestParam)}}</pre>
+					</el-collapse-item>
+					<el-collapse-item title="返回结果" v-if="detail.responseResult">
+						<pre class="json-pre">{{prettyJson(detail.responseResult)}}</pre>
 					</el-collapse-item>
 				</el-collapse>
 			</div>
@@ -191,6 +207,14 @@
 						return '-';
 				}
 			},
+			//操作类型（口径对齐 RuoYi business_type）
+			formatBusinessType() {
+				let map = {0: '其它', 1: '新增', 2: '修改', 3: '删除', 4: '授权', 5: '导出', 6: '导入'};
+				if (this.detail.businessType === null || this.detail.businessType === undefined) {
+					return '-';
+				}
+				return map[this.detail.businessType] || this.detail.businessType;
+			},
 			backHistory() {
 				this.$router.go(-1);
 			},
@@ -282,7 +306,8 @@
 		font-size: 13px;
 		padding: 10px 0;
 	}
-	.json-block pre {
+	.json-block pre,
+	.json-pre {
 		background: #f5f7fa;
 		padding: 10px;
 		border-radius: 4px;

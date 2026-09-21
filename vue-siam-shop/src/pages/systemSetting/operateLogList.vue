@@ -8,8 +8,19 @@
 						<el-option v-for="item in moduleOptions" :key="item.value" :label="item.label" :value="item.value"></el-option>
 					</el-select>
 				</el-form-item>
+				<el-form-item label="操作类型">
+					<el-select v-model="searchMsg.businessType" clearable placeholder="全部类型">
+						<el-option v-for="item in businessTypeOptions" :key="item.value" :label="item.label" :value="item.value"></el-option>
+					</el-select>
+				</el-form-item>
 				<el-form-item label="操作人">
 					<el-input v-model="searchMsg.operator" clearable placeholder="请输入账号"></el-input>
+				</el-form-item>
+				<el-form-item label="IP">
+					<el-input v-model="searchMsg.ip" clearable placeholder="如 127.0.0.1"></el-input>
+				</el-form-item>
+				<el-form-item label="请求地址">
+					<el-input v-model="searchMsg.requestUrl" clearable placeholder="如 /rest/merchant/goods"></el-input>
 				</el-form-item>
 				<el-form-item label="结果">
 					<el-select v-model="searchMsg.result" clearable placeholder="全部">
@@ -44,6 +55,7 @@
 			<el-table-column prop="operator" label="操作人"></el-table-column>
 			<el-table-column prop="accountType" label="账号类型" :formatter="formatAccountType" width="100"></el-table-column>
 			<el-table-column prop="moduleName" label="模块" :formatter="formatModule" width="110"></el-table-column>
+			<el-table-column prop="businessType" label="操作类型" :formatter="formatBusinessType" width="100"></el-table-column>
 			<el-table-column prop="action" label="操作动作" width="170"></el-table-column>
 			<el-table-column prop="requestUrl" label="请求地址" show-overflow-tooltip></el-table-column>
 			<el-table-column prop="ip" label="IP" width="140"></el-table-column>
@@ -118,6 +130,16 @@
 					{value: 'STOCK', label: '库存变更'},
 					{value: 'TABLE', label: '开台'},
 					{value: 'WINE_STORAGE', label: '存酒'}
+				],
+				//操作类型枚举（口径对齐 RuoYi business_type）
+				businessTypeOptions: [
+					{value: 0, label: '其它'},
+					{value: 1, label: '新增'},
+					{value: 2, label: '修改'},
+					{value: 3, label: '删除'},
+					{value: 4, label: '授权'},
+					{value: 5, label: '导出'},
+					{value: 6, label: '导入'}
 				]
 			}
 		},
@@ -157,6 +179,10 @@
 				let hit = this.moduleOptions.filter(item => item.value === row.module)[0];
 				return hit ? hit.label : (row.module || '-');
 			},
+			formatBusinessType(row) {
+				let hit = this.businessTypeOptions.filter(item => item.value === row.businessType)[0];
+				return hit ? hit.label : (row.businessType == null ? '-' : row.businessType);
+			},
 			getList(pageNoParam) {
 				if (pageNoParam) {
 					this.searchMsg.pageNo = pageNoParam;
@@ -187,6 +213,17 @@
 			gotoDetail(row) {
 				this.$router.push({path: 'operateLogDetail', query: {id: row.id}})
 			},
+			//CSV 单元格转义：含逗号/引号/换行时整体用双引号包裹，内部双引号翻倍
+			csvCell(value) {
+				if (value === null || value === undefined) {
+					return '';
+				}
+				let text = String(value);
+				if (/[",\n\r]/.test(text)) {
+					return '"' + text.replace(/"/g, '""') + '"';
+				}
+				return text;
+			},
 			//导出当前筛选条件下的全部日志（客户端导出 CSV）
 			handleExport() {
 				let vue = this;
@@ -200,21 +237,22 @@
 							vue.$message({ showClose: true, message: '当前条件下没有可导出的日志', type: 'warning' });
 							return;
 						}
-						let header = ['操作时间', '操作人', '账号类型', '模块', '操作动作', '请求地址', 'IP', '耗时(ms)', '结果', '错误信息'];
-						let lines = [header.join(',')];
+						let header = ['操作时间', '操作人', '账号类型', '模块', '操作类型', '操作动作', '请求地址', 'IP', '耗时(ms)', '结果', '错误信息'];
+						let lines = [header.map(item => vue.csvCell(item)).join(',')];
 						rows.forEach(item => {
 							lines.push([
 								vue.formatTime(item, {property: 'createTime'}),
 								item.operator || '',
 								vue.formatAccountType(item),
 								vue.formatModule(item),
+								vue.formatBusinessType(item),
 								item.action || '',
 								item.requestUrl || '',
 								item.ip || '',
 								item.costMs == null ? '' : item.costMs,
 								item.result == 1 ? '成功' : '失败',
-								(item.errorMsg || '').replace(/,/g, '，')
-							].join(','));
+								item.errorMsg || ''
+							].map(item => vue.csvCell(item)).join(','));
 						});
 						let blob = new Blob(['\ufeff' + lines.join('\n')], {type: 'text/csv;charset=utf-8'});
 						let link = document.createElement('a');

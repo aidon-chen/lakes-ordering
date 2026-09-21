@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 /**
  * 登录日志Service实现（A-08）
  */
@@ -31,5 +33,10 @@ public class LoginLogServiceImpl implements LoginLogService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void insert(LoginLog record) {
         loginLogMapper.insert(record);
+    }
+
+    @Override
+    public List<LoginLog> exportList(LoginLog param) {
+        return loginLogMapper.exportList(param);
     }
 }

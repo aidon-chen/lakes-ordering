@@ -45,8 +45,17 @@ public class OperateLog {
     /** 动作 */
     private String action;
 
+    /** 操作类型 0=其它 1=新增 2=修改 3=删除 4=授权 5=导出 6=导入 */
+    private Integer businessType;
+
     /** 业务ID */
     private String businessId;
+
+    /** 请求参数(JSON，敏感字段已脱敏) */
+    private String requestParam;
+
+    /** 返回结果(JSON，超长截断) */
+    private String responseResult;
 
     /** 请求方式 */
     private String requestMethod;

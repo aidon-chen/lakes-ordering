@@ -1,6 +1,8 @@
 package com.siam.system.modular.package_log.aop;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.serializer.ValueFilter;
+import com.siam.package_common.exception.PermissionException;
 import com.siam.system.modular.package_log.annoation.Log;
 import com.siam.system.modular.package_log.entity.OperateLog;
 import com.siam.system.modular.package_log.service.OperateLogService;
@@ -20,14 +22,24 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.multipart.MultipartFile;
 
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * 操作日志切面（A-08）
  *
- * 环绕所有标注 @Log 的方法，自动采集操作人/账号类型/请求信息/IP/UA/耗时/结果，
+ * 环绕所有标注 @Log 的方法，自动采集操作人/账号类型/操作类型/请求信息/IP/UA/耗时/结果，
+ * 以及请求参数与返回结果（JSON 快照，敏感字段脱敏、超长截断），
  * 并从 LogContext 读取业务侧写入的变更前后值，落库 tb_operate_log。
  *
  * 铁律：日志写入失败绝不影响主流程（内部 try/catch 吞掉并 log.error）；返回值与异常原样透传。
@@ -47,6 +59,14 @@ public class OperateLogAop {
     private static final int MAX_ERROR_MSG_LEN = 500;
     private static final int MAX_UA_LEN = 255;
     private static final int MAX_IP_LEN = 50;
+    private static final int MAX_URL_LEN = 255;
+    /** 请求参数/返回结果 JSON 快照的最大长度（DB 列是 text，截断是防止大对象把日志表撑爆） */
+    private static final int MAX_JSON_LEN = 2000;
+
+    /** 需脱敏的字段名（小写比较），不落明文到日志表 */
+    private static final Set<String> SENSITIVE_KEYS = new HashSet<>(Arrays.asList(
+            "password", "oldpassword", "newpassword", "paypassword", "confirmpassword",
+            "mobilecode", "token", "idcard"));
 
     @Autowired
     private OperateLogService operateLogService;
@@ -61,15 +81,21 @@ public class OperateLogAop {
     public Object around(ProceedingJoinPoint proceedingJoinPoint) throws Throwable {
         long startMs = System.currentTimeMillis();
         Throwable error = null;
+        Object result = null;
         try {
             //业务语义原样透传：正常返回则返回，异常则继续抛出
-            return proceedingJoinPoint.proceed();
+            result = proceedingJoinPoint.proceed();
+            return result;
         } catch (Throwable throwable) {
             error = throwable;
             throw throwable;
         } finally {
             try {
-                saveLog(proceedingJoinPoint, error, System.currentTimeMillis() - startMs);
+                //权限拦截（AdminPermissionAop/MerchantPermissionAop 的 @Before 抛 PermissionException）不属于业务操作，
+                //落库会污染审计视图（同一请求在日志里既「无操作人」又「未进入业务」，无审计价值），故不记录
+                if (!(error instanceof PermissionException)) {
+                    saveLog(proceedingJoinPoint, error, result, System.currentTimeMillis() - startMs);
+                }
             } catch (Exception e) {
                 //日志写入失败绝不影响主流程
                 log.error("记录操作日志失败", e);
@@ -79,7 +105,7 @@ public class OperateLogAop {
         }
     }
 
-    private void saveLog(ProceedingJoinPoint proceedingJoinPoint, Throwable error, long costMs) {
+    private void saveLog(ProceedingJoinPoint proceedingJoinPoint, Throwable error, Object result, long costMs) {
         MethodSignature signature = (MethodSignature) proceedingJoinPoint.getSignature();
         Log anno = signature.getMethod().getAnnotation(Log.class);
         if (anno == null) {
@@ -90,6 +116,7 @@ public class OperateLogAop {
         record.setModule(anno.module());
         record.setModuleName(anno.moduleName());
         record.setAction(anno.action());
+        record.setBusinessType(anno.businessType());
 
         //操作人 + 账号类型（取不到会话记 anon，且不抛异常）
         fillOperator(record);
@@ -98,10 +125,14 @@ public class OperateLogAop {
         HttpServletRequest request = HttpContext.getRequest();
         if (request != null) {
             record.setRequestMethod(request.getMethod());
-            record.setRequestUrl(truncate(request.getRequestURI(), 255));
+            record.setRequestUrl(truncate(resolveUri(request), MAX_URL_LEN));
             record.setIp(truncate(LogUtil.getIp(request), MAX_IP_LEN));
             record.setUa(truncate(LogUtil.getUa(request), MAX_UA_LEN));
         }
+
+        //请求参数 / 返回结果（JSON 快照）
+        record.setRequestParam(buildRequestParam(proceedingJoinPoint));
+        record.setResponseResult(toJson(result));
 
         //变更前后值（业务侧通过 LogContext 显式写入）
         record.setBeforeValue(toJson(LogContext.getBefore()));
@@ -149,14 +180,61 @@ public class OperateLogAop {
         record.setOperator(ACCOUNT_ANON);
     }
 
+    /**
+     * 采集请求参数（按方法形参名组织成 Map 后序列化）。
+     * 跳过 Servlet 对象、文件上传对象与参数校验结果：它们无法（也不应）序列化。
+     */
+    private String buildRequestParam(ProceedingJoinPoint proceedingJoinPoint) {
+        Object[] args = proceedingJoinPoint.getArgs();
+        if (args == null || args.length == 0) {
+            return null;
+        }
+        String[] paramNames = ((MethodSignature) proceedingJoinPoint.getSignature()).getParameterNames();
+
+        Map<String, Object> params = new LinkedHashMap<>();
+        for (int i = 0; i < args.length; i++) {
+            Object arg = args[i];
+            if (arg == null || isNotSerializable(arg)) {
+                continue;
+            }
+            params.put(paramNames != null && paramNames.length > i ? paramNames[i] : ("arg" + i), arg);
+        }
+        return params.isEmpty() ? null : toJson(params);
+    }
+
+    private boolean isNotSerializable(Object arg) {
+        return arg instanceof ServletRequest
+                || arg instanceof ServletResponse
+                || arg instanceof MultipartFile
+                || arg instanceof MultipartFile[]
+                || arg instanceof BindingResult;
+    }
+
+    /**
+     * 取不含上下文前缀的请求路径：本地 /siam-server/rest/... 与云端 /rest/... 统一口径
+     */
+    private String resolveUri(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        String contextPath = request.getContextPath();
+        if (uri != null && contextPath != null && !contextPath.isEmpty() && uri.startsWith(contextPath)) {
+            return uri.substring(contextPath.length());
+        }
+        return uri;
+    }
+
+    /**
+     * 序列化为 JSON：敏感字段脱敏 + 超长截断；序列化失败返回 null（不影响主流程）
+     */
     private String toJson(Object value) {
         if (value == null) {
             return null;
         }
         try {
-            return JSON.toJSONString(value);
+            String json = JSON.toJSONString(value, (ValueFilter) (object, name, fieldValue) ->
+                    (name != null && SENSITIVE_KEYS.contains(name.toLowerCase())) ? "***" : fieldValue);
+            return truncate(json, MAX_JSON_LEN);
         } catch (Exception e) {
-            log.warn("操作日志变更值序列化失败：{}", e.getMessage());
+            log.warn("操作日志JSON序列化失败：{}", e.getMessage());
             return null;
         }
     }

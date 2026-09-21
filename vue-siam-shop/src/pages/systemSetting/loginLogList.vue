@@ -26,6 +26,7 @@
 				</el-form-item>
 				<el-form-item>
 					<el-button type="primary" @click="getList(1)">查询</el-button>
+					<el-button @click="handleExport">导出</el-button>
 				</el-form-item>
 			</el-form>
 		</el-col>
@@ -143,12 +144,7 @@
 					this.searchMsg.pageNo = pageNoParam;
 				}
 				let vue = this;
-				let param = Object.assign({}, vue.searchMsg);
-				if (vue.searchMsg.createTime && vue.searchMsg.createTime.length == 2) {
-					param.startCreateTime = vue.$utils.formatDate(new Date(vue.searchMsg.createTime[0]), 'yyyy/MM/dd hh:mm:ss');
-					param.endCreateTime = vue.$utils.formatDate(new Date(vue.searchMsg.createTime[1]), 'yyyy/MM/dd hh:mm:ss');
-				}
-				delete param.createTime;
+				let param = vue.buildParam();
 
 				vue.listLoading = true;
 				vue.$http.post(vue, '/rest/admin/loginLog/list', param,
@@ -158,6 +154,65 @@
 						vue.listLoading = false;
 					}, (error, data) => {
 						vue.listLoading = false;
+						vue.$message({ showClose: true, message: data.message, type: 'error' });
+					}
+				)
+			},
+			buildParam() {
+				let param = Object.assign({}, this.searchMsg);
+				if (this.searchMsg.createTime && this.searchMsg.createTime.length == 2) {
+					param.startCreateTime = this.$utils.formatDate(new Date(this.searchMsg.createTime[0]), 'yyyy/MM/dd hh:mm:ss');
+					param.endCreateTime = this.$utils.formatDate(new Date(this.searchMsg.createTime[1]), 'yyyy/MM/dd hh:mm:ss');
+				}
+				delete param.createTime;
+				return param;
+			},
+			//CSV 单元格转义：含逗号/引号/换行时整体用双引号包裹，内部双引号翻倍
+			csvCell(value) {
+				if (value === null || value === undefined) {
+					return '';
+				}
+				let text = String(value);
+				if (/[",\n\r]/.test(text)) {
+					return '"' + text.replace(/"/g, '""') + '"';
+				}
+				return text;
+			},
+			//导出当前筛选条件下的全部登录日志（客户端导出 CSV）
+			handleExport() {
+				let vue = this;
+				let param = this.buildParam();
+				param.pageNo = -1;
+				param.pageSize = 100000;
+				vue.$http.post(vue, '/rest/admin/loginLog/export', param,
+					(vue, data) => {
+						let rows = data.data || [];
+						if (rows.length === 0) {
+							vue.$message({ showClose: true, message: '当前条件下没有可导出的日志', type: 'warning' });
+							return;
+						}
+						let header = ['登录时间', '账号', '账号类型', '登录IP', '归属地', '浏览器', '操作系统', '登录结果', '提示信息'];
+						let lines = [header.map(item => vue.csvCell(item)).join(',')];
+						rows.forEach(item => {
+							lines.push([
+								vue.formatTime(item, {property: 'createTime'}),
+								item.account || '',
+								vue.formatAccountType(item),
+								item.ip || '',
+								item.region || '',
+								item.browser || '',
+								item.os || '',
+								item.result == 1 ? '成功' : '失败',
+								item.message || ''
+							].map(item => vue.csvCell(item)).join(','));
+						});
+						let blob = new Blob(['\ufeff' + lines.join('\n')], {type: 'text/csv;charset=utf-8'});
+						let link = document.createElement('a');
+						link.href = URL.createObjectURL(blob);
+						link.download = 'login-log-' + new Date().getTime() + '.csv';
+						link.click();
+						URL.revokeObjectURL(link.href);
+					}, (error, data) => {
 						vue.$message({ showClose: true, message: data.message, type: 'error' });
 					}
 				)

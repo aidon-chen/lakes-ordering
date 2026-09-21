@@ -877,7 +877,7 @@ public class MerchantOrderController {
      * @return
      * @author 暹罗
      */
-    @Log(module = Log.MODULE_ORDER, moduleName = "订单操作", action = "收银台下单")
+    @Log(module = Log.MODULE_ORDER, moduleName = "订单操作", action = "收银台下单", businessType = Log.TYPE_INSERT)
     @PostMapping(value = "/insert")
     public BasicResult insert(@RequestBody @Validated(value = {}) OrderParam param) throws InterruptedException, RemotingException, MQClientException, MQBrokerException {
         Order order = orderService.insertByMerchant(param);
