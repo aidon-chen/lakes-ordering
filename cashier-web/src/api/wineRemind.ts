@@ -11,7 +11,8 @@ import { http } from './http'
 
 export interface WineRemindRow {
   storageId: number
-  storageCode: string | null
+  /** 记录号（=存酒记录 id）。⚠️ 方案 D 已废除「存酒码」，画板的存酒码列改用记录号 */
+  recordNo: number | null
   customerName: string | null
   /** 已脱敏（138****8601） */
   customerPhone: string | null

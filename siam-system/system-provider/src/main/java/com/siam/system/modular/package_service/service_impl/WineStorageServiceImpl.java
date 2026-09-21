@@ -518,7 +518,6 @@ public class WineStorageServiceImpl implements WineStorageService {
         vo.setBottleCount(ws.getBottleCount());
         vo.setRemainCount(ws.getRemainCount());
         vo.setLocation(ws.getLocation());
-        vo.setStorageCode(ws.getStorageCode()); // 批次F · W-19：临期提醒列表要展示存酒码
         if (ws.getShopId() != null) {
             vo.setShopName(shopNames.get(ws.getShopId()));
         }

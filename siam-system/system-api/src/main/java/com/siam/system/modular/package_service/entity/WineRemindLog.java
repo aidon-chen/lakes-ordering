@@ -31,9 +31,6 @@ public class WineRemindLog {
     /** 存酒记录id（tb_wine_storage.id） */
     private Integer storageId;
 
-    /** 存酒码（冗余，便于查询与展示） */
-    private String storageCode;
-
     /** 通知渠道，见 CHANNEL_* */
     private Integer channel;
 

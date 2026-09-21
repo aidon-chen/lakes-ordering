@@ -106,7 +106,6 @@ public class WineRemindServiceImpl implements WineRemindService {
             log.setShopId(ws.getShopId());
             log.setMemberId(memberId);
             log.setStorageId(sid);
-            log.setStorageCode(ws.getStorageCode());
             log.setChannel(WineRemindLog.CHANNEL_MINI_POPUP);
             log.setExpireDateAtNotify(ws.getExpireDate());
             log.setCreateTime(new Date());
@@ -125,7 +124,7 @@ public class WineRemindServiceImpl implements WineRemindService {
             }
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("storageId", v.getId() == null ? null : v.getId().intValue());
-            m.put("storageCode", v.getStorageCode());
+            m.put("recordNo", v.getId()); // 方案D已废除存酒码，改用记录号
             m.put("goodsName", v.getGoodsName());
             m.put("remainCount", v.getRemainCount());
             m.put("expireDate", v.getExpireDate());
@@ -175,7 +174,7 @@ public class WineRemindServiceImpl implements WineRemindService {
             }
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("storageId", v.getId() == null ? null : v.getId().intValue());
-            m.put("storageCode", v.getStorageCode());
+            m.put("recordNo", v.getId()); // 方案D已废除存酒码，改用记录号
             m.put("customerName", v.getMemberName());
             m.put("customerPhone", v.getMemberPhone());
             m.put("goodsName", v.getGoodsName());

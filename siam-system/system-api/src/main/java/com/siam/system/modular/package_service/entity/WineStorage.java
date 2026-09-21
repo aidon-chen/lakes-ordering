@@ -39,9 +39,6 @@ public class WineStorage {
     /** 存放柜位，如「B 区 03 号柜」（批次 5 新增列） */
     private String location;
 
-    /** 存酒码（唯一；DDL 有此列，实体此前漏映射） */
-    private String storageCode;
-
     /** 存入日期 */
     private Date storageDate;
 

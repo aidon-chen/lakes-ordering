@@ -10,7 +10,6 @@ CREATE TABLE IF NOT EXISTS `tb_wine_remind_log` (
   `shop_id`            int(11)     NOT NULL                COMMENT '门店id',
   `member_id`          int(11)     NOT NULL                COMMENT '会员id',
   `storage_id`         int(11)     NOT NULL                COMMENT '存酒记录id（tb_wine_storage.id）',
-  `storage_code`       varchar(64) DEFAULT NULL            COMMENT '存酒码（冗余，便于查询）',
   `channel`            int(2)      DEFAULT '1'             COMMENT '通知渠道 1=小程序弹窗',
   `expire_date_at_notify` date     DEFAULT NULL            COMMENT '提醒时的有效期（快照）',
   `create_time`        datetime    DEFAULT NULL            COMMENT '提醒时间',

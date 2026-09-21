@@ -2,7 +2,7 @@
   <!--
     W-19 存酒临期与过期提醒（Ardot 2:1213，内容区 2:1216）
     面包屑 40 ｜ 指标行 100（3×362, gap 18）｜ 提醒规则卡 90 ｜ 任务表 300（表头 40 + 行 52）
-    7 列：存酒码170 / 顾客160 / 品名240 / 有效期140 / 剩余天数130 / 通知状态170 / 操作160 = 1170
+    7 列：记录号170（原画板「存酒码」——方案 D 已废除存酒码概念） / 顾客160 / 品名240 / 有效期140 / 剩余天数130 / 通知状态170 / 操作160 = 1170
     ⚠️ 与画板的三处差异（都有依据，不放假按钮/不编文案）：
       ① 「已发短信 09-13」→ 显示「已弹窗 09-21」：通知方式按拍板 = **小程序端弹窗**，非短信
       ② 操作列**不放「立即通知 / 再次通知」**：弹窗发生在顾客自己的手机上，收银端无法主动触发
@@ -64,7 +64,7 @@
           class="flex items-center text-[12px]"
           :style="{ height: '52px', borderTop: '1px solid var(--tc-line)', background: r.expired ? '#FCE3E3' : '#fff' }"
         >
-          <span class="px-2 truncate" style="width: 170px; color: var(--p)">{{ r.storageCode || '—' }}</span>
+          <span class="px-2 truncate" style="width: 170px; color: var(--p)">#{{ r.recordNo }}</span>
           <span class="px-2 truncate" style="width: 160px; color: var(--txt)">
             {{ r.customerName || '—' }}<template v-if="r.customerPhone"> {{ r.customerPhone }}</template>
           </span>
@@ -95,7 +95,7 @@
         <div class="rounded-xl bg-white p-6 shadow-xl" style="width: min(440px, calc(100vw - 32px))">
           <div class="flex items-baseline justify-between">
             <span class="text-[16px] font-bold" style="color: var(--tc-title)">存酒详情</span>
-            <span class="text-[12px]" style="color: var(--p)">{{ detailRow.storageCode || '—' }}</span>
+            <span class="text-[12px]" style="color: var(--p)">{{ detailRow.recordNo == null ? '—' : '#' + detailRow.recordNo }}</span>
           </div>
           <div class="mt-4 flex flex-col gap-2 text-[12px]">
             <div v-for="kv in detailPairs" :key="kv[0]" class="flex">
@@ -124,7 +124,7 @@ import {
 } from '@/api/wineRemind'
 
 const COLS = [
-  { key: 'code', label: '存酒码', w: 170 },
+  { key: 'recordNo', label: '记录号', w: 170 },
   { key: 'customer', label: '顾客', w: 160 },
   { key: 'goods', label: '品名', w: 240 },
   { key: 'expire', label: '有效期', w: 140 },
@@ -151,7 +151,7 @@ const detailPairs = computed(() => {
   const r = detailRow.value
   if (!r) return [] as [string, string][]
   return [
-    ['存酒码', r.storageCode || '—'],
+    ['记录号', r.recordNo == null ? '—' : '#' + r.recordNo],
     ['顾客', (r.customerName || '—') + (r.customerPhone ? ' ' + r.customerPhone : '')],
     ['品名', r.goodsName || '—'],
     ['剩余瓶数', String(r.remainCount ?? '—')],
