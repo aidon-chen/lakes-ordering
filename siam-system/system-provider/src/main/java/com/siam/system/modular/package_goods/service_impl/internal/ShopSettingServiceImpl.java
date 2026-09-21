@@ -86,7 +86,8 @@ public class ShopSettingServiceImpl implements ShopSettingService {
                 ShopSetting.KEY_DEFAULT_PRINTER_ID,
                 ShopSetting.KEY_PRINT_RETRY_MAX,
                 ShopSetting.KEY_PRINT_RETRY_INTERVAL_SEC,
-                ShopSetting.KEY_PRINT_FAIL_ALERT
+                ShopSetting.KEY_PRINT_FAIL_ALERT,
+                ShopSetting.KEY_WINE_REMIND_AHEAD_DAYS
         };
     }
 }

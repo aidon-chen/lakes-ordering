@@ -124,6 +124,7 @@
 				if (result) {
 					this.loadList();
 					this.loadApplies();
+					this.checkExpiring(); // 批次F · W-19：临期/过期弹窗提醒
 					return;
 				}
 				this.loading = false;
@@ -131,6 +132,41 @@
 			});
 		},
 		methods: {
+			/**
+			 * 批次F · W-19 存酒临期提醒（弹窗口径，用户拍板；不做短信）
+			 * - 数据源：/rest/member/wineStorage/expiringList（剩余天数≤门店设置的提前天数）
+			 * - 同一存酒同一天只弹一次（本地记忆；后端 remindAck 亦按天幂等）
+			 * - 弹窗确认后回报 remindAck → 收银端 W-19「通知状态」列显示「已弹窗 MM-dd」
+			 */
+			checkExpiring() {
+				https.request('/rest/member/wineStorage/expiringList', {}).then((result) => {
+					const rows = (result && result.success && Array.isArray(result.data)) ? result.data : [];
+					if (!rows.length) return;
+					const d = new Date();
+					const key = 'wineRemindShown_' + d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+					const shown = uni.getStorageSync(key) || [];
+					const fresh = rows.filter((r) => shown.indexOf(r.storageId) === -1);
+					if (!fresh.length) return;
+					const lines = fresh.slice(0, 3).map((r) => {
+						const n = Number(r.daysRemaining);
+						const when = n < 0 ? ('已过期 ' + Math.abs(n) + ' 天') : (n === 0 ? '今天到期' : ('剩 ' + n + ' 天'));
+						return (r.goodsName || '存酒') + ' · ' + when;
+					});
+					const more = fresh.length > 3 ? ('\n…等共 ' + fresh.length + ' 条') : '';
+					uni.showModal({
+						title: '存酒临期提醒',
+						content: lines.join('\n') + more,
+						showCancel: false,
+						confirmText: '知道了',
+						success: () => {
+							uni.setStorageSync(key, shown.concat(fresh.map((r) => r.storageId)));
+							https.request('/rest/member/wineStorage/remindAck', {
+								storageIds: fresh.map((r) => r.storageId)
+							}).then(() => {}).catch(() => {});
+						}
+					});
+				}).catch(() => {});
+			},
 			loadList() {
 				https.request('/rest/member/wineStorage/list', {}).then((result) => {
 					this.loading = false;

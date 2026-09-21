@@ -28,6 +28,9 @@ public class WineStorageVo {
     /** 存放柜位 */
     private String location;
 
+    /** 存酒码（批次F · W-19 临期提醒列表需要展示） */
+    private String storageCode;
+
     /** 会员姓名（**商家侧 W-18 专用**；顾客侧不填充，保持为 null） */
     private String memberName;
 

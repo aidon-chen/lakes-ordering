@@ -5,6 +5,9 @@ import com.siam.system.modular.package_log.annoation.Log;
 import com.siam.system.modular.package_log.aop.LogContext;
 import com.siam.system.modular.package_service.entity.WineStorage;
 import com.siam.system.modular.package_service.model.param.WineStorageParam;
+import com.siam.system.modular.package_goods.entity.internal.ShopSetting;
+import com.siam.system.modular.package_goods.service.internal.ShopSettingService;
+import com.siam.system.modular.package_service.service.WineRemindService;
 import com.siam.system.modular.package_service.service.WineStorageService;
 import com.siam.system.modular.package_user.auth.cache.MerchantSessionManager;
 import com.siam.system.modular.package_user.entity.Merchant;
@@ -18,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.HashMap;
 import java.util.Map;
+import io.swagger.annotations.ApiOperation;
 
 /**
  * 存酒接口（商家侧）· W-17 登记 / W-18 存酒列表与取酒核销（M-06 存酒管理）
@@ -34,6 +38,12 @@ public class MerchantWineStorageController {
 
     @Autowired
     private WineStorageService wineStorageService;
+
+    @Autowired
+    private WineRemindService wineRemindService;
+
+    @Autowired
+    private ShopSettingService shopSettingService;
 
     @Autowired
     private MerchantSessionManager merchantSessionManager;
@@ -124,5 +134,47 @@ public class MerchantWineStorageController {
 
         return BasicResult.success(wineStorageService.createApplyByShop(
                 loginMerchant().getId(), loginMerchant().getShopId(), param));
+    }
+    /* ==================== 批次 F · W-19 存酒临期提醒 ==================== */
+
+    /** W-19 任务表：存续中+已过期 且 剩余天数≤提前天数的存酒（含顾客脱敏手机号与通知状态） */
+    @ApiOperation(value = "存酒临期提醒列表（W-19）")
+    @PostMapping(value = "/remind/list")
+    public BasicResult remindList() {
+        Integer shopId = loginMerchant().getShopId();
+        return BasicResult.success(wineRemindService.listForMerchant(shopId, wineRemindService.aheadDaysForShop(shopId)));
+    }
+
+    /** W-19 指标行：临期 / 过期 / 已通知 */
+    @ApiOperation(value = "存酒临期提醒指标（W-19）")
+    @PostMapping(value = "/remind/summary")
+    public BasicResult remindSummary() {
+        Integer shopId = loginMerchant().getShopId();
+        return BasicResult.success(wineRemindService.summary(shopId, wineRemindService.aheadDaysForShop(shopId)));
+    }
+
+    /** W-19 提醒规则：读「到期前 N 天」 */
+    @ApiOperation(value = "读提醒规则（W-19）")
+    @PostMapping(value = "/remind/setting/list")
+    public BasicResult remindSetting() {
+        Map<String, String> s = shopSettingService.getSettings(loginMerchant().getShopId());
+        Map<String, Object> out = new HashMap<>();
+        out.put("wineRemindAheadDays", s.get(ShopSetting.KEY_WINE_REMIND_AHEAD_DAYS));
+        return BasicResult.success(out);
+    }
+
+    /** W-19 提醒规则：保存「到期前 N 天」 */
+    @ApiOperation(value = "保存提醒规则（W-19）")
+    @PostMapping(value = "/remind/setting/save")
+    public BasicResult remindSettingSave(@RequestBody Map<String, String> body) {
+        String days = body.get("wineRemindAheadDays");
+        int v = 7;
+        try {
+            v = Math.max(1, Integer.parseInt(String.valueOf(days == null ? "7" : days)));
+        } catch (NumberFormatException ignore) {
+        }
+        shopSettingService.saveSettings(loginMerchant().getShopId(),
+                java.util.Collections.singletonMap(ShopSetting.KEY_WINE_REMIND_AHEAD_DAYS, String.valueOf(v)));
+        return BasicResult.success(java.util.Collections.singletonMap(ShopSetting.KEY_WINE_REMIND_AHEAD_DAYS, String.valueOf(v)));
     }
 }

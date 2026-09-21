@@ -24,8 +24,9 @@ const IMPLEMENTED: Record<string, Component> = {
   '/shop/settings': defineAsyncComponent(() => import('@/views/ShopSettingView.vue')),
   '/print/queue': defineAsyncComponent(() => import('@/views/PrintQueueView.vue')),
   '/print/templates': defineAsyncComponent(() => import('@/views/PrintTemplateView.vue')),
+  '/wine/expiring': defineAsyncComponent(() => import('@/views/WineExpiringView.vue')),
   '/shop/account': defineAsyncComponent(() => import('@/views/AccountView.vue'))
-  // 其余 2 项尚未落地（W-13 改单/退单、W-19 存酒临期）→ 统一走 PageStub
+  // 仅剩 1 项尚未落地：W-13 改单/退单（画板为弹窗对，入口在订单详情页）→ 仍走 PageStub
   // 注：W-08 台位类型已按 V7 裁决从菜单整项移除，不再出现在本表
 }
 

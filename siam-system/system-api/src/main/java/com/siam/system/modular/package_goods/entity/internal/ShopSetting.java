@@ -33,6 +33,8 @@ public class ShopSetting {
     public static final String KEY_PRINT_RETRY_MAX = "printRetryMax";
     public static final String KEY_PRINT_RETRY_INTERVAL_SEC = "printRetryIntervalSec";
     public static final String KEY_PRINT_FAIL_ALERT = "printFailAlert";
+    /** 存酒临期提醒：到期前 N 天提醒（W-19） */
+    public static final String KEY_WINE_REMIND_AHEAD_DAYS = "wineRemindAheadDays";
 
     @TableId(type = IdType.AUTO)
     private Integer id;
