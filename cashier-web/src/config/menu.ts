@@ -26,8 +26,9 @@ export const MENU: MenuGroup[] = [
   {
     label: '台位管理',
     children: [
-      { label: '台位图', path: '/table/floor', name: 'table-floor', board: 'W-07' },
-      { label: '台位类型与低消监控', path: '/table/types', name: 'table-types', board: 'W-08' }
+      // W-08 台位类型与低消监控：需求书 V7 变更一取消低消与达标监控，
+      // 台位类型配置按 M-05 划归管理端 A-09 → 收银端**整项移除**（不再挂死链菜单项）
+      { label: '台位图', path: '/table/floor', name: 'table-floor', board: 'W-07' }
     ]
   },
   {

@@ -25,7 +25,8 @@ const IMPLEMENTED: Record<string, Component> = {
   '/print/queue': defineAsyncComponent(() => import('@/views/PrintQueueView.vue')),
   '/print/templates': defineAsyncComponent(() => import('@/views/PrintTemplateView.vue')),
   '/shop/account': defineAsyncComponent(() => import('@/views/AccountView.vue'))
-  // 其余 3 项尚未落地 → 统一走 PageStub（批次 F/G 起逐页替换）
+  // 其余 2 项尚未落地（W-13 改单/退单、W-19 存酒临期）→ 统一走 PageStub
+  // 注：W-08 台位类型已按 V7 裁决从菜单整项移除，不再出现在本表
 }
 
 const router = createRouter({
