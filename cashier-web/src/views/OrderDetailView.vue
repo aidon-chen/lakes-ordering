@@ -128,18 +128,55 @@
             :disabled="busy"
             @click="advanceProduction"
           >{{ (order.productionStatus ?? 1) === 1 ? '标记出品中' : '标记已出品' }}</button>
+          <button
+            v-if="!isFinished"
+            class="rounded border text-[12px] disabled:opacity-50"
+            style="height: 30px; padding: 0 14px; border-color: var(--tc-line); color: var(--tc-gray)"
+            :disabled="busy"
+            @click="openModify"
+          >改单</button>
+          <button
+            v-if="canRefund"
+            class="rounded border text-[12px] disabled:opacity-50"
+            style="height: 30px; padding: 0 14px; border-color: var(--warn); color: var(--warn)"
+            :disabled="busy"
+            @click="openRefund"
+          >退单</button>
           <span class="text-[11px]" style="color: var(--tc-hold)">
-            改单 / 退单 / 补打待实现：改单与退单**工程无接口**（无 OrderRefundController、无改单逻辑），
-            补打属批次 G；不放点了没反应的按钮
+            {{ actionHint || refundHint }}
           </span>
         </div>
       </div>
     </template>
+
+    <!-- W-13 改单 / 退单弹窗（Ardot 2:932 / 2:933） -->
+    <OrderModifyDialog
+      v-if="showModify && order"
+      ref="modifyRef"
+      :visible="showModify"
+      :order-id="orderId"
+      :order-no="order.orderNo ?? ''"
+      :actual-price="Number(order.actualPrice) || 0"
+      :details="details"
+      @close="showModify = false"
+      @done="onChanged"
+    />
+    <OrderRefundDialog
+      v-if="showRefund && order"
+      ref="refundRef"
+      :visible="showRefund"
+      :order-id="orderId"
+      :order-no="order.orderNo ?? ''"
+      :actual-price="Number(order.actualPrice) || 0"
+      :details="details"
+      @close="showRefund = false"
+      @done="onChanged"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   fetchOrderById,
@@ -152,6 +189,8 @@ import {
   type OrderDetailRow
 } from '@/api/order'
 import { fetchTableList } from '@/api/table'
+import OrderModifyDialog from '@/components/OrderModifyDialog.vue'
+import OrderRefundDialog from '@/components/OrderRefundDialog.vue'
 
 const route = useRoute()
 const order = ref<MerchantOrderRow | null>(null)
@@ -162,6 +201,48 @@ const typeByTableNo = ref<Record<string, string>>({})
 const openAtByTableNo = ref<Record<string, string>>({})
 const loading = ref(true)
 const busy = ref(false)
+
+/* W-13 改单/退单 */
+const showModify = ref(false)
+const showRefund = ref(false)
+const modifyRef = ref<{ init: () => void } | null>(null)
+const refundRef = ref<{ init: () => void } | null>(null)
+/** 最近一次改单/退单的结果提示 */
+const actionHint = ref('')
+
+/** 终态：已完成(6)/售后完成(9)/已取消已支付(11) → 不可改单 */
+const isFinished = computed(() => {
+  const s = order.value?.status
+  return s === 6 || s === 9 || s === 11
+})
+/** 已支付且非终态、且无退款记录 → 可退单 */
+const canRefund = computed(() => !!order.value?.isPayment && !isFinished.value)
+const refundHint = computed(() =>
+  canRefund.value
+    ? '退单走与收款同构的退款路径（演示环境为模拟退款）；补打属批次 G'
+    : isFinished.value
+      ? '该订单已结束，不可改单 / 退单；补打属批次 G'
+      : '该订单未支付，无需退单；补打属批次 G'
+)
+
+function openModify() {
+  showModify.value = true
+  nextTick(() => modifyRef.value?.init())
+}
+
+function openRefund() {
+  showRefund.value = true
+  nextTick(() => refundRef.value?.init())
+}
+
+async function onChanged(diffOrAmount: number) {
+  const o = await fetchOrderById(orderId).catch(() => null)
+  if (o) order.value = o
+  const d = await fetchOrderDetails(orderId).catch(() => null)
+  if (d?.records) details.value = d.records
+  const n = Number(diffOrAmount) || 0
+  actionHint.value = n === 0 ? '操作完成' : `操作完成（差额 ¥${Math.abs(n).toFixed(2)}）`
+}
 
 const orderId = Number(route.query.id)
 
