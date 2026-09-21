@@ -27,6 +27,15 @@ public class PointsMallOrderParam extends PointsMallOrder {
     @ApiModelProperty(notes = "下单结束时间")
     private Date endCreateTime;
 
+    @ApiModelProperty(notes = "核销时间起（批次E · 收银端W-16核销记录用；与下单时间区分）")
+    private Date startVerifyTime;
+
+    @ApiModelProperty(notes = "核销时间止")
+    private Date endVerifyTime;
+
+    @ApiModelProperty(notes = "只看已核销（verify_time 非空）——核销记录列表用")
+    private Boolean onlyVerified;
+
     Date startTime;
 
     Date endTime;

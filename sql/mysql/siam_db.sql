@@ -5346,4 +5346,65 @@ CREATE TABLE `tb_notice` (
   KEY `idx_shop_status` (`shop_id`,`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='公告表';
 
+-- ----------------------------
+-- 批次 E-G（2026-09-21）新增表 —— 收银端 W-23 / W-25 / W-21
+-- 来源脚本：sql/mysql/cloudrun/22-门店设置表.sql、23-打印模块表.sql
+-- 说明：本地库当时处于停止状态，故以「同步仓库 dump」的方式保证本地重建时结构不缺
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS `tb_shop_setting` (
+  `id`            int(11)      NOT NULL AUTO_INCREMENT COMMENT '主键id',
+  `shop_id`       int(11)      NOT NULL                COMMENT '门店id',
+  `setting_key`   varchar(64)  NOT NULL                COMMENT '设置项键',
+  `setting_value` varchar(500) DEFAULT NULL            COMMENT '设置项值（统一存字符串，前端按类型解析）',
+  `create_time`   datetime     DEFAULT NULL            COMMENT '创建时间',
+  `update_time`   datetime     DEFAULT NULL            COMMENT '修改时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_shop_key` (`shop_id`, `setting_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='门店营业设置表（键值对）';
 
+-- ----------------------------
+-- Table structure for tb_print_template
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS `tb_print_template` (
+  `id`           int(11)      NOT NULL AUTO_INCREMENT COMMENT '主键id',
+  `shop_id`      int(11)      NOT NULL                COMMENT '门店id',
+  `name`         varchar(64)  DEFAULT NULL            COMMENT '模板名',
+  `scene`        int(2)       DEFAULT NULL            COMMENT '小票类型 1=接单 2=出品 3=结账 4=自提',
+  `paper_width`  int(4)       DEFAULT '58'            COMMENT '纸宽 58 / 80 (mm)',
+  `footer_text`  varchar(200) DEFAULT NULL            COMMENT '页脚文字',
+  `copies`       int(4)       DEFAULT '1'             COMMENT '打印份数',
+  `show_qr`      tinyint(1)   DEFAULT '1'             COMMENT '是否打印二维码',
+  `is_default`   tinyint(1)   DEFAULT '0'             COMMENT '是否该类型默认模板',
+  `create_time`  datetime     DEFAULT NULL            COMMENT '创建时间',
+  `update_time`  datetime     DEFAULT NULL            COMMENT '修改时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_shop_scene` (`shop_id`, `scene`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='打印模板表';
+
+-- ----------------------------
+-- Table structure for tb_print_task
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS `tb_print_task` (
+  `id`               int(11)      NOT NULL AUTO_INCREMENT COMMENT '主键id',
+  `shop_id`          int(11)      NOT NULL                COMMENT '门店id',
+  `order_no`         varchar(64)  DEFAULT NULL            COMMENT '业务单号',
+  `ticket_type`      int(2)       DEFAULT NULL            COMMENT '小票类型 1=接单 2=出品 3=结账 4=自提',
+  `printer_id`       int(11)      DEFAULT NULL            COMMENT '目标打印机id',
+  `template_id`      int(11)      DEFAULT NULL            COMMENT '所用模板id',
+  `copies`           int(4)       DEFAULT '1'             COMMENT '打印份数',
+  `content`          text                                 COMMENT '打印内容快照',
+  `status`           int(2)       DEFAULT '1'             COMMENT '状态 1=待打印 2=打印中 3=成功 4=失败 5=已忽略',
+  `retry_count`      int(4)       DEFAULT '0'             COMMENT '已重试次数',
+  `max_retry`        int(4)       DEFAULT '3'             COMMENT '最大重试次数',
+  `fail_reason`      varchar(200) DEFAULT NULL            COMMENT '失败原因',
+  `dispatch_time`    datetime     DEFAULT NULL            COMMENT '下发时间',
+  `next_retry_time`  datetime     DEFAULT NULL            COMMENT '下次重试时间',
+  `print_time`       datetime     DEFAULT NULL            COMMENT '打印成功时间',
+  `operator_id`      int(11)      DEFAULT NULL            COMMENT '操作人id（补打时记录）',
+  `is_reprint`       tinyint(1)   DEFAULT '0'             COMMENT '是否补打',
+  `create_time`      datetime     DEFAULT NULL            COMMENT '创建时间',
+  `update_time`      datetime     DEFAULT NULL            COMMENT '修改时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_shop_status` (`shop_id`, `status`),
+  KEY `idx_order_no` (`order_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='打印任务表（队列 + 补打记录）';

@@ -24,6 +24,10 @@ export interface GoodsRow {
   description: string
   /** 后端改 status 时会刷新该字段，用作沽清时间的唯一数据源 */
   updateTime?: string
+  /** 归属打印机 id（tb_goods.printer_id；批次G/W-22 分单规则用） */
+  printerId?: string | null
+  /** 打印份数（tb_goods.print_num） */
+  printNum?: number | null
 }
 
 /** 分页包装（MyBatis-Plus Page） */
@@ -93,3 +97,18 @@ export type SpecGroupMap = Record<string, SpecOption[]>
 /** 查询商品规格组（无规格时返回空对象） */
 export const fetchSpecs = (goodsId: number) =>
   http.post<unknown, SpecGroupMap>('/rest/goodsSpecificationOption/selectByGoodsId', { goodsId })
+
+
+/**
+ * 更新商品的打印归属（批次 G · W-22 出品区分单规则）
+ *
+ * 只提交 id + printerId + printNum 三个字段：后端走 `goodsService.updateById`（MyBatis-Plus **选择性更新**），
+ * 未传的字段不会被覆盖，因此不会误改价格/库存/图片等。
+ * printerId 传空字符串表示「清除归属」（= 回落到默认打印机）。
+ */
+export const updateGoodsRouting = (id: number, printerId: string | null, printNum: number | null) =>
+  http.post<unknown, null>('/rest/merchant/goods/update', {
+    id,
+    printerId: printerId ?? '',
+    printNum: printNum ?? null
+  })

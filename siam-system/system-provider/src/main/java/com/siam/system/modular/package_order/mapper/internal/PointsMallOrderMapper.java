@@ -133,6 +133,17 @@ public interface PointsMallOrderMapper extends BaseMapper<PointsMallOrder> {
             "<if test=\"order.tabType != null and order.tabType =='waitReceived'\"> AND o.status in (5) </if>" +
             "<if test=\"order.tabType != null and order.tabType =='afterSales'\"> AND o.status in (7, 8, 9, 11) </if>" +
             "<if test=\"order.keyWords != null and order.keyWords !=''\"> AND (o.contact_phone like '%${order.keyWords}%' or o.order_no like '%${order.keyWords}%') </if>" +
+            /* ===== 批次 E（收银端 W-15/W-16 自提核销与核销记录）新增筛选 =====
+               说明：以下均为**追加**分支，既有调用方不传这些参数时行为完全不变（保持向后兼容）。
+               注意：本段一律用 #{} 参数绑定，不用既有的 ${} 字符串拼接（避免 SQL 注入）。 */
+            "<if test=\"order.shopId != null\"> AND o.shop_id = #{order.shopId} </if>" +
+            "<if test=\"order.pickupCode != null and order.pickupCode !=''\"> AND o.pickup_code like concat('%', #{order.pickupCode}, '%') </if>" +
+            "<if test=\"order.verifierId != null\"> AND o.verifier_id = #{order.verifierId} </if>" +
+            "<if test=\"order.startCreateTime != null\"> AND o.create_time <![CDATA[ >= ]]> #{order.startCreateTime} </if>" +
+            "<if test=\"order.endCreateTime != null\"> AND o.create_time <![CDATA[ <= ]]> #{order.endCreateTime} </if>" +
+            "<if test=\"order.startVerifyTime != null\"> AND o.verify_time <![CDATA[ >= ]]> #{order.startVerifyTime} </if>" +
+            "<if test=\"order.endVerifyTime != null\"> AND o.verify_time <![CDATA[ <= ]]> #{order.endVerifyTime} </if>" +
+            "<if test=\"order.onlyVerified != null and order.onlyVerified\"> AND o.verify_time is not null </if>" +
             "</where> order by o.create_time desc" +
             "</script>")
     Page<Map<String, Object>> getListByPageWithDesc(@Param("page") Page page, @Param("order") PointsMallOrderParam param);

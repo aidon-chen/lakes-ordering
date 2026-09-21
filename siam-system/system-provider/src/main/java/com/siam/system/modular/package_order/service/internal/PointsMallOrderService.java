@@ -57,6 +57,19 @@ public interface PointsMallOrderService extends IService<PointsMallOrder> {
 
     Page<Map<String, Object>> getListByPageWithDesc(PointsMallOrderParam param);
 
+    /**
+     * 商家端商城订单分页列表（批次 E · 收银端 W-15 待核销 / W-16 核销记录）
+     *
+     * <p>与顾客侧 {@link #getListByPageWithDesc} 的区别：**不按 memberId 限定**，
+     * 改由调用方传入 shopId 限定门店；**复用同一段富查询 SQL**
+     * （含本批次新增的 shopId / pickupCode / verifierId / 下单与核销时间区间 / onlyVerified 筛选）。
+     *
+     * <p>返回的每行会补 <code>verifierName</code>（核销人姓名，取自 tb_merchant），供核销记录页展示。
+     *
+     * @param param 必须带 shopId；status=4 待核销、status=6+onlyVerified=true 为核销记录
+     */
+    Page<Map<String, Object>> listForMerchant(PointsMallOrderParam param);
+
     PointsMallOrder selectByOrderNo(String orderNo);
 
     /**

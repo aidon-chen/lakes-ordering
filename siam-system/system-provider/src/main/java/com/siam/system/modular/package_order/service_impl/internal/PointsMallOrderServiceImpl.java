@@ -34,6 +34,7 @@ import com.siam.system.modular.package_user.entity.Member;
 import com.siam.system.modular.package_user.entity.MemberBillingRecord;
 import com.siam.system.modular.package_user.entity.MemberTradeRecord;
 import com.siam.system.modular.package_user.entity.Merchant;
+import com.siam.system.modular.package_user.mapper.MerchantMapper; // 批次E：核销记录补「核销人姓名」
 import com.siam.system.modular.package_user.model.example.MemberBillingRecordExample;
 import com.siam.system.util.TokenUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -113,6 +114,10 @@ public class PointsMallOrderServiceImpl extends ServiceImpl<PointsMallOrderMappe
 
     @Autowired
     private MerchantSessionManager merchantSessionManager;
+
+    /** 批次 E · 收银端 W-16 核销记录：verifier_id → 核销人姓名 */
+    @Autowired
+    private MerchantMapper merchantMapper;
 
     @Autowired
     private CommonService commonService;
@@ -310,7 +315,11 @@ public class PointsMallOrderServiceImpl extends ServiceImpl<PointsMallOrderMappe
             insertDetail.setOrderId(dbOrder.getId());
             insertDetail.setGoodsId(orderDetail.getGoodsId());
             insertDetail.setGoodsName(orderDetail.getGoodsName());
-            insertDetail.setMainImage(orderDetail.getMainImage());
+            //⚠️ main_image 兜底为空串：tb_points_mall_goods.main_image 允许 NULL（存量 12 条商城商品图全为 NULL），
+            //而 tb_points_mall_order_detail.main_image 是 NOT NULL 且无 DEFAULT → MyBatis-Plus 的
+            //insertSelective 会把 null 字段从列清单剔除，MySQL(strict) 报 1364
+            //「Field 'main_image' doesn't have a default value」→ 整个商城下单失败（到店支付同样下不了单）。
+            insertDetail.setMainImage(StringUtils.isBlank(orderDetail.getMainImage()) ? "" : orderDetail.getMainImage());
             insertDetail.setSpecList(orderDetail.getSpecList());
             insertDetail.setPrice(orderDetail.getPrice());
             insertDetail.setNumber(orderDetail.getNumber());
@@ -476,18 +485,19 @@ public class PointsMallOrderServiceImpl extends ServiceImpl<PointsMallOrderMappe
                 couponsDiscountOrderDetail.setCouponsDiscountPrice(subtractPrice);
 
             }else if(PointsMallCoupons.TYPE_FULL_REDUCTION.equals(((PointsMallCoupons)couponsMap.get("coupons")).getPreferentialType())){
-                //TODO-满减优惠券的使用逻辑待定，初步探讨是满减规则或满减优惠券两者选其一，像奶茶这种产品下单金额比较小，所以估计用不着满减优惠券；
-                //优惠券为满减卷类型
-                //这里要依据使用满减规则后的最终价格来进行判断
-                /*if(finalPrice.compareTo((BigDecimal) couponsMap.get("limitedPrice"))>=0){
-                    subtractPrice = (BigDecimal) couponsMap.get("reducedPrice");
+                //满减优惠券（如「满50减8」：limitedPrice=50 为门槛、reducedPrice=8 为立减额）
+                //与前端口径一致（前端 utils 侧按 `商品总额 >= limitedPrice` 判断，命中则 `商品总额 - reducedPrice`）：
+                //此处 finalPrice 此时 == 商品总额（不含包装费），故直接用 finalPrice 比门槛。
+                //说明：满减券是**订单级**优惠，不绑定单个商品，因此不像折扣券那样校验「券-商品关联」
+                //（tb_points_mall_coupons_goods_relation 为空即表示全场通用）。
+                if(finalPrice.compareTo(dbPointsMallCoupons.getLimitedPrice()) >= 0){
+                    subtractPrice = dbPointsMallCoupons.getReducedPrice();
                     finalPrice = finalPrice.subtract(subtractPrice);
+                    log.debug("\n\n》》》 使用满减优惠券，门槛：" + dbPointsMallCoupons.getLimitedPrice()
+                            + "，立减：" + subtractPrice + "，减后价格：" + finalPrice);
                 }else{
-                    basicResult.setSuccess(false);
-                    basicResult.setCode(BasicResultCode.ERR);
-                    basicResult.setMessage("优惠卷使用错误");
-                    return basicResult;
-                }*/
+                    throw new StoneCustomerException("所选优惠券不满足使用条件，请刷新重试");
+                }
             }
             param.setCouponsId(dbPointsMallCouponsMemberRelation.getCouponsId());
             param.setCouponsMemberRelationId(couponsMemberRelationId);
@@ -609,6 +619,67 @@ public class PointsMallOrderServiceImpl extends ServiceImpl<PointsMallOrderMappe
         //订单已发货，距离支付时间未超过20天可以申请售后
 
         return page;
+    }
+
+    /* ==================== 批次 E · 收银端 W-15 / W-16 ==================== */
+
+    @Override
+    public Page<Map<String, Object>> listForMerchant(PointsMallOrderParam param) {
+        if (param.getShopId() == null) {
+            throw new StoneCustomerException("门店信息缺失");
+        }
+        // 与顾客侧同表不同口径：不按 memberId 限定，改由 shopId 限定门店（由 Controller 从登录会话注入）
+        param.setIsDeleted(false);
+
+        Page<Map<String, Object>> page = pointsMallOrderMapper.getListByPageWithDesc(
+                new Page(param.getPageNo(), param.getPageSize()), param);
+
+        fillVerifierName(page.getRecords());
+        return page;
+    }
+
+    /**
+     * 批量补「核销人姓名」（verifier_id → tb_merchant.nickname/real_name），避免 N+1。
+     *
+     * <p>⚠️ MyBatis 把结果映射成 Map 时，key 用的是**结果集列标签**（下划线形式），
+     * 不保证与 map-underscore-to-camel-case 联动 → 这里**两种 key 都兼容**，取到即用。
+     */
+    private void fillVerifierName(List<Map<String, Object>> records) {
+        if (records == null || records.isEmpty()) {
+            return;
+        }
+        List<Integer> ids = new ArrayList<>();
+        for (Map<String, Object> r : records) {
+            Integer id = readInt(r, "verifierId", "verifier_id");
+            if (id != null && !ids.contains(id)) {
+                ids.add(id);
+            }
+        }
+        if (ids.isEmpty()) {
+            return;
+        }
+        Map<Integer, String> names = new HashMap<>();
+        for (Merchant m : merchantMapper.selectBatchIds(ids)) {
+            names.put(m.getId(), m.getNickname() != null && !m.getNickname().isEmpty()
+                    ? m.getNickname() : m.getRealName());
+        }
+        for (Map<String, Object> r : records) {
+            Integer id = readInt(r, "verifierId", "verifier_id");
+            if (id != null) {
+                r.put("verifierName", names.get(id));
+            }
+        }
+    }
+
+    /** 从 Map 里按候选 key 顺序读一个 Integer（兼容下划线与驼峰两种列标签） */
+    private Integer readInt(Map<String, Object> row, String... keys) {
+        for (String k : keys) {
+            Object v = row.get(k);
+            if (v instanceof Number) {
+                return ((Number) v).intValue();
+            }
+        }
+        return null;
     }
 
     @Override
@@ -745,6 +816,12 @@ public class PointsMallOrderServiceImpl extends ServiceImpl<PointsMallOrderMappe
             //处理商品规格
             String specText = "";
             Map<String, Object> map = GsonUtils.toMap(orderDetail.getSpecList());
+            //specList 可能为 NULL（无规格商品，实测 tb_points_mall_order_detail 存量数据即如此）
+            //→ GsonUtils.toMap(null) 返回 null，不加兜底会在下面的 keySet() 抛 NPE，
+            //  使积分商城订单支付回调整体失败（订单永远停在待付款）
+            if (map == null) {
+                map = new HashMap<String, Object>();
+            }
             for(String key : map.keySet()){
                 if(specText.isEmpty()){
                     specText += (String) map.get(key);

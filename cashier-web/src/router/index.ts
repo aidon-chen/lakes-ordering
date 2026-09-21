@@ -18,8 +18,14 @@ const IMPLEMENTED: Record<string, Component> = {
   '/wine/list': defineAsyncComponent(() => import('@/views/WineStorageView.vue')),
   '/wine/create': defineAsyncComponent(() => import('@/views/WineCreateView.vue')),
   '/print/printers': defineAsyncComponent(() => import('@/views/PrinterListView.vue')),
+  '/pickup/verify': defineAsyncComponent(() => import('@/views/PickupVerifyView.vue')),
+  '/pickup/records': defineAsyncComponent(() => import('@/views/PickupRecordView.vue')),
+  '/print/routing': defineAsyncComponent(() => import('@/views/PrintRoutingView.vue')),
+  '/shop/settings': defineAsyncComponent(() => import('@/views/ShopSettingView.vue')),
+  '/print/queue': defineAsyncComponent(() => import('@/views/PrintQueueView.vue')),
+  '/print/templates': defineAsyncComponent(() => import('@/views/PrintTemplateView.vue')),
   '/shop/account': defineAsyncComponent(() => import('@/views/AccountView.vue'))
-  // 其余 9 项尚未落地 → 统一走 PageStub（批次 G 起逐页替换）
+  // 其余 3 项尚未落地 → 统一走 PageStub（批次 F/G 起逐页替换）
 }
 
 const router = createRouter({
