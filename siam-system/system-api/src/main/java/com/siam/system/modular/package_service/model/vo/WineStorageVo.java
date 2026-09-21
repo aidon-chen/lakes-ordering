@@ -25,9 +25,6 @@ public class WineStorageVo {
     /** 剩余瓶数 */
     private Integer remainCount;
 
-    /** 存酒码（C-16 展示为纯数字，C-01 展示为 No.xxxx） */
-    private String storageCode;
-
     /** 存放柜位 */
     private String location;
 
@@ -55,9 +52,12 @@ public class WineStorageVo {
     /** 有效期截止 yyyy-MM-dd */
     private String expireDate;
 
-    /** 展示用一行信息：No.8866 · B 区 03 号柜 · 存入 08-20 */
+    /** 展示用一行信息：B 区 03 号柜 · 存入 08-20（无柜位则只留「存入 MM-dd」） */
     private String summaryLine;
 
     /** 展示用有效期行：有效期至 2026-11-18 */
     private String expireLine;
+
+    /** 该存酒当前是否有「有效待核销」取酒申请（顾客端据此禁用「申请取酒」） */
+    private Boolean pendingApply;
 }

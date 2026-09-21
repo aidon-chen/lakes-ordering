@@ -2,7 +2,7 @@
   <!--
     W-17 存酒登记（Ardot 2:1102，内容区 2:1105）
     左：登记-表单卡 700×812 r8（padding 20, gap 12，6 行 + 按钮行 42）
-    右：凭证预览卡 474×812 r8（padding 20, gap 14：存酒码块 74 / 二维码 140×140 / 5 行信息）
+    右：存酒凭证卡 474×812 r8（padding 20, gap 14：凭证头 74 / 5 行信息）
   -->
   <div class="flex-1 overflow-auto p-5 flex gap-4 min-w-0">
     <!-- ===================== 左：登记表单卡 ===================== -->
@@ -111,37 +111,28 @@
       </p>
     </div>
 
-    <!-- ===================== 右：凭证预览卡 ===================== -->
+    <!-- ===================== 右：存酒凭证卡 ===================== -->
     <div class="rounded-lg flex flex-col shrink-0" style="width: 474px; padding: 20px; background: #fff; border: 1px solid var(--tc-line); gap: 14px">
-      <span class="text-[16px] font-medium" style="color: var(--tc-title)">本次登记预览凭证</span>
+      <span class="text-[16px] font-medium" style="color: var(--tc-title)">存酒凭证</span>
 
-      <!-- 存酒码块（保存后才由后端生成 → 未保存时如实标注） -->
+      <!-- 凭证头（方案 v1.1：登记不再生成存酒码，取酒码在「申请 / 代发起」时生成） -->
       <div class="rounded-md flex flex-col items-center justify-center" style="height: 74px; background: #EDF2DE; gap: 4px">
-        <span class="text-[20px] font-bold" style="color: var(--tc-title)">
-          存酒码 {{ createdCode || '保存后生成' }}
-        </span>
-        <span class="text-[12px]" style="color: var(--tc-sub)">顾客到店出示此码或小程序存酒码取酒（C-16）</span>
+        <span class="text-[18px] font-bold" style="color: var(--tc-title)">{{ form.goodsName || '登记后生成凭证' }}</span>
+        <span class="text-[12px]" style="color: var(--tc-sub)">顾客可在小程序「我的存酒」申请取酒，也可由店员代发起</span>
       </div>
 
-      <!-- 取酒码区（画板是 140×140 占位；真实二维码由小程序端生成，此处只展示码值） -->
-      <div class="rounded-md flex flex-col items-center justify-center self-start" style="width: 140px; height: 140px; background: var(--bg); border: 1px solid var(--tc-line); gap: 6px">
-        <span class="text-[12px]" style="color: var(--tc-sub)">取酒码</span>
-        <span class="text-[18px] font-bold" style="color: var(--p)">{{ createdCode || '——' }}</span>
-        <span class="text-[11px] text-center" style="color: var(--tc-hold); padding: 0 8px">二维码由小程序端生成</span>
-      </div>
-
-      <!-- 5 行信息 -->
+      <!-- 信息 -->
       <div v-for="kv in previewPairs" :key="kv[0]" class="flex text-[12px]" style="height: 19px">
         <span style="color: var(--tc-sub)">{{ kv[0] }}</span>
         <span class="ml-auto truncate" style="color: var(--txt); max-width: 300px">{{ kv[1] }}</span>
       </div>
 
-      <p v-if="!createdCode" class="text-[11px]" style="color: var(--tc-hold)">
-        以上为**登记前预览**；存酒码在保存成功后由服务端生成并回填到此处。
+      <p v-if="!created" class="text-[11px]" style="color: var(--tc-hold)">
+        以上为登记前预览；保存后即写入会员存酒账户，无需再出码。
       </p>
       <div v-else class="flex items-center" style="gap: 10px">
         <span class="text-[12px]" style="color: #008000">✅ 已登记并存酒</span>
-        <button class="text-[12px]" style="color: var(--p)" @click="goList">去存酒列表核销 →</button>
+        <button class="text-[12px]" style="color: var(--p)" @click="goList">去存酒列表 →</button>
       </div>
     </div>
   </div>
@@ -159,7 +150,7 @@ const member = ref<MerchantMemberBrief | null>(null)
 const looking = ref(false)
 const lookupErr = ref('')
 const submitting = ref(false)
-const createdCode = ref('')
+const created = ref(false)
 
 /** 默认 90 天，与后端 DEFAULT_EXPIRE_DAYS 一致 */
 const DEFAULT_DAYS = 90
@@ -191,7 +182,7 @@ const previewPairs = computed<[string, string][]>(() => [
 async function doLookup() {
   lookupErr.value = ''
   member.value = null
-  createdCode.value = ''
+  created.value = false
   looking.value = true
   try {
     member.value = await lookupMemberByMobile(form.value.memberPhone)
@@ -206,7 +197,7 @@ async function doCreate() {
   if (!canSubmit.value || submitting.value) return
   submitting.value = true
   try {
-    const res = await createWine({
+    await createWine({
       memberPhone: form.value.memberPhone,
       goodsName: form.value.goodsName,
       bottleCount: Number(form.value.bottleCount) || 1,
@@ -214,7 +205,7 @@ async function doCreate() {
       remark: form.value.remark || undefined,
       expireDays: expireDays.value
     })
-    createdCode.value = res?.storageCode ?? ''
+    created.value = true
   } catch (e) {
     console.error('[wine-create] 登记失败', e)
     alert((e as Error).message || '登记失败')

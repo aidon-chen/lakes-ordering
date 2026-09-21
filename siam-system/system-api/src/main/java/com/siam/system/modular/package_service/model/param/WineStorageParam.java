@@ -7,7 +7,7 @@ import lombok.Data;
  *
  *  - 顾客列表：memberId 由会话推导，无需传
  *  - 商家录入：memberPhone, goodsName, location, bottleCount, expireDays
- *  - 商家取酒：storageCode, takeCount, remark
+ *  - 取酒：storageId, takeCode, takeCount, remark（申请 / 代发起 / 核销）
  */
 @Data
 public class WineStorageParam {
@@ -29,14 +29,21 @@ public class WineStorageParam {
     /** 有效天数（默认 90） */
     private Integer expireDays;
 
-    /* ---- 商家取酒 ---- */
+    /* ---- 取酒（申请 / 代发起 / 核销） ---- */
 
-    /** 存酒码 */
-    private String storageCode;
+    /** 存酒记录id（申请取酒 / 商家代发起时定位存酒） */
+    private Long storageId;
 
-    /** 本次取酒瓶数 */
+    /** 取酒申请id（顾客取消申请时传入） */
+    private Long applyId;
+
+    /** 一次性取酒码（核销时传入） */
+    private String takeCode;
+
+    /** 本次取酒瓶数（申请 / 代发起） */
     private Integer takeCount;
 
+    /** 备注（商家代发起可填） */
     private String remark;
 
     /* ---- 顾客查询 ---- */

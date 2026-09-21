@@ -36,9 +36,6 @@ public class WineStorage {
     /** 剩余瓶数 */
     private Integer remainCount;
 
-    /** 存酒码（唯一，4 位数字） */
-    private String storageCode;
-
     /** 存放柜位，如「B 区 03 号柜」（批次 5 新增列） */
     private String location;
 

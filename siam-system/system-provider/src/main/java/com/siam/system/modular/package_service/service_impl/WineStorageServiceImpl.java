@@ -6,10 +6,13 @@ import com.siam.system.modular.package_goods.entity.Shop;
 import com.siam.system.modular.package_goods.mapper.ShopMapper;
 import com.siam.system.modular.package_service.entity.WineStorage;
 import com.siam.system.modular.package_service.entity.WineStorageRecord;
+import com.siam.system.modular.package_service.entity.WineTakeApply;
 import com.siam.system.modular.package_service.mapper.WineStorageMapper;
 import com.siam.system.modular.package_service.mapper.WineStorageRecordMapper;
+import com.siam.system.modular.package_service.mapper.WineTakeApplyMapper;
 import com.siam.system.modular.package_service.model.param.WineStorageParam;
 import com.siam.system.modular.package_service.model.vo.WineStorageVo;
+import com.siam.system.modular.package_service.model.vo.WineTakeApplyVo;
 import com.siam.system.modular.package_service.service.WineStorageService;
 import com.siam.system.modular.package_user.entity.Member;
 import com.siam.system.modular.package_user.mapper.MemberMapper;
@@ -24,15 +27,19 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * 存酒服务实现 · C-16 / C-01 存酒区
+ * 存酒服务实现 · C-16 / C-01 存酒区 ＋ 取酒申请（方案 v1.1）
  *
- * 取酒并发安全：WineStorageMapper.atomicTake 用「条件式 UPDATE + DB 行锁」，
+ * <p>取酒并发安全：WineStorageMapper.atomicTakeById 用「条件式 UPDATE + DB 行锁」，
  * 绝不「先查后改」。扣到 0 瓶由 SQL 内 CASE 自动置 status=2（已取完）。
+ *
+ * <p>取酒单一模型：申请 → 取酒码 → 核销。同一存酒同时最多 1 笔有效待核销申请，
+ * 超订被结构性消除；申请与核销两处都显式拦截已过期存酒。
  */
 @Service
 public class WineStorageServiceImpl implements WineStorageService {
@@ -43,11 +50,24 @@ public class WineStorageServiceImpl implements WineStorageService {
     /** 默认存酒有效期（天），原型提示条「存酒有效期 90 天」 */
     private static final int DEFAULT_EXPIRE_DAYS = 90;
 
-    /** 状态码 */
+    /** 取酒码有效期（小时） */
+    private static final int TAKE_CODE_TTL_HOURS = 24;
+
+    /** 存酒展示状态码 */
     private static final int CODE_ACTIVE = 1;
     private static final int CODE_TAKEN = 2;
     private static final int CODE_EXPIRED = 3;
     private static final int CODE_WARNING = 4;
+
+    /** 取酒申请状态码（1 起步，方案 v1.1 §11.2-9） */
+    private static final int APPLY_PENDING = 1;
+    private static final int APPLY_CONFIRMED = 2;
+    private static final int APPLY_CANCELLED = 3;
+    private static final int APPLY_EXPIRED = 4;
+
+    /** 取酒申请来源 */
+    private static final int SOURCE_MEMBER = 1;
+    private static final int SOURCE_SHOP = 2;
 
     private static final Map<Integer, String> STATUS_TEXT = new HashMap<Integer, String>() {{
         put(CODE_ACTIVE, "存续中");
@@ -56,23 +76,26 @@ public class WineStorageServiceImpl implements WineStorageService {
         put(CODE_WARNING, "将过期");
     }};
 
+    private static final Map<Integer, String> APPLY_STATUS_TEXT = new HashMap<Integer, String>() {{
+        put(APPLY_PENDING, "待核销");
+        put(APPLY_CONFIRMED, "已核销");
+        put(APPLY_CANCELLED, "已取消");
+        put(APPLY_EXPIRED, "已过期");
+    }};
+
     /**
      * 列表展示顺序（原型 298:53 自上而下）：存续中 → 将过期 → 已过期 → 已取完。
-     * <p>
-     * 不能直接按 statusCode 升序排：CODE_EXPIRED=3 小于 CODE_WARNING=4，
-     * 升序会把「已过期」排在「将过期」前面，与原型行序正好相反。
-     * 状态码是接口契约（前端 wineTagClass 依赖 1/2/3/4），故在此单独映射展示序，不改状态码取值。
      */
     private static int displayRank(int statusCode) {
         switch (statusCode) {
             case CODE_ACTIVE:
-                return 1;   // 存续中
+                return 1;
             case CODE_WARNING:
-                return 2;   // 将过期
+                return 2;
             case CODE_EXPIRED:
-                return 3;   // 已过期
+                return 3;
             case CODE_TAKEN:
-                return 4;   // 已取完
+                return 4;
             default:
                 return 99;
         }
@@ -83,6 +106,9 @@ public class WineStorageServiceImpl implements WineStorageService {
 
     @Autowired
     private WineStorageRecordMapper wineStorageRecordMapper;
+
+    @Autowired
+    private WineTakeApplyMapper wineTakeApplyMapper;
 
     @Autowired
     private MemberMapper memberMapper;
@@ -101,12 +127,17 @@ public class WineStorageServiceImpl implements WineStorageService {
                 new QueryWrapper<WineStorage>().eq("member_id", memberId).orderByAsc("expire_date"));
 
         Map<Integer, String> shopNames = shopNameMap(list);
+        // 该会员当前是否有「有效待核销」取酒申请（供顾客端展示/禁用申请）
+        Map<Long, WineTakeApply> pendingByStorage = pendingApplyMapByMember(memberId);
+
         List<WineStorageVo> vos = new ArrayList<>();
         for (WineStorage ws : list) {
-            vos.add(toVo(ws, shopNames));
+            WineStorageVo vo = toVo(ws, shopNames);
+            if (pendingByStorage.containsKey(ws.getId())) {
+                vo.setPendingApply(true);
+            }
+            vos.add(vo);
         }
-        // 展示序：存续中 → 将过期 → 已过期 → 已取完；同组内保 expire_date 升序
-        // （DB 已按 expire_date 排好 + List.sort 稳定排序，故同组保序）
         vos.sort(Comparator.comparingInt((WineStorageVo vo) -> displayRank(vo.getStatusCode())));
         return vos;
     }
@@ -121,29 +152,23 @@ public class WineStorageServiceImpl implements WineStorageService {
         return toVo(ws, shopNames);
     }
 
-    /* ==================== 商家侧（W-17 登记 / W-18 列表与取酒核销） ==================== */
+    /* ==================== 商家侧（W-17 登记 / W-18 存酒列表） ==================== */
 
     @Override
     public List<WineStorageVo> listByShop(Integer shopId, WineStorageParam param) {
         if (shopId == null) {
             throw new StoneCustomerException("门店信息缺失");
         }
-        // 惰性过期：与顾客侧同口径，查询前先把过期但仍标为在存(1)的记录置为已过期(3)
         wineStorageMapper.expireOutdated();
 
         QueryWrapper<WineStorage> qw = new QueryWrapper<>();
         qw.eq("shop_id", shopId);
         if (param != null) {
-            String code = param.getStorageCode() == null ? null : param.getStorageCode().trim();
-            if (code != null && !code.isEmpty()) {
-                qw.like("storage_code", code);
-            }
             String phone = param.getMemberPhone() == null ? null : param.getMemberPhone().trim();
             if (phone != null && !phone.isEmpty()) {
                 Member m = memberMapper.selectOne(new QueryWrapper<Member>()
                         .eq("mobile", phone).last("limit 1"));
                 if (m == null) {
-                    // 手机号无对应会员 → 该筛选必然为空，直接返回，不做无谓全扫
                     return new ArrayList<>();
                 }
                 qw.eq("member_id", m.getId());
@@ -167,7 +192,6 @@ public class WineStorageServiceImpl implements WineStorageService {
             }
             vos.add(vo);
         }
-        // 与顾客侧同序：存续中 → 将过期 → 已过期 → 已取完
         vos.sort(Comparator.comparingInt((WineStorageVo vo) -> displayRank(vo.getStatusCode())));
         return vos;
     }
@@ -226,7 +250,6 @@ public class WineStorageServiceImpl implements WineStorageService {
         ws.setGoodsName(param.getGoodsName().trim());
         ws.setBottleCount(bottleCount);
         ws.setRemainCount(bottleCount);
-        ws.setStorageCode(generateUniqueCode());
         ws.setLocation(param.getLocation() == null ? null : param.getLocation().trim());
         ws.setStorageDate(today);
         ws.setExpireDate(addDays(today, expireDays));
@@ -234,46 +257,252 @@ public class WineStorageServiceImpl implements WineStorageService {
         ws.setCreateTime(new Date());
         ws.setUpdateTime(new Date());
         wineStorageMapper.insert(ws);
-        // 返回创建结果：W-17 凭证预览需要展示生成的存酒码与有效期
+        // W-17 凭证预览需要展示有效期（取酒码改为「申请后生成」，登记阶段不再出码）
         return ws;
     }
 
+    /* ==================== 取酒申请（方案 v1.1） ==================== */
+
     @Override
-    public void take(WineStorageParam param, Integer operatorId) {
-        if (param.getStorageCode() == null || param.getStorageCode().trim().isEmpty()) {
-            throw new StoneCustomerException("存酒码不能为空");
-        }
-        int takeCount = param.getTakeCount() == null || param.getTakeCount() < 1 ? 1 : param.getTakeCount();
+    public WineTakeApplyVo applyTake(Integer memberId, WineStorageParam param) {
+        return createApply(memberId, param.getStorageId(), param.getTakeCount(),
+                SOURCE_MEMBER, null, param.getRemark());
+    }
 
-        WineStorage db = wineStorageMapper.selectOne(
-                new QueryWrapper<WineStorage>().eq("storage_code", param.getStorageCode().trim()).last("LIMIT 1"));
-        if (db == null) {
-            throw new StoneCustomerException("存酒码不存在");
-        }
+    @Override
+    public WineTakeApplyVo createApplyByShop(Integer operatorId, Integer shopId, WineStorageParam param) {
+        return createApply(null, param.getStorageId(), param.getTakeCount(),
+                SOURCE_SHOP, operatorId, param.getRemark());
+    }
 
-        // 原子扣减：影响行数=1 才成功（并发兜底靠 DB 行锁）
-        int rows = wineStorageMapper.atomicTake(param.getStorageCode().trim(), takeCount);
+    /**
+     * 生成取酒申请（顾客自助 / 商家代发起共用）。
+     *
+     * @param ownerMemberId 顾客自助时用于校验归属；商家代发起传 null（不校验归属）
+     */
+    private WineTakeApplyVo createApply(Integer ownerMemberId, Long storageId, Integer takeCount,
+                                        int applySource, Integer applyBy, String remark) {
+        if (storageId == null) {
+            throw new StoneCustomerException("存酒记录不能为空");
+        }
+        // ① 先清过期存酒（副作用兜底）
+        wineStorageMapper.expireOutdated();
+        // ② storage 存在
+        WineStorage st = wineStorageMapper.selectById(storageId);
+        if (st == null) {
+            throw new StoneCustomerException("存酒记录不存在");
+        }
+        // ③ 顾客自助：校验归属（他人记录按「不存在」处理，避免暴露）
+        if (applySource == SOURCE_MEMBER) {
+            if (ownerMemberId == null || !ownerMemberId.equals(st.getMemberId())) {
+                throw new StoneCustomerException("存酒记录不存在");
+            }
+        }
+        // ④ 在存
+        if (st.getStatus() == null || st.getStatus() != CODE_ACTIVE) {
+            throw new StoneCustomerException("该存酒已取完或已过期，无法申请");
+        }
+        // ⑤ 显式判期（不依赖 ① 的副作用）
+        if (st.getExpireDate() != null && st.getExpireDate().before(today())) {
+            throw new StoneCustomerException("该存酒已过有效期，请联系门店");
+        }
+        // ⑥ 瓶数合法且不超余量
+        int cnt = takeCount == null || takeCount < 1 ? 1 : takeCount;
+        Integer remain = st.getRemainCount() == null ? 0 : st.getRemainCount();
+        if (cnt > remain) {
+            throw new StoneCustomerException("取酒瓶数不能超过剩余瓶数");
+        }
+        // ⑦ 无有效待核销申请
+        Integer pending = wineTakeApplyMapper.selectCount(new QueryWrapper<WineTakeApply>()
+                .eq("storage_id", storageId)
+                .eq("status", APPLY_PENDING)
+                .gt("expire_time", new Date()));
+        if (pending != null && pending > 0) {
+            throw new StoneCustomerException("该存酒已有待核销的取酒申请");
+        }
+        // ⑧ 生成唯一 6 位取酒码
+        Date now = new Date();
+        WineTakeApply ap = new WineTakeApply();
+        ap.setMemberId(st.getMemberId());
+        ap.setShopId(st.getShopId());
+        ap.setStorageId(storageId);
+        ap.setTakeCount(cnt);
+        ap.setTakeCode(generateUniqueTakeCode());
+        ap.setStatus(APPLY_PENDING);
+        ap.setApplySource(applySource);
+        ap.setApplyBy(applyBy);
+        ap.setApplyTime(now);
+        ap.setExpireTime(addHours(now, TAKE_CODE_TTL_HOURS));
+        ap.setRemark(remark);
+        ap.setCreateTime(now);
+        ap.setUpdateTime(now);
+        wineTakeApplyMapper.insert(ap);
+        return toApplyVo(ap, st, null);
+    }
+
+    @Override
+    public List<WineTakeApplyVo> listMyApplies(Integer memberId) {
+        wineTakeApplyMapper.expireOutdated();
+        List<WineTakeApply> list = wineTakeApplyMapper.selectList(
+                new QueryWrapper<WineTakeApply>().eq("member_id", memberId).orderByDesc("apply_time"));
+        Map<Long, WineStorage> storages = storageMapByIds(
+                list.stream().map(WineTakeApply::getStorageId).collect(Collectors.toList()));
+        List<WineTakeApplyVo> vos = new ArrayList<>();
+        for (WineTakeApply ap : list) {
+            vos.add(toApplyVo(ap, storages.get(ap.getStorageId()), null));
+        }
+        return vos;
+    }
+
+    @Override
+    public List<WineTakeApplyVo> listPendingApplies(Integer shopId) {
+        if (shopId == null) {
+            throw new StoneCustomerException("门店信息缺失");
+        }
+        wineTakeApplyMapper.expireOutdated();
+        List<WineTakeApply> list = wineTakeApplyMapper.selectList(new QueryWrapper<WineTakeApply>()
+                .eq("shop_id", shopId)
+                .eq("status", APPLY_PENDING)
+                .orderByAsc("apply_time"));
+        Map<Long, WineStorage> storages = storageMapByIds(
+                list.stream().map(WineTakeApply::getStorageId).collect(Collectors.toList()));
+        Map<Integer, Member> members = memberMap2(
+                list.stream().map(WineTakeApply::getMemberId).collect(Collectors.toList()));
+        List<WineTakeApplyVo> vos = new ArrayList<>();
+        for (WineTakeApply ap : list) {
+            vos.add(toApplyVo(ap, storages.get(ap.getStorageId()), members.get(ap.getMemberId())));
+        }
+        return vos;
+    }
+
+    @Override
+    public WineTakeApplyVo previewTake(Integer shopId, String takeCode) {
+        WineTakeApply ap = loadValidApplyByCode(takeCode);
+        WineStorage st = wineStorageMapper.selectById(ap.getStorageId());
+        Member m = ap.getMemberId() == null ? null : memberMapper.selectById(ap.getMemberId());
+        return toApplyVo(ap, st, m);
+    }
+
+    @Override
+    public void cancelApply(Integer memberId, Long applyId) {
+        if (applyId == null) {
+            throw new StoneCustomerException("取酒申请不能为空");
+        }
+        wineTakeApplyMapper.expireOutdated();
+        WineTakeApply ap = wineTakeApplyMapper.selectById(applyId);
+        if (ap == null || !Objects.equals(memberId, ap.getMemberId())) {
+            throw new StoneCustomerException("取酒申请不存在");
+        }
+        boolean expired = ap.getExpireTime() != null && ap.getExpireTime().before(new Date());
+        if (ap.getStatus() == null || ap.getStatus() != APPLY_PENDING || expired) {
+            throw new StoneCustomerException("该申请已核销/已过期，不可取消");
+        }
+        ap.setStatus(APPLY_CANCELLED);
+        ap.setCancelTime(new Date());
+        ap.setUpdateTime(new Date());
+        wineTakeApplyMapper.updateById(ap);
+    }
+
+    @Override
+    public WineTakeApplyVo confirmTake(Integer operatorId, String takeCode) {
+        WineTakeApply ap = loadValidApplyByCode(takeCode);
+        // 原子扣减：影响行数=1 才成功
+        int rows = wineStorageMapper.atomicTakeById(ap.getStorageId(), ap.getTakeCount());
         if (rows != 1) {
-            throw new StoneCustomerException("取酒失败：存酒码无效、已过期或剩余瓶数不足");
+            throw new StoneCustomerException("余量不足、已取完或该存酒已过有效期");
         }
-
+        // 写取酒记录（含 apply_id，供对账）
+        Date now = new Date();
         WineStorageRecord record = new WineStorageRecord();
-        record.setStorageId(db.getId());
-        record.setTakeCount(takeCount);
+        record.setStorageId(ap.getStorageId());
+        record.setApplyId(ap.getId());
+        record.setTakeCount(ap.getTakeCount());
         record.setOperatorId(operatorId);
-        record.setRemark(param.getRemark());
-        record.setTakeTime(new Date());
-        record.setCreateTime(new Date());
-        record.setUpdateTime(new Date());
+        record.setRemark(ap.getRemark());
+        record.setTakeTime(now);
+        record.setCreateTime(now);
+        record.setUpdateTime(now);
         wineStorageRecordMapper.insert(record);
+        // 置申请已核销
+        ap.setStatus(APPLY_CONFIRMED);
+        ap.setConfirmTime(now);
+        ap.setConfirmBy(operatorId);
+        ap.setUpdateTime(now);
+        wineTakeApplyMapper.updateById(ap);
+
+        WineStorage st = wineStorageMapper.selectById(ap.getStorageId());
+        Member m = ap.getMemberId() == null ? null : memberMapper.selectById(ap.getMemberId());
+        return toApplyVo(ap, st, m);
+    }
+
+    /** 按取酒码取「有效待核销」申请；分档文案（不存在 / 已核销 / 已取消 / 已过期） */
+    private WineTakeApply loadValidApplyByCode(String takeCode) {
+        if (takeCode == null || takeCode.trim().isEmpty()) {
+            throw new StoneCustomerException("取酒码不能为空");
+        }
+        wineTakeApplyMapper.expireOutdated();
+        WineTakeApply ap = wineTakeApplyMapper.selectOne(new QueryWrapper<WineTakeApply>()
+                .eq("take_code", takeCode.trim()).last("LIMIT 1"));
+        if (ap == null) {
+            throw new StoneCustomerException("取酒码不存在");
+        }
+        if (ap.getStatus() != null && ap.getStatus() == APPLY_CONFIRMED) {
+            throw new StoneCustomerException("该取酒码已核销");
+        }
+        if (ap.getStatus() != null && ap.getStatus() == APPLY_CANCELLED) {
+            throw new StoneCustomerException("该申请已取消");
+        }
+        boolean expired = ap.getStatus() != null && ap.getStatus() == APPLY_EXPIRED
+                || (ap.getExpireTime() != null && ap.getExpireTime().before(new Date()));
+        if (expired) {
+            throw new StoneCustomerException("该取酒码已过期");
+        }
+        return ap;
     }
 
     /* ==================== 私有 ==================== */
 
+    /** 该会员「有效待核销」取酒申请，按 storageId 建索引 */
+    private Map<Long, WineTakeApply> pendingApplyMapByMember(Integer memberId) {
+        List<WineTakeApply> list = wineTakeApplyMapper.selectList(new QueryWrapper<WineTakeApply>()
+                .eq("member_id", memberId)
+                .eq("status", APPLY_PENDING)
+                .gt("expire_time", new Date()));
+        Map<Long, WineTakeApply> map = new HashMap<>();
+        for (WineTakeApply ap : list) {
+            map.put(ap.getStorageId(), ap);
+        }
+        return map;
+    }
+
+    private Map<Long, WineStorage> storageMapByIds(List<Long> ids) {
+        Map<Long, WineStorage> map = new HashMap<>();
+        List<Long> distinct = ids.stream().filter(Objects::nonNull).distinct().collect(Collectors.toList());
+        if (distinct.isEmpty()) {
+            return map;
+        }
+        for (WineStorage ws : wineStorageMapper.selectBatchIds(distinct)) {
+            map.put(ws.getId(), ws);
+        }
+        return map;
+    }
+
+    private Map<Integer, Member> memberMap2(List<Integer> ids) {
+        Map<Integer, Member> map = new HashMap<>();
+        List<Integer> distinct = ids.stream().filter(Objects::nonNull).distinct().collect(Collectors.toList());
+        if (distinct.isEmpty()) {
+            return map;
+        }
+        for (Member m : memberMapper.selectBatchIds(distinct)) {
+            map.put(m.getId(), m);
+        }
+        return map;
+    }
+
     private Map<Integer, String> shopNameMap(List<WineStorage> list) {
         Set<Integer> shopIds = list.stream()
                 .map(WineStorage::getShopId)
-                .filter(java.util.Objects::nonNull)
+                .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
         if (shopIds.isEmpty()) {
             return java.util.Collections.emptyMap();
@@ -288,7 +517,6 @@ public class WineStorageServiceImpl implements WineStorageService {
         vo.setGoodsName(ws.getGoodsName());
         vo.setBottleCount(ws.getBottleCount());
         vo.setRemainCount(ws.getRemainCount());
-        vo.setStorageCode(ws.getStorageCode());
         vo.setLocation(ws.getLocation());
         if (ws.getShopId() != null) {
             vo.setShopName(shopNames.get(ws.getShopId()));
@@ -306,15 +534,45 @@ public class WineStorageServiceImpl implements WineStorageService {
             vo.setExpireLine("有效期至 " + fmtDate(ws.getExpireDate()));
         }
 
-        // 展示行：No.8866 · B 区 03 号柜 · 存入 08-20（柜位可空）
-        StringBuilder line = new StringBuilder("No.").append(ws.getStorageCode());
+        // 展示行：B 区 03 号柜 · 存入 08-20（柜位可空）
+        StringBuilder line = new StringBuilder();
         if (ws.getLocation() != null && !ws.getLocation().trim().isEmpty()) {
-            line.append(" · ").append(ws.getLocation().trim());
+            line.append(ws.getLocation().trim());
         }
         if (ws.getStorageDate() != null) {
-            line.append(" · 存入 ").append(new SimpleDateFormat("MM-dd").format(ws.getStorageDate()));
+            if (line.length() > 0) {
+                line.append(" · ");
+            }
+            line.append("存入 ").append(new SimpleDateFormat("MM-dd").format(ws.getStorageDate()));
         }
         vo.setSummaryLine(line.toString());
+        return vo;
+    }
+
+    private WineTakeApplyVo toApplyVo(WineTakeApply ap, WineStorage st, Member m) {
+        WineTakeApplyVo vo = new WineTakeApplyVo();
+        vo.setId(ap.getId());
+        vo.setStorageId(ap.getStorageId());
+        vo.setMemberId(ap.getMemberId());
+        if (st != null) {
+            vo.setGoodsName(st.getGoodsName());
+            vo.setLocation(st.getLocation());
+        }
+        vo.setTakeCount(ap.getTakeCount());
+        int status = ap.getStatus() == null ? APPLY_PENDING : ap.getStatus();
+        vo.setStatusCode(status);
+        vo.setStatusText(APPLY_STATUS_TEXT.get(status));
+        // 取酒码仅「待核销」时对外展示
+        vo.setTakeCode(status == APPLY_PENDING ? ap.getTakeCode() : null);
+        vo.setApplySource(ap.getApplySource());
+        vo.setApplySourceText(ap.getApplySource() != null && ap.getApplySource() == SOURCE_SHOP ? "商家代发起" : "顾客自助");
+        vo.setApplyTime(fmtDateTime(ap.getApplyTime()));
+        vo.setExpireTime(fmtDateTime(ap.getExpireTime()));
+        vo.setConfirmTime(fmtDateTime(ap.getConfirmTime()));
+        if (m != null) {
+            vo.setMemberName(m.getNickname());
+            vo.setMemberPhone(maskMobile(m.getMobile()));
+        }
         return vo;
     }
 
@@ -358,21 +616,32 @@ public class WineStorageServiceImpl implements WineStorageService {
         return c.getTime();
     }
 
+    private Date addHours(Date base, int hours) {
+        Calendar c = Calendar.getInstance();
+        c.setTime(base);
+        c.add(Calendar.HOUR_OF_DAY, hours);
+        return c.getTime();
+    }
+
     private String fmtDate(Date d) {
         return new SimpleDateFormat("yyyy-MM-dd").format(d);
     }
 
-    /** 生成唯一 4 位存酒码（1000-9999，撞码重试；tb_wine_storage.uk_storage_code 为 DB 层兜底） */
-    private String generateUniqueCode() {
+    private String fmtDateTime(Date d) {
+        return d == null ? null : new SimpleDateFormat("yyyy-MM-dd HH:mm").format(d);
+    }
+
+    /** 生成唯一 6 位取酒码（100000–999999，首位非 0，撞码重试；uk_take_code 为 DB 层兜底） */
+    private String generateUniqueTakeCode() {
         Random random = new Random();
         for (int i = 0; i < 50; i++) {
-            String code = String.valueOf(1000 + random.nextInt(9000));
-            Integer count = wineStorageMapper.selectCount(
-                    new QueryWrapper<WineStorage>().eq("storage_code", code));
+            String code = String.valueOf(100000 + random.nextInt(900000));
+            Integer count = wineTakeApplyMapper.selectCount(
+                    new QueryWrapper<WineTakeApply>().eq("take_code", code));
             if (count == null || count == 0) {
                 return code;
             }
         }
-        throw new StoneCustomerException("存酒码生成失败，请稍后重试");
+        throw new StoneCustomerException("取酒码生成失败，请稍后重试");
     }
 }

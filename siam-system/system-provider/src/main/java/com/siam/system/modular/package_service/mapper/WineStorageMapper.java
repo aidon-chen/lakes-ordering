@@ -15,18 +15,21 @@ import org.apache.ibatis.annotations.Update;
 public interface WineStorageMapper extends BaseMapper<WineStorage> {
 
     /**
-     * 原子取酒：剩余瓶数充足（status=1 且在存）→ 扣减；扣到 0 自动置 status=2（已取完）。
+     * 原子取酒（按存酒记录 id）：剩余瓶数充足（status=1 且在存、且未过期）→ 扣减；
+     * 扣到 0 自动置 status=2（已取完）。
      * 返回影响行数 = 1 才算成功，并发兜底靠 DB 行锁，不用「先查后改」。
      *
      * SET 子句刻意把 status 放在 remain_count 之前：MySQL 的赋值是从左到右，
      * 这样 status 表达式里的 remain_count 取到的仍是**旧值**，语义确定。
+     *
+     * expire_date &gt;= CURDATE()：核销侧显式拦截已过期存酒（方案 v1.1 §4.3 双保险）。
      */
     @Update("UPDATE tb_wine_storage SET " +
             "  status = CASE WHEN remain_count - #{takeCount} <= 0 THEN 2 ELSE status END, " +
             "  remain_count = remain_count - #{takeCount}, " +
             "  update_time = NOW() " +
-            "WHERE storage_code = #{storageCode} AND status = 1 AND remain_count >= #{takeCount}")
-    int atomicTake(@Param("storageCode") String storageCode, @Param("takeCount") Integer takeCount);
+            "WHERE id = #{storageId} AND status = 1 AND remain_count >= #{takeCount} AND expire_date >= CURDATE()")
+    int atomicTakeById(@Param("storageId") Long storageId, @Param("takeCount") Integer takeCount);
 
     /** 惰性过期：已过有效期但仍标记为在存(1)的记录统一置为已过期(3) */
     @Update("UPDATE tb_wine_storage SET status = 3, update_time = NOW() " +

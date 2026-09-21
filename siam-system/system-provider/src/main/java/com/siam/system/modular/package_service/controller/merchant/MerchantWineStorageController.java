@@ -20,13 +20,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 存酒接口（商家侧）· 批次 5 决策 D-F：**预留接口，本批无商家端 UI**
+ * 存酒接口（商家侧）· W-17 登记 / W-18 存酒列表与取酒核销（M-06 存酒管理）
  *
- * 存酒「录入」与「取酒扣瓶」都是商家动作 —— 顾客侧（C-16/C-01 存酒区）只能查看。
- * 原型 4 块画板均为顾客侧界面，没有商家端板子，故本批只落接口；
- * 商家端界面（收银端/管理后台）后续批次接入时直接调。
+ * <p>取酒单一模型（方案 v1.1）：申请 → 取酒码 → 核销。商家侧能力＝「代发起取酒」，
+ * **不做直接扣减**；每一次扣瓶都对应一笔取酒申请单（`apply_source` 区分来源）。
  *
- * 鉴权：/rest/merchant/** 由 merchantInterceptor 统一保护。
+ * <p>鉴权：/rest/merchant/** 由 merchantInterceptor 统一保护。
  */
 @RestController
 @RequestMapping(value = "/rest/merchant/wineStorage")
@@ -44,11 +43,10 @@ public class MerchantWineStorageController {
     }
 
     /**
-     * 存酒列表（W-18 存酒列表与取酒核销）
+     * 存酒列表（W-18）
      *
-     * <p>按登录商家所在门店限定；支持「存酒码」模糊、「顾客手机号」精确筛选。
-     * 四态口径与顾客侧 C-16 完全一致（存续中 / 将过期 / 已过期 / 已取完），
-     * 并额外填充会员姓名与**脱敏**手机号供列表「顾客」列展示。
+     * <p>按登录商家所在门店限定；支持「顾客手机号」精确筛选。
+     * 四态口径与顾客侧 C-16 完全一致，并额外填充会员姓名与**脱敏**手机号供「顾客」列展示。
      */
     @PostMapping(value = "/list")
     public BasicResult list(@RequestBody(required = false) WineStorageParam param) {
@@ -56,9 +54,9 @@ public class MerchantWineStorageController {
     }
 
     /**
-     * 录入存酒：手机号定位会员 → 生成唯一 4 位存酒码 → 有效期默认 90 天
+     * 录入存酒：手机号定位会员 → 有效期默认 90 天（取酒码在「申请/代发起」时生成）
      */
-    @Log(module = Log.MODULE_WINE_STORAGE, moduleName = "存酒", action = "录入存酒")
+    @Log(module = Log.MODULE_WINE_STORAGE, moduleName = "存酒", action = "录入存酒", businessType = Log.TYPE_INSERT)
     @PostMapping(value = "/create")
     public BasicResult create(@RequestBody WineStorageParam param) {
         WineStorage created = wineStorageService.create(param, loginMerchant().getShopId());
@@ -71,27 +69,60 @@ public class MerchantWineStorageController {
         after.put("expireDays", param.getExpireDays());
         LogContext.setAfter(after);
 
-        // 回给前端创建结果（W-17 凭证预览要展示存酒码）——仅 id/存酒码/有效期，不外泄其它字段
+        // 回给前端创建结果：仅 id 与有效期（不再有存酒码，W-17 凭证预览改为展示有效期）
         Map<String, Object> data = new HashMap<>();
         data.put("id", created.getId());
-        data.put("storageCode", created.getStorageCode());
         data.put("expireDate", created.getExpireDate());
         return BasicResult.success(data);
     }
 
     /**
-     * 取酒（原子扣减，防超扣；扣到 0 自动置已取完，并写取酒记录）
+     * 待核销取酒申请列表（收银端弹层待办）
      */
-    @Log(module = Log.MODULE_WINE_STORAGE, moduleName = "存酒", action = "取酒")
-    @PostMapping(value = "/take")
-    public BasicResult take(@RequestBody WineStorageParam param) {
-        //A-08 操作日志：取酒为扣减动作，变更前值记存酒码与本次取酒瓶数（扣减后的剩余瓶数由存酒记录自行维护）
+    @PostMapping(value = "/apply/list")
+    public BasicResult applyList(@RequestBody(required = false) WineStorageParam param) {
+        return BasicResult.success(wineStorageService.listPendingApplies(loginMerchant().getShopId()));
+    }
+
+    /**
+     * 按取酒码预览待核销详情（只读；供「两段式核销」第一步）
+     */
+    @PostMapping(value = "/apply/preview")
+    public BasicResult applyPreview(@RequestBody WineStorageParam param) {
+        return BasicResult.success(wineStorageService.previewTake(loginMerchant().getShopId(), param.getTakeCode()));
+    }
+
+    /**
+     * 取酒核销（原子扣减，防超扣；扣到 0 自动置已取完，并写取酒记录）
+     */
+    @Log(module = Log.MODULE_WINE_STORAGE, moduleName = "存酒", action = "取酒核销", businessType = Log.TYPE_UPDATE)
+    @PostMapping(value = "/apply/confirm")
+    public BasicResult applyConfirm(@RequestBody WineStorageParam param) {
+        //A-08 操作日志：核销为扣减动作，变更前值记取酒码，变更后值记核销结果
         Map<String, Object> before = new HashMap<>();
-        before.put("storageCode", param.getStorageCode());
-        before.put("takeCount", param.getTakeCount());
+        before.put("takeCode", param.getTakeCode());
         LogContext.setBefore(before);
 
-        wineStorageService.take(param, loginMerchant().getId());
-        return BasicResult.success();
+        Map<String, Object> after = new HashMap<>();
+        after.put("status", "已核销");
+        LogContext.setAfter(after);
+
+        return BasicResult.success(wineStorageService.confirmTake(loginMerchant().getId(), param.getTakeCode()));
+    }
+
+    /**
+     * 代发起取酒（商家兜底通道：无小程序顾客 / 登记手机号录错 / 现场代发）
+     */
+    @Log(module = Log.MODULE_WINE_STORAGE, moduleName = "存酒", action = "代发起取酒", businessType = Log.TYPE_UPDATE)
+    @PostMapping(value = "/apply/create")
+    public BasicResult applyCreate(@RequestBody WineStorageParam param) {
+        Map<String, Object> after = new HashMap<>();
+        after.put("storageId", param.getStorageId());
+        after.put("takeCount", param.getTakeCount());
+        after.put("remark", param.getRemark());
+        LogContext.setAfter(after);
+
+        return BasicResult.success(wineStorageService.createApplyByShop(
+                loginMerchant().getId(), loginMerchant().getShopId(), param));
     }
 }

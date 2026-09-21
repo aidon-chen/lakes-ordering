@@ -23,6 +23,9 @@ public class WineStorageRecord {
     /** 存酒记录id（tb_wine_storage.id） */
     private Long storageId;
 
+    /** 取酒申请id（tb_wine_take_apply.id）；方案 v1.1 新增，用于申请单 ↔ 取酒记录对账 */
+    private Long applyId;
+
     /** 本次取酒瓶数 */
     private Integer takeCount;
 
