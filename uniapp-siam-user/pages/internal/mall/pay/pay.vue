@@ -213,6 +213,7 @@
 <script>
 	import https from '../../../../utils/http';
 	import authService from '../../../../utils/auth';
+	import payService from '../../../../utils/pay';
 	import {
 		Base64
 	} from 'js-base64';
@@ -234,18 +235,27 @@
 				inputLength: 0,
 				deliveryData: {},
 				title: '请选择支付方式',
-				// C-10 批次6（口径变更）：支付方式只保留「到店支付」；微信支付链路已完整，二期需要时再加回本项
+				// C-10 批次6（口径变更）：支付方式保留「到店支付」（默认），并打开已预留的「微信支付」项
 				paymentModes: [
-					{
-						// C-10 批次6（口径变更）：积分支付全面取消 → 仅保留「到店支付」（4=到店支付，后端约定）
-						checked: true,
-						value: 4,
-						text: '到店支付',
-						show: true,
-						icon: ''
-					}
-				],
-				paymentModeIndex: 0,
+				{
+					// C-10 批次6（口径变更）：积分支付全面取消 → 保留「到店支付」（4=到店支付，后端约定）
+					checked: true,
+					value: 4,
+					text: '到店支付',
+					show: true,
+					icon: ''
+				},
+				{
+					// 微信支付（1）：批次6 §0.1-①「同批次内接上微信支付」的接入位，本次打开。
+					// MVP 演示环境无微信支付商户号 → 由 utils/pay.js 依 cloud.mockPay 改走模拟支付
+					// （后端 mockPay type=4 → pointsMallOrderService.paymentNotify）
+					value: 1,
+					text: '微信支付',
+					show: true,
+					icon: 'wechat-pay'
+				}
+			],
+			paymentModeIndex: 0,
 				// C-10 批次6：自提门店（结算页展示；来源 /rest/shop/listForPickup，失败则留空）
 				pickupShop: {
 					id: '',
@@ -471,39 +481,24 @@
 			},
 
 			radioChangePayment(e) {
-				console.log(e);
+				// e.detail.value 是 radio-group 的**下标**；paymentModes[i].value 才是支付方式码
+				// （4=到店支付 / 1=微信支付，见 data.paymentModes 注释）。
+				// 原实现按下标 0/1 硬编码「0=微信支付被拦、1=余额/积分需密码」——积分与余额支付取消后
+				// 该映射已失效（下标 1 现在是微信支付，会被误判为需支付密码），故改为按下标通用处理。
 				var _this = this;
 				authService.getOpenId().then((openId) => {
-					console.log(openId);
 					_this.closeDialog();
-					// if (!openId) {
-					//   toastService.showToast("登录用户错误，请重新登录");
-					//   return
-					// }
 					let paymentModes = _this.paymentModes;
-					if (e.detail.value == 0) {
-						toastService.showToast('暂不支持微信支付，请选择余额支付/积分支付');
+					const index = Number(e.detail.value);
+					if (!paymentModes[index]) {
 						return;
-					}
-					if (e.detail.value == 1) {
-						console.log(_this.userInfo.paymentPassword);
-						if (!_this.userInfo.paymentPassword) {
-							uni.navigateTo({
-								url: '../../../mine/security/index/index'
-							});
-							return;
-						}
-						if (!paymentModes[e.detail.value].isBindTap) {
-							toastService.showToast(paymentModes[e.detail.value].desc);
-							return;
-						}
 					}
 					for (let key in paymentModes) {
 						paymentModes[key].checked = false;
 					}
-					paymentModes[e.detail.value].checked = true;
+					paymentModes[index].checked = true;
 					_this.paymentModes = paymentModes;
-					_this.paymentModeIndex = e.detail.value;
+					_this.paymentModeIndex = index;
 				});
 			},
 
@@ -703,8 +698,14 @@
 							//let fullPriceReduction = prePageData.fullPriceReduction ? (prePageData.fullPriceReduction - afterDiscountPrice) : (prePageData.actualPrice - afterDiscountPrice)
 							//console.log(prePageData.packingCharges)
 							//获取总金额（加配送费）减去优惠券的最后优惠价格
-							let fullPriceReduction = Number(prePageData.actualPrice) + Number(prePageData
-								.packingCharges) - afterDiscountPrice;
+							//⚠️ 原式 `actualPrice + packingCharges - afterDiscountPrice` 是**符号错误**：
+							//afterDiscountPrice 是「券后应付价」（上面按 `actualPrice - reducedPrice` 算出），
+							//不是「优惠金额」，相减得到的恰好是优惠额本身。
+							//实测：商品合计 297、券「满50减8」→ afterDiscountPrice=289，原式算出 8
+							//→ 下单被后端「订单实付款计算错误，请刷新页面重试」拒绝（商城整个下不了单）。
+							//正确口径 = 券后应付价 + 包装费。
+							let fullPriceReduction = Number(afterDiscountPrice) + Number(prePageData
+								.packingCharges);
 							prePageData.couponsIsHidden = true; //设置使用优惠券
 							prePageData.fullPriceReduction = utilHelper.toFixed(fullPriceReduction, 2);
 							//设置使用优惠券后价格属性，满减会使用到
@@ -898,6 +899,12 @@
 			weChatPayTap() {
 				//判断店铺是否打烊
 				var data = {};
+				// 支付方式随支付方式卡的选择提交：后端 insert 按 paymentMode 分流
+				//   1（微信支付）→ status=1 未付款 + 5 分钟支付截止（走在线支付）
+				//   4（到店支付）→ status=4 待自提（无需在线支付）
+				// ⚠️ 不传时后端默认按「到店支付」处理，微信支付分支就走不到了。
+				data.paymentMode = this.paymentModes[this.paymentModeIndex]
+					? this.paymentModes[this.paymentModeIndex].value : 4;
 				// C-10 批次6（口径变更）：商城只做门店自提 → 不再校验/提交配送地址与配送费，改传自提门店 id
 				// ⚠️ 门店信息可能因定位失败而为空：此时**不要传 shopId**。
 				// 传空字符串会让后端 Integer 反序列化抛 NumberFormatException → 前端只看到「系统异常，请稍后重试」。
@@ -968,6 +975,15 @@
 					// }
 					if (this.paymentModes[this.paymentModeIndex].value == 1) {
 						this.weChatPay(id, orderNo, actualPrice, openId);
+						return;
+					}
+					if (this.paymentModes[this.paymentModeIndex].value == 4) {
+						// 到店支付：后端下单时已置 status=4（待自提），无需在线支付 → 直接进订单详情。
+						// （原实现无该分支，选到店支付点「去支付」后下单成功却毫无反应）
+						uni.redirectTo({
+							url: '../../mall/order/detail/detail?id=' + id
+						});
+						return;
 					}
 					if (this.paymentModes[this.paymentModeIndex].value == 2 || this.paymentModes[this
 							.paymentModeIndex].value == 3) {
@@ -986,12 +1002,34 @@
 			},
 
 			weChatPay(id, orderNo, actualPrice, openId) {
+				const totalFee = this.data.fullPriceReductionIsHidden ? this.data.fullPriceReduction : actualPrice;
+				//MVP 演示：无微信支付商户号 → 走模拟支付（后端与真实回调同一套订单流转）
+				if (payService.isMock()) {
+					payService.mockPay({
+						type: 4,
+						out_trade_no: orderNo,
+						total_fee: totalFee
+					}).then(() => {
+						toastService.hideLoading();
+						toastService.showSuccess('支付成功', true);
+						let timeout = setTimeout(() => {
+							uni.redirectTo({
+								url: '../../mall/order/detail/detail?id=' + id
+							});
+							clearTimeout(timeout);
+						}, 1000);
+					}).catch((err) => {
+						toastService.hideLoading();
+						toastService.showError(err.message || '支付失败', true);
+					});
+					return;
+				}
 				https.request('/rest/member/wxPay/toPay4Applet', {
 					openid: openId,
 					type: 4,
 					paymentMode: 1,
 					out_trade_no: orderNo,
-					total_fee: this.data.fullPriceReductionIsHidden ? this.data.fullPriceReduction : actualPrice
+					total_fee: totalFee
 				}).then((result) => {
 					toastService.hideLoading();
 					if (result.success) {

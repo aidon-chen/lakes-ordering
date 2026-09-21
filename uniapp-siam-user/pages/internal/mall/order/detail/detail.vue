@@ -205,6 +205,7 @@
 <script>
 	import https from '../../../../../utils/http';
 	import authService from '../../../../../utils/auth';
+	import payService from '../../../../../utils/pay';
 	import {
 		Base64
 	} from 'js-base64';
@@ -446,14 +447,22 @@
 			},
 
 			openConfirm() {
-				// C-10 批次6（口径变更）：积分/余额支付全面取消 → 支付方式只保留「到店支付」；
-				// 原代码在只有 2 项的数组上访问 paymentModes[2]（越界，会抛 TypeError），且到店支付无需"余额/密码"校验
+				// C-10 批次6（口径变更）：积分/余额支付全面取消 → 保留「到店支付」，
+				// 并打开 §0.1-① 预留的「微信支付」接入位（MVP 演示走 utils/pay.js 的模拟支付）
+				// 原代码在只有 2 项的数组上访问 paymentModes[2]（越界，会抛 TypeError）
 				const paymentModes = [{
-					value: 4,
-					name: '到店支付',
-					icon: '',
-					show: true
-				}];
+						value: 4,
+						name: '到店支付',
+						icon: '',
+						show: true
+					},
+					{
+						value: 1,
+						name: '微信支付',
+						icon: 'wechat-pay',
+						show: true
+					}
+				];
 				this.dialogShow = true;
 				this.maskClosable = false;
 				this.title = '请选择支付方式';
@@ -499,10 +508,10 @@
 					// #endif
 					_this.paymentModeIndex = paymentModeIndex;
 					if (paymentModeIndex == 1) {
-						console.log('微信支付');
-						// toastService.showLoading();
-						// _this.weChatPay(id, openId);
-						toastService.showToast('暂不支持微信支付，请选择余额支付/积分支付');
+						// 微信支付：MVP 演示环境无商户号，由 utils/pay.js 依 cloud.mockPay 改走模拟支付
+						// （原为「暂不支持微信支付」硬拦 → 本页支付入口不可达）
+						toastService.showLoading('正在加载...', true);
+						_this.weChatPay(id, openId);
 						return;
 					}
 					if (paymentModeIndex == 2 || paymentModeIndex == 3) {
@@ -529,6 +538,26 @@
 				var _this = this;
 				let pages = getCurrentPages();
 				let prevPage = pages[pages.length - 2]; //上一个页面
+				//MVP 演示：无微信支付商户号 → 走模拟支付（后端与真实回调同一套订单流转）
+				if (payService.isMock()) {
+					payService.mockPay({
+						type: 4,
+						out_trade_no: this.order.orderNo,
+						total_fee: this.order.actualPrice
+					}).then(() => {
+						toastService.hideLoading();
+						toastService.showSuccess('支付成功', true);
+						let timeout = setTimeout(() => {
+							_this.getOrderDetail(id);
+							prevPage.getOrderDetail(id);
+							clearTimeout(timeout);
+						}, 1000);
+					}).catch((err) => {
+						toastService.hideLoading();
+						toastService.showError(err.message || '支付失败', true);
+					});
+					return;
+				}
 				https.request('/rest/member/wxPay/toPay4Applet', {
 					openid: openId,
 					type: 4,

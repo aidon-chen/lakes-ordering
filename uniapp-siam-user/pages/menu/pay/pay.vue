@@ -218,6 +218,7 @@
 <script>
 	import https from '../../../utils/http';
 	import authService from '../../../utils/auth';
+	import payService from '../../../utils/pay';
 	import {
 		Base64
 	} from 'js-base64';
@@ -1025,13 +1026,34 @@
 			},
 
 			weChatPay(id, orderNo, actualPrice, openId) {
+				//支付方式仅「微信支付」（设计稿 A-05 支付方式卡 5:481）
+				const totalFee = this.orderDetail.fullPriceReductionIsHidden ? this.orderDetail
+					.fullPriceReduction : actualPrice;
+				//MVP 演示：无微信支付商户号 → 走模拟支付（后端与真实回调同一套订单流转）
+				if (payService.isMock()) {
+					payService.mockPay({
+						type: 1,
+						out_trade_no: orderNo,
+						total_fee: totalFee
+					}).then(() => {
+						toastService.hideLoading();
+						toastService.showSuccess('支付成功', true);
+						let timeout = setTimeout(() => {
+							this.goPayResult(id, actualPrice, '微信支付');
+							clearTimeout(timeout);
+						}, 1000);
+					}).catch((err) => {
+						toastService.hideLoading();
+						toastService.showError(err.message || '支付失败', true);
+					});
+					return;
+				}
 				https.request('/rest/member/wxPay/toPay4Applet', {
 					openid: openId,
 					type: 1,
 					paymentMode: 1,
 					out_trade_no: orderNo,
-					total_fee: this.orderDetail.fullPriceReductionIsHidden ? this.orderDetail
-						.fullPriceReduction : actualPrice
+					total_fee: totalFee
 				}).then((result) => {
 					toastService.hideLoading();
 					if (result.success) {

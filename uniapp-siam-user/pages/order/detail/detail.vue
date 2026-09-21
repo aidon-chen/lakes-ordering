@@ -143,6 +143,7 @@
 <script>
 	import https from '../../../utils/http';
 	import authService from '../../../utils/auth';
+	import payService from '../../../utils/pay';
 	import {
 		Base64
 	} from 'js-base64';
@@ -551,7 +552,10 @@
 					// #endif
 					this.paymentModeIndex = paymentModeIndex;
 					if (paymentModeIndex == 1) {
-						toastService.showToast('暂不支持微信支付，请选择余额支付/积分支付');
+						//微信支付：MVP 演示环境无商户号，由 utils/pay.js 依 cloud.mockPay 自动改走模拟支付
+						//（原为「暂不支持微信支付」硬拦，导致本页支付入口不可达；主支付页 menu/pay 一直是微信支付）
+						toastService.showLoading('正在加载...', true);
+						that.weChatPay(orderId, openId);
 						return;
 					}
 					if (paymentModeIndex == 2) {
@@ -573,6 +577,25 @@
 
 			weChatPay(id, openId) {
 				const that = this;
+				//MVP 演示：无微信支付商户号 → 走模拟支付（后端与真实回调同一套订单流转）
+				if (payService.isMock()) {
+					payService.mockPay({
+						type: 1,
+						out_trade_no: this.order.orderNo,
+						total_fee: this.order.actualPrice
+					}).then(() => {
+						toastService.hideLoading();
+						toastService.showSuccess('支付成功', true);
+						const timeout = setTimeout(() => {
+							that.getOrderDetail(id);
+							clearTimeout(timeout);
+						}, 1000);
+					}).catch((err) => {
+						toastService.hideLoading();
+						toastService.showError(err.message || '支付失败', true);
+					});
+					return;
+				}
 				https.request('/rest/member/wxPay/toPay4Applet', {
 					openid: openId,
 					type: 1,

@@ -119,6 +119,7 @@
 	import https from '../../../utils/http';
 	import GlobalConfig from '../../../utils/global-config';
 	import authService from '../../../utils/auth';
+	import payService from '../../../utils/pay';
 	import amapFile from '../../../utils/gaode-libs/amap-wx';
 	import * as Config from '../../../utils/gaode-libs/config';
 	import toastService from '../../../utils/toast.service';
@@ -345,6 +346,31 @@
 						var payPrice = result.data - Number(this.reducedDeliveryPrice);
 						if (payPrice > 0) {
 							toastService.showModal('', '确认支付' + payPrice + '元配送费吗？', function() {
+								//MVP 演示：无微信支付商户号 → 走模拟支付（后端与真实回调同一套改配送流转）
+								if (payService.isMock()) {
+									toastService.showLoading();
+									payService.mockPay({
+										type: 3,
+										out_trade_no: that.orderNo,
+										total_fee: payPrice,
+										deliveryAddressId: shopAddress.id
+									}).then(() => {
+										toastService.hideLoading();
+										toastService.showSuccess('支付成功', true);
+										let timeout = setTimeout(() => {
+											prevPage.getOrderDetail(that.orderId);
+											prevToPage.setData({
+												isOperation: true
+											});
+											clearTimeout(timeout);
+											uni.navigateBack(1);
+										}, 1000);
+									}).catch((err) => {
+										toastService.hideLoading();
+										toastService.showError(err.message || '支付失败', true);
+									});
+									return;
+								}
 								authService.getOpenId().then((openId) => {
 									if (openId) {
 										toastService.showLoading();

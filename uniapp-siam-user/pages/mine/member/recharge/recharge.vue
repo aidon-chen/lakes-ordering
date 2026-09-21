@@ -61,6 +61,7 @@
 <script>
 	import https from '../../../../utils/http';
 	import authService from '../../../../utils/auth';
+	import payService from '../../../../utils/pay';
 	import toastService from '../../../../utils/toast.service';
 	import utilHelper from '../../../../utils/util';
 	import dateHelper from '../../../../utils/date-helper';
@@ -223,6 +224,25 @@
 					total_fee = this.list[this.checkValue].salePrice;
 				}
 				var that = this;
+				//MVP 演示：无微信支付商户号 → 走模拟支付（后端与真实回调同一套充值入账流转）
+				if (payService.isMock()) {
+					payService.mockPay({
+						type: 2,
+						vipRechargeDenominationId: vipRechargeDenominationId,
+						total_fee: total_fee
+					}).then(() => {
+						toastService.hideLoading();
+						toastService.showSuccess('支付成功', true);
+						let timeout = setTimeout(() => {
+							uni.navigateBack(1);
+							clearTimeout(timeout);
+						}, 1000);
+					}).catch((err) => {
+						toastService.hideLoading();
+						toastService.showError(err.message || '支付失败', true);
+					});
+					return;
+				}
 				authService.getOpenId().then((openId) => {
 					if (openId) {
 						https.request('/rest/member/wxPay/toPay4Applet', {
