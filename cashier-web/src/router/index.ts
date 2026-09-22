@@ -44,12 +44,13 @@ const router = createRouter({
     { path: '/', redirect: DEFAULT_PATH },
     { path: '/login', name: 'login', component: () => import('@/views/LoginView.vue') },
 
-    // 7 一级 / 19 二级：全部由菜单单一事实源生成，保证侧栏、面包屑、路由三者不漂移
+    // 菜单单一事实源生成（5 直属功能 + 4 分组 = 18 页），保证侧栏、面包屑、路由三者不漂移
+    // 直属一级叶子的 groupLabel = 自身 label（见 config/menu.ts）
     ...MENU_LEAVES.map(leaf => ({
       path: leaf.path,
       name: leaf.name,
       component: IMPLEMENTED[leaf.path] ?? PageStub,
-      meta: { board: leaf.board, group: leaf.label }
+      meta: { board: leaf.board, group: leaf.groupLabel }
     })),
 
     // 非菜单页：订单详情（W-12），由 W-10/W-11 列表的「详情」进入，不出现在侧栏

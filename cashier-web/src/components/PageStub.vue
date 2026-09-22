@@ -16,7 +16,7 @@
 
       <div class="mt-5 pt-4 border-t text-[12px] leading-relaxed" style="border-color: var(--tc-line); color: var(--tc-gray)">
         <div>路径：{{ route.path }}</div>
-        <div>所属一级：{{ groupLabel ?? '—' }}</div>
+        <div>所属一级：{{ groupLabel }}</div>
         <div>画板节点：Ardot file/726208852398101 · {{ leaf?.board }}</div>
       </div>
     </div>
@@ -31,6 +31,6 @@ import { BATCH_OF_BOARD, findMenuByPath } from '@/config/menu'
 const route = useRoute()
 const found = computed(() => findMenuByPath(route.path))
 const leaf = computed(() => found.value?.leaf ?? null)
-const groupLabel = computed(() => found.value?.group.label ?? null)
+const groupLabel = computed(() => found.value?.group?.label ?? '（直属一级功能）')
 const batch = computed(() => (leaf.value ? (BATCH_OF_BOARD[leaf.value.board] ?? '待排期') : '待排期'))
 </script>

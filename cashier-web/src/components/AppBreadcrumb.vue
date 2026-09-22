@@ -16,8 +16,13 @@ const route = useRoute()
 const found = computed(() => findMenuByPath(route.path))
 const leaf = computed(() => found.value?.leaf ?? null)
 
-/** 路径串：一级 / 二级（画板实板无「首页」前缀） */
-const trail = computed(() =>
-  found.value ? `${found.value.group.label} / ${found.value.leaf.label}` : ''
-)
+/**
+ * 路径串：分组页为「一级 / 二级」；**直属一级叶子**（台位图/代客点单/…）无上级，只显自身。
+ * 画板实板无「首页」前缀。
+ */
+const trail = computed(() => {
+  const f = found.value
+  if (!f) return ''
+  return f.group ? `${f.group.label} / ${f.leaf.label}` : f.leaf.label
+})
 </script>
