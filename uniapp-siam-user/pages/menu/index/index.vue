@@ -5,64 +5,27 @@
 				<view class="flex_between public-views" style="background-color: white;">
 					<view class="shop_info_view" @tap="parseEventDynamicCode($event, !memberInfo.id ? '' : 'selfTap')"
 						:data-index="selfOutActiveIndex">
-						<view v-if="selfOutActiveIndex==0&&!initShopInfo.id&&!isLoading" class="flex_start"
-							style="font-size: 30rpx;">
-							<view>该区域外送功能即将开通</view>
-							<van-icon name="arrow" />
-						</view>
-					<block v-if="dineInfo&&!isLoading">
-						<view>
-							<view class="flex_start shop-name-row">
-								<view class="out_of_range one_row shop-name-text">{{shopInfo.shop.name}}</view>
-								<view class="dine-table-tag">堂食·{{dineInfo.tableNo}}</view>
+						<!-- 门店信息：与首页 A-01 同源占位文案（暂不接定位，不做外送）
+						     要接真实数据：uni.getLocation → /rest/shop/listForPickup 取最近门店，
+						     店名改 shopInfo.shop.name、地址拼 shop.street + shop.houseNumber -->
+						<block v-if="!isLoading">
+							<view>
+								<view class="flex_start shop-name-row">
+									<view class="out_of_range one_row shop-name-text">{{ brandName }}</view>
+									<view class="dine-table-tag" v-if="dineInfo">堂食·{{ dineInfo.tableNo }}</view>
+								</view>
+								<view class="distance_m">{{ shopAddressLine }}</view>
 							</view>
-							<view class="distance_m">堂食就餐 · {{dineInfo.personCount}} 人</view>
-						</view>
-					</block>
-					<block v-else-if="selfOutActiveIndex==0&&initShopInfo.id&&!isLoading">
-						<view @tap="selfTap" :data-index="selfOutActiveIndex">
-							<view class="flex_between">
-								<view class="out_of_range one_row">{{shopInfo.shop.name}}</view>
-								<van-icon name="arrow" />
-							</view>
-							<view class="distance_m" v-if="initShopInfo">
-								距您{{initShopInfo.shopAdditionalVo.deliveryDistanceText}}</view>
-						</view>
-					</block>
-						<block v-if="(selfOutActiveIndex==0||selfOutActiveIndex==1)&&initShopInfo&&isLoading">
+						</block>
+						<block v-else>
 							<van-loading custom-class="loading_box_class">加载中...</van-loading>
 						</block>
-						<block v-if="selfOutActiveIndex==1&&deliveryAndSelfTaking.deliveryAddress&&!isLoading">
-							<view @tap="selfTap" :data-index="selfOutActiveIndex">
-								<view class="flex_between">
-									<view class="out_of_range one_row">
-										{{ deliveryAndSelfTaking.deliveryAddress.province }}{{ deliveryAndSelfTaking.deliveryAddress.city }}{{ deliveryAndSelfTaking.deliveryAddress.area }}{{ deliveryAndSelfTaking.deliveryAddress.street }}
-									</view>
-									<van-icon name="arrow" />
-								</view>
-								<view class="distance_m" v-if="deliveryAndSelfTaking">
-									{{ deliveryAndSelfTaking.deliveryAddress.phone }}
-									{{ deliveryAndSelfTaking.deliveryAddress.realname }}
-								</view>
-							</view>
-						</block>
-						<block v-if="selfOutActiveIndex==1&&!deliveryAndSelfTaking.deliveryAddress&&!isLoading">
-							<view class="no_login_out_tip">
-								暂不支持外送
-							</view>
-						</block>
 					</view>
-				<view class="flex_between self_out_button" v-if="dineInfo!==null&&!isLoading">
+				<view class="flex_between self_out_button" v-if="!isLoading">
 					<view :class="dineInfo ? 'self_out_active self_button theme-bg' : 'self_button'"
 						@tap="dineModeTap" data-mode="dine">堂食</view>
 					<view :class="!dineInfo ? 'self_out_active self_button theme-bg' : 'self_button'"
 						@tap="dineModeTap" data-mode="self">自提</view>
-				</view>
-				<view class="flex_between self_out_button" v-else-if="selfOutItems.length>0&&!isLoading">
-					<view v-for="(item,index) in selfOutItems" @tap="selfTap" :data-index="item.index"
-						:class="selfOutActiveIndex==index?'self_out_active self_button theme-bg':'self_button'">
-						{{item.text}}
-					</view>
 				</view>
 				</view>
 			</view>
@@ -485,15 +448,11 @@
 				noDataTip: '',
 				img: '',
 				evt: '',
-				selfOutItems: [{
-					text: "自提",
-					tap: "slefTap",
-					index: 0
-				}, {
-					text: "外送",
-					tap: "outTap",
-					index: 1
-				}],
+				// 点餐方式：本项目仅「堂食 / 到店自提」两档（不做外送）→ 模板内直写，不再维护 selfOutItems 数组
+				// 门店信息占位文案（与首页 A-01 的 shopName / shopInfoLine 完全一致，暂不接定位）
+				// 接真实数据见模板内注释；改文案请两处一起改
+				brandName: '乐章 LIVE 酒馆',
+				shopAddressLine: '***市 **区 **路 **号 · 营业中至 02:00',
 				selfOutActiveIndex: 0,
 				dineInfo: null,
 				winHeight: 0,
@@ -875,7 +834,7 @@
 							var location = shopAddress.longitude + "," + shopAddress.latitude;
 							_this.confirmChoiceShopList(location).then(result => {
 								if (result.data.records.length == 0) {
-									toastService.showModal('', '该区域外送功能即将开通',
+									toastService.showModal('', '暂无可点门店，请稍后再试',
 										function() {});
 								};
 								if (result.data.records.length > 0) {
