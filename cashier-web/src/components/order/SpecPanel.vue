@@ -55,30 +55,16 @@
         </div>
       </div>
 
-      <!-- 备注（整单 / 单品）83:80~83:90 -->
+      <!-- 单品备注 83:80~83:90（**整单备注已移至结算栏**，2026-09-23：
+           做法区只留单品级备注，订单级的整单备注与结算同层，避免两处填错） -->
       <div class="mt-1">
-        <div class="text-[12px] mb-2" style="color: var(--tc-gray)">备注（整单 / 单品）</div>
-        <input
-          v-model="pos.remark"
-          class="w-full h-7 px-2 rounded border text-[12px] outline-none"
-          style="border-color: var(--tc-line)"
-          placeholder="整单备注"
-        />
+        <div class="text-[12px] mb-2" style="color: var(--tc-gray)">单品备注</div>
         <input
           v-model="pos.itemRemark"
-          class="mt-2 w-full h-7 px-2 rounded border text-[12px] outline-none"
+          class="w-full h-7 px-2 rounded border text-[12px] outline-none"
           style="border-color: var(--tc-line)"
-          placeholder="单品备注"
+          placeholder="该菜品的备注，如：少冰"
         />
-        <div class="mt-2 flex flex-wrap gap-1.5">
-          <button
-            v-for="q in QUICK_REMARKS"
-            :key="q"
-            class="h-6 px-2 rounded-[12px] border text-[11px]"
-            style="border-color: var(--tc-line); color: var(--tc-gray)"
-            @click="appendRemark(q)"
-          >{{ q }}</button>
-        </div>
       </div>
 
       <!-- 加入购物车 83:65（252×36 圆角 4） -->
@@ -96,9 +82,6 @@ import { usePosStore } from '@/stores/pos'
 
 const pos = usePosStore()
 
-/** 常用备注（对位 83:85~83:90） */
-const QUICK_REMARKS = ['多加冰', '果盘后上', '拼桌']
-
 /** 多选规格组（加料/配搭/配料/小料），与 store 的 toSpecListJson 编码保持一致 */
 const MULTI_SPEC_KEYWORDS = ['加料', '配搭', '配料', '小料']
 function isMultiSpecGroup(name: string): boolean {
@@ -107,14 +90,6 @@ function isMultiSpecGroup(name: string): boolean {
 
 function isSelected(group: string, option: string): boolean {
   return (pos.specSelected[group] ?? []).includes(option)
-}
-
-/** 常用备注追加到整单备注（去重） */
-function appendRemark(text: string) {
-  const parts = pos.remark.split(/[，,]/).map(s => s.trim()).filter(Boolean)
-  if (parts.includes(text)) return
-  parts.push(text)
-  pos.remark = parts.join('，')
 }
 
 function money(v: number | string): string {

@@ -51,7 +51,7 @@
               <span class="text-[18px] font-medium" style="color: #404A21">{{ headText(it) }}</span>
               <span class="ml-auto text-[12px] font-medium" :style="{ color: waitedColor(it.order) }">{{ waitedText(it.order) }}</span>
             </div>
-            <span class="text-[12px] leading-snug line-clamp-2" style="color: #616166">{{ itemsText(it) }}</span>
+            <span class="shrink-0 text-[12px] leading-snug line-clamp-2" style="color: #616166">{{ itemsText(it) }}</span>
             <div class="flex justify-end" style="margin-top: 8px; gap: 6px">
               <!-- 改备注（待制作/出品中可改；已出品不改） -->
               <button
@@ -255,7 +255,10 @@ function item(o: MerchantOrderRow): KanbanItem {
 
 function cardStyle(key: string) {
   const bg = key === 'done' ? '#EDF2DE' : '#FFFFFF'
-  return `background: ${bg}; padding: 12px; min-height: 96px; display: flex; flex-direction: column; gap: 6px`
+  // ⚠️ 2026-09-23：卡片加了「改备注 + 状态」按钮行后，原 min-height 96px 不够 ——
+  // flex 列会把中间的品项串压到 3px（实测：文字高度 3px ⇒ 看起来"那行字不见了"）。
+  // 故加高到 124px；同时给品项串加 shrink-0，确保任何情况下都不被压扁。
+  return `background: ${bg}; padding: 12px; min-height: 124px; display: flex; flex-direction: column; gap: 6px`
 }
 
 /**

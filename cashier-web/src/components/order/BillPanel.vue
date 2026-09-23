@@ -58,6 +58,27 @@
       </div>
     </div>
 
+    <!-- 整单备注（2026-09-23 从「做法与备注区」移来）：
+         整单备注是**订单级**信息，与结算同层；做法区只保留**单品级**的单品备注，避免两处填错 -->
+    <div class="shrink-0">
+      <div class="text-[12px] mb-2" style="color: #aab2a0">整单备注</div>
+      <input
+        v-model="pos.remark"
+        class="w-full rounded text-[12px] outline-none"
+        style="height: 30px; padding: 0 10px; background: var(--dark2); border: 1px solid #3a4230; color: #fff"
+        placeholder="如：打包两杯分开装"
+      />
+      <div class="mt-2 flex flex-wrap" style="gap: 6px">
+        <button
+          v-for="q in QUICK_REMARKS"
+          :key="q"
+          class="rounded-[12px] border text-[11px]"
+          style="height: 24px; padding: 0 8px; border-color: #3a4230; color: #aab2a0"
+          @click="appendRemark(q)"
+        >{{ q }}</button>
+      </div>
+    </div>
+
     <!-- 优惠 / 抹零 83:20（本期恒为 0） -->
     <div class="flex items-center text-[12px]" style="color: #aab2a0">
       <span>优惠 / 抹零</span>
@@ -132,6 +153,17 @@ const pos = usePosStore()
 /** 支付方式：画板仅这两项（92:3 / 92:7） */
 const PAY_MODES = ['微信收款码', '现金'] as const
 const payMode = ref<(typeof PAY_MODES)[number]>('微信收款码')
+
+/** 常用备注（2026-09-23 随整单备注从做法区移来） */
+const QUICK_REMARKS = ['多加冰', '果盘后上', '拼桌']
+
+/** 常用备注追加到整单备注（去重） */
+function appendRemark(text: string) {
+  const parts = pos.remark.split(/[，,]/).map(s => s.trim()).filter(Boolean)
+  if (parts.includes(text)) return
+  parts.push(text)
+  pos.remark = parts.join('，')
+}
 
 const submitting = ref(false)
 const received = ref('0.00')
