@@ -52,7 +52,14 @@
               <span class="ml-auto text-[12px] font-medium" :style="{ color: waitedColor(it.order) }">{{ waitedText(it.order) }}</span>
             </div>
             <span class="text-[12px] leading-snug line-clamp-2" style="color: #616166">{{ itemsText(it) }}</span>
-            <div class="flex justify-end" style="margin-top: 8px">
+            <div class="flex justify-end" style="margin-top: 8px; gap: 6px">
+              <!-- 改备注（待制作/出品中可改；已出品不改） -->
+              <button
+                v-if="col.key !== 'done'"
+                class="rounded text-[11px]"
+                style="height: 22px; padding: 0 8px; border: 1px solid #C9CCBF; color: #616166"
+                @click.stop="openRemark(it)"
+              >改备注</button>
               <button
                 v-if="col.key !== 'done'"
                 class="rounded text-[11px] disabled:opacity-50"
@@ -107,6 +114,17 @@
         </div>
       </div>
     </Teleport>
+
+    <!-- 改备注弹窗（2026-09-23）：待制作/出品中当场改整单 + 单品备注 -->
+    <OrderRemarkDialog
+      v-if="remarkItem"
+      :order-id="remarkItem.order.id"
+      :order-no="remarkItem.order.queueNo"
+      :remark="remarkItem.order.remark"
+      :details="remarkItem.details"
+      @close="remarkItem = null"
+      @done="load"
+    />
   </div>
 </template>
 
@@ -114,6 +132,7 @@
 import { computed, onMounted, ref } from 'vue'
 import {
   fetchMerchantOrders,
+  pickupCodeText,
   productionStatusText,
   fetchOrderDetails,
   updateProductionStatus,
@@ -122,6 +141,7 @@ import {
 } from '@/api/order'
 import { fetchTableList } from '@/api/table'
 import OrderDetailPanels from '@/components/order/OrderDetailPanels.vue'
+import OrderRemarkDialog from '@/components/order/OrderRemarkDialog.vue'
 
 /** 看板项：订单 + 其明细（品项串） */
 interface KanbanItem {
@@ -141,6 +161,13 @@ const detailItem = ref<KanbanItem | null>(null)
 
 function openDetail(it: KanbanItem) {
   detailItem.value = it
+}
+
+/** 改备注弹窗当前项（null = 关闭） */
+const remarkItem = ref<KanbanItem | null>(null)
+
+function openRemark(it: KanbanItem) {
+  remarkItem.value = it
 }
 
 /** 弹窗里当前这条的出品状态（1/2/3） */
@@ -241,7 +268,8 @@ function cardStyle(key: string) {
  */
 function headText(it: KanbanItem): string {
   const o = it.order
-  const no = o.queueNo ?? o.tableNo ?? '—'
+  // 2026-09-23：一级界面显示**取餐码**（A-00N 形态），与顾客端/订阅消息同口径 —— 店员与顾客对得上号
+  const no = o.queueNo ? pickupCodeText(o.queueNo) : (o.tableNo ?? '—')
   const isTakeaway = !o.tableName || !String(o.tableName).trim()
   if (isTakeaway) return `${no} · 外带自取`
   const type = typeByTableNo.value[o.tableNo ?? ''] ?? ''

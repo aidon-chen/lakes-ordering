@@ -202,3 +202,32 @@ export const fetchOrderDetails = (orderId: number) =>
  */
 export const fetchOrderById = (id: number) =>
   http.post<unknown, MerchantOrderRow>('/rest/merchant/order/selectById', { id })
+
+/**
+ * 取餐码（展示形态）：取餐号 → `A-001`。
+ * 与顾客端 `pages/order/detail` 的 `pickupCode` **同口径** —— 出品看板 / 顾客端 / 订阅消息三处一致，
+ * 避免出现「店员喊 3 号、顾客手上是 A-003」对不上。
+ */
+export function pickupCodeText(queueNo: number | null | undefined): string {
+  const no = Number(queueNo)
+  if (!no) return '—'
+  const digit = no < 10 ? `00${no}` : no < 100 ? `0${no}` : String(no)
+  return `A-${digit}`
+}
+
+/** 改备注入参：整单备注 +（可选）逐条单品备注 */
+export interface OrderRemarkParam {
+  /** 订单主键 —— 后端 OrderParam 用 `id` 命名，此处对齐 */
+  id: number
+  /** 整数备注（tb_order.remark） */
+  remark: string | null
+  /** 单品备注（tb_order_detail.remark）；只传需要改的行 */
+  details?: { id: number; remark: string | null }[]
+}
+
+/**
+ * 改单备注（2026-09-23 新增，配合出品看板「待制作 / 出品中」两列的改备注入口）。
+ * 后端 `POST /rest/merchant/order/updateRemark`：改 `tb_order.remark` 与 `tb_order_detail.remark`。
+ */
+export const updateOrderRemark = (param: OrderRemarkParam) =>
+  http.post<unknown, null>('/rest/merchant/order/updateRemark', param)
