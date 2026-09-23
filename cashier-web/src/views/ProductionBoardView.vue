@@ -48,29 +48,29 @@
             @click="openDetail(it)"
           >
             <div class="flex items-baseline">
-              <span class="text-[18px] font-medium" style="color: #404A21">{{ headText(it) }}</span>
+              <span class="text-[20px] font-bold" style="color: #404A21">{{ headText(it) }}</span>
               <span class="ml-auto text-[12px] font-medium" :style="{ color: waitedColor(it.order) }">{{ waitedText(it.order) }}</span>
             </div>
-            <span class="shrink-0 text-[12px] leading-snug line-clamp-2" style="color: #616166">{{ itemsText(it) }}</span>
+            <span class="shrink-0 text-[13px] leading-snug line-clamp-2" style="color: #616166">{{ itemsText(it) }}</span>
             <div class="flex justify-end" style="margin-top: 8px; gap: 6px">
               <!-- 改备注（待制作/出品中可改；已出品不改） -->
               <button
                 v-if="col.key !== 'done'"
-                class="rounded text-[11px]"
-                style="height: 22px; padding: 0 8px; border: 1px solid #C9CCBF; color: #616166"
+                class="rounded text-[12px]"
+                style="height: 24px; padding: 0 10px; border: 1px solid #C9CCBF; color: #616166"
                 @click.stop="openRemark(it)"
               >改备注</button>
               <button
                 v-if="col.key !== 'done'"
-                class="rounded text-[11px] disabled:opacity-50"
-                style="height: 22px; padding: 0 8px; background: var(--p); color: #fff"
+                class="rounded text-[12px] disabled:opacity-50"
+                style="height: 24px; padding: 0 10px; background: var(--p); color: #fff"
                 :disabled="busyId === it.order.id"
                 @click.stop="advance(it.order, col.key)"
               >{{ col.btnLabel }}</button>
               <button
                 v-else
-                class="rounded text-[11px]"
-                style="height: 22px; padding: 0 8px; border: 1px solid #C9CCBF; color: #616166"
+                class="rounded text-[12px]"
+                style="height: 24px; padding: 0 10px; border: 1px solid #C9CCBF; color: #616166"
                 :disabled="busyId === it.order.id"
                 @click.stop="revert(it.order)"
               >↩ 撤销</button>
@@ -258,7 +258,9 @@ function cardStyle(key: string) {
   // ⚠️ 2026-09-23：卡片加了「改备注 + 状态」按钮行后，原 min-height 96px 不够 ——
   // flex 列会把中间的品项串压到 3px（实测：文字高度 3px ⇒ 看起来"那行字不见了"）。
   // 故加高到 124px；同时给品项串加 shrink-0，确保任何情况下都不被压扁。
-  return `background: ${bg}; padding: 12px; min-height: 124px; display: flex; flex-direction: column; gap: 6px`
+  // 2026-09-23 对齐 Ardot 原型（file 728914844787406）的统一卡片规范：
+  // 白底/浅绿底 + 描边 1px #D4DBC7 + 圆角 8 + gap 8 + min-height 124
+  return `background: ${bg}; padding: 12px; min-height: 124px; display: flex; flex-direction: column; gap: 8px; border: 1px solid #D4DBC7; border-radius: 8px`
 }
 
 /**
