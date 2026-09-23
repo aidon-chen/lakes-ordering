@@ -545,8 +545,9 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         insertOrder.setContactLatitude(param.getContactLatitude());
         insertOrder.setShopLogoImg(param.getShopLogoImg());
         insertOrder.setCheckoutMode(dbShop.getCheckoutMode());
-        insertOrder.setTableNo(param.getTableNo());
-        insertOrder.setTableName(param.getTableName());
+        // 外带自提单无台位时，table_no / table_name 需给占位（见 normalizeTableNo 注释）
+        insertOrder.setTableNo(normalizeTableNo(param.getTableNo()));
+        insertOrder.setTableName(normalizeTableName(param.getTableName()));
         orderMapper.insert(insertOrder);
 
         Order dbOrder = orderMapper.selectById(insertOrder.getId());
@@ -840,8 +841,10 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         insertOrder.setOrderChannel(Order.ORDER_CHANNEL_OF_CASHIER);
         insertOrder.setMerchantId(loginMerchant.getId());
         insertOrder.setCheckoutMode(dbShop.getCheckoutMode());
-        insertOrder.setTableNo(param.getTableNo());
-        insertOrder.setTableName(param.getTableName());
+        // ⚠️ 别删这两行：商户端下单（收银台散客外带）走的就是这里。
+        // 曾经漏改此处的历史：补丁只打到上方顾客端那处，本处又把值置回 null → 线上 500。
+        insertOrder.setTableNo(normalizeTableNo(param.getTableNo()));
+        insertOrder.setTableName(normalizeTableName(param.getTableName()));
         // 收银台台位作业联动（2026-09-19）：会话/台位/就餐人数/订单场景随订单落库
         insertOrder.setTableId(param.getTableId());
         insertOrder.setDiningNum(param.getDiningNum());
@@ -3330,5 +3333,22 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
                 break;
         }
         return refundReasonText;
+    }
+    /**
+     * tb_order.table_no 在云库上是「NOT NULL 且无默认值」（information_schema 实测）——
+     * 外带自提单没有台位，不填空值会抛 Field 'table_no' doesn't have a default value。
+     * 这里落语义化占位「外带」，便于后台/小票区分非堂食单。
+     */
+    private static String normalizeTableNo(String tableNo) {
+        return (tableNo == null || tableNo.trim().isEmpty()) ? "外带" : tableNo;
+    }
+
+    /**
+     * tb_order.table_name 同为「NOT NULL 无默认值」，但**必须落空串而不是占位文字**：
+     * 顾客端以 !!order.tableName 判定是否堂食（pages/order/detail 的 isDineIn），
+     * 填了文字会被误判成堂食单、不再展示「取餐码」—— 散客取餐全靠这个码。
+     */
+    private static String normalizeTableName(String tableName) {
+        return tableName == null ? "" : tableName;
     }
 }
