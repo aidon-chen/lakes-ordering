@@ -17,62 +17,8 @@
     <template v-else>
       <!-- ===================== 左列 ===================== -->
       <div class="flex-1 min-w-0 flex flex-col" style="gap: 12px; max-width: 700px">
-        <!-- 订单头 -->
-        <div class="rounded-lg flex items-center" style="height: 60px; padding: 0 16px; gap: 12px; background: var(--pl)">
-          <span class="text-[26px] font-bold leading-none" style="color: var(--tc-title)">{{ firstNo }}</span>
-          <span
-            class="rounded text-[12px] leading-[24px] text-center"
-            style="min-width: 60px; height: 24px; padding: 0 8px; background: var(--warn-bg, #FCF5ED); color: var(--warn)"
-          >{{ orderStatusText(order.status) }}</span>
-          <span class="text-[12px]" style="color: var(--tc-sub)">
-            下单 {{ fmtTime(order.createTime) }} · {{ order.orderScene === 2 ? '商城' : '堂食' }}
-          </span>
-        </div>
-
-        <!-- 明细卡 -->
-        <div class="rounded" style="border: 1px solid var(--tc-line)">
-          <div class="flex items-center text-[13px]" style="height: 40px; padding-left: 16px; background: var(--panel, #F5F7FA); color: var(--tc-title)">
-            商品明细
-          </div>
-          <div class="flex items-center text-[12px]" style="height: 34px; background: var(--bg); color: var(--tc-title)">
-            <span class="px-2 truncate" style="width: 240px">品名 / 规格</span>
-            <span class="px-2 truncate" style="width: 80px">数量</span>
-            <span class="px-2 truncate" style="width: 110px">单价</span>
-            <span class="px-2 truncate" style="width: 110px">小计</span>
-            <span class="px-2 truncate" style="flex: 1">备注</span>
-          </div>
-
-          <div v-if="!details.length" class="text-[12px]" style="padding: 12px 16px; color: var(--tc-sub)">无明细</div>
-          <div
-            v-for="d in details"
-            v-else
-            :key="d.id"
-            class="flex items-center text-[12px]"
-            style="height: 40px; border-top: 1px solid var(--tc-line); color: var(--txt)"
-          >
-            <span class="px-2 truncate" style="width: 240px">{{ d.goodsName || '—' }}{{ specText(d) ? ' · ' + specText(d) : '' }}</span>
-            <span class="px-2 truncate" style="width: 80px">{{ d.number ?? 1 }}</span>
-            <span class="px-2 truncate" style="width: 110px">¥{{ money(d.price) }}</span>
-            <span class="px-2 truncate" style="width: 110px">¥{{ money(d.subtotal) }}</span>
-            <span class="px-2 truncate" style="flex: 1; color: var(--tc-sub)">{{ d.remark || '—' }}</span>
-          </div>
-
-          <div class="flex items-center text-[13px] font-medium" style="height: 40px; background: var(--bg); color: var(--tc-title)">
-            <span class="px-2" style="flex: 1">商品合计 ¥{{ money(order.goodsTotalPrice ?? order.actualPrice) }}</span>
-            <span class="px-2" style="width: 120px">{{ order.goodsTotalQuantity ?? details.length }} 件</span>
-          </div>
-        </div>
-
-        <!-- 备注卡 -->
-        <div class="rounded" style="border: 1px solid var(--tc-line)">
-          <div class="flex items-center text-[13px]" style="height: 36px; padding-left: 16px; background: var(--panel, #F5F7FA); color: var(--tc-title)">
-            备注
-          </div>
-          <div class="flex flex-col text-[12px]" style="padding: 12px; gap: 6px">
-            <span style="color: var(--txt)">整单：{{ order.remark || '—' }}</span>
-            <span style="color: var(--txt)">单品：{{ itemRemarks || '—' }}</span>
-          </div>
-        </div>
+        <!-- 左半部分（头部卡 / 商品明细 / 备注）已抽为组件，与出品看板的详情弹窗共用 -->
+        <OrderDetailPanels :order="order" :details="details" />
       </div>
 
       <!-- ===================== 右列 ===================== -->
@@ -190,6 +136,7 @@ import {
 } from '@/api/order'
 import { fetchTableList } from '@/api/table'
 import OrderModifyDialog from '@/components/OrderModifyDialog.vue'
+import OrderDetailPanels from '@/components/order/OrderDetailPanels.vue'
 import OrderRefundDialog from '@/components/OrderRefundDialog.vue'
 
 const route = useRoute()
@@ -279,8 +226,6 @@ async function load() {
   }
 }
 
-const firstNo = computed(() => order.value?.queueNo ?? order.value?.tableNo ?? '—')
-
 const tableLine = computed(() => {
   const o = order.value
   if (!o) return '—'
@@ -301,13 +246,6 @@ const payingText = computed(() => {
   if (!o.isPayment) return '未支付'
   return paymentModeText(o.paymentMode)
 })
-
-const itemRemarks = computed(() =>
-  details.value
-    .filter(d => (d.remark ?? '').trim())
-    .map(d => `${d.goodsName} —— ${d.remark}`)
-    .join('；')
-)
 
 /**
  * 时间线：只用工程真实存在的时间戳，不臆造节点
@@ -354,33 +292,12 @@ async function advanceProduction() {
   }
 }
 
-/** specList 是 JSON 串；跳过多选编码键（「加料2」这类后缀键） */
-function specText(d: OrderDetailRow): string {
-  if (!d.specList) return ''
-  try {
-    const o = JSON.parse(d.specList)
-    return Object.keys(o)
-      .filter(k => !/\d+$/.test(k))
-      .map(k => String(o[k]))
-      .filter(Boolean)
-      .join('·')
-  } catch {
-    return ''
-  }
-}
-
 function parseTime(v: string | null | undefined): number | null {
   if (!v) return null
   const m = String(v).match(/(\d{4})\/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/)
   if (m) return new Date(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}`).getTime()
   const t = new Date(String(v)).getTime()
   return Number.isNaN(t) ? null : t
-}
-
-function fmtTime(v: string | null): string {
-  if (!v) return '—'
-  const m = String(v).match(/(\d{4})\/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2})/)
-  return m ? `${m[1]}-${m[2]}-${m[3]} ${m[4]}:${m[5]}` : String(v)
 }
 
 function hhmm(v: string | null | undefined): string {

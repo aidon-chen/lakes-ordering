@@ -38,27 +38,75 @@
         <div class="flex-1 min-h-0 overflow-y-auto flex flex-col" style="gap: 10px">
           <div v-if="!col.items.length" class="text-[12px]" style="color: #C9CCBF">暂无</div>
 
-          <button
+          <!-- 卡片（2026-09-23 改造）：点卡片任意处 → 开详情弹窗；状态流转在右下角**小按钮** -->
+          <div
             v-for="it in col.items"
             :key="it.order.id"
-            class="text-left rounded-md disabled:opacity-60"
+            class="text-left rounded-md cursor-pointer"
             :style="cardStyle(col.key)"
-            :disabled="busyId === it.order.id"
             :title="col.nextLabel"
-            @click="advance(it.order, col.key)"
+            @click="openDetail(it)"
           >
             <div class="flex items-baseline">
               <span class="text-[18px] font-medium" style="color: #404A21">{{ headText(it) }}</span>
-              <span class="ml-auto text-[12px]" style="color: #8F9499">{{ waitedText(it.order) }}</span>
+              <span class="ml-auto text-[12px] font-medium" :style="{ color: waitedColor(it.order) }">{{ waitedText(it.order) }}</span>
             </div>
             <span class="text-[12px] leading-snug line-clamp-2" style="color: #616166">{{ itemsText(it) }}</span>
-          </button>
+            <div class="flex justify-end" style="margin-top: 8px">
+              <button
+                v-if="col.key !== 'done'"
+                class="rounded text-[11px] disabled:opacity-50"
+                style="height: 22px; padding: 0 8px; background: var(--p); color: #fff"
+                :disabled="busyId === it.order.id"
+                @click.stop="advance(it.order, col.key)"
+              >{{ col.btnLabel }}</button>
+              <button
+                v-else
+                class="rounded text-[11px]"
+                style="height: 22px; padding: 0 8px; border: 1px solid #C9CCBF; color: #616166"
+                :disabled="busyId === it.order.id"
+                @click.stop="revert(it.order)"
+              >↩ 撤销</button>
+            </div>
+          </div>
         </div>
       </section>
     </div>
 
     <!-- 底部说明 2:1026 -->
     <p class="shrink-0 text-[12px]" style="color: #C9CCBF">{{ noteText }}</p>
+
+    <!-- 详情弹窗（2026-09-23 新增）：点卡片打开，复用「今日订单」详情页的左半部分组件 -->
+    <Teleport to="body">
+      <div
+        v-if="detailItem"
+        class="flex items-center justify-center"
+        style="position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, .45)"
+        @click.self="detailItem = null"
+      >
+        <div class="bg-white rounded-lg flex flex-col" style="width: 760px; max-width: 92vw; max-height: 86vh; padding: 16px; gap: 12px">
+          <div class="shrink-0 flex items-center">
+            <span class="text-[15px] font-medium" style="color: var(--tc-title)">订单详情</span>
+            <span class="ml-auto text-[13px] cursor-pointer" style="color: var(--tc-sub)" @click="detailItem = null">✕</span>
+          </div>
+          <div class="flex-1 min-h-0 overflow-y-auto">
+            <OrderDetailPanels :order="detailItem.order" :details="detailItem.details" />
+          </div>
+          <div class="shrink-0 flex items-center" style="gap: 8px; border-top: 1px solid #E5E7EB; padding-top: 12px">
+            <span class="text-[12px]" style="color: var(--tc-sub)">
+              出品状态：<span style="color: var(--p)">{{ productionStatusText(detailItem.order.productionStatus ?? 1) }}</span>
+            </span>
+            <span class="flex-1" />
+            <button v-if="modalStatus < 2" class="rounded text-[12px] text-white" style="height: 28px; padding: 0 12px; background: var(--p)"
+              :disabled="busyId === detailItem.order.id" @click="advance(detailItem.order, 'todo')">开始出品</button>
+            <button v-else-if="modalStatus < 3" class="rounded text-[12px] text-white" style="height: 28px; padding: 0 12px; background: var(--p)"
+              :disabled="busyId === detailItem.order.id" @click="advance(detailItem.order, 'doing')">标记已出品</button>
+            <button v-else class="rounded text-[12px]" style="height: 28px; padding: 0 12px; border: 1px solid var(--tc-line); color: var(--tc-gray)"
+              :disabled="busyId === detailItem.order.id" @click="revert(detailItem.order)">↩ 撤销为出品中</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -66,12 +114,14 @@
 import { computed, onMounted, ref } from 'vue'
 import {
   fetchMerchantOrders,
+  productionStatusText,
   fetchOrderDetails,
   updateProductionStatus,
   type MerchantOrderRow,
   type OrderDetailRow
 } from '@/api/order'
 import { fetchTableList } from '@/api/table'
+import OrderDetailPanels from '@/components/order/OrderDetailPanels.vue'
 
 /** 看板项：订单 + 其明细（品项串） */
 interface KanbanItem {
@@ -85,6 +135,46 @@ const detailMap = ref<Record<number, OrderDetailRow[]>>({})
 const typeByTableNo = ref<Record<string, string>>({})
 const loading = ref(true)
 const busyId = ref<number | null>(null)
+
+/** 详情弹窗当前项（null = 关闭）；明细直接取内存里的 detailMap，无需再请求 */
+const detailItem = ref<KanbanItem | null>(null)
+
+function openDetail(it: KanbanItem) {
+  detailItem.value = it
+}
+
+/** 弹窗里当前这条的出品状态（1/2/3） */
+const modalStatus = computed(() => {
+  const o = detailItem.value?.order
+  return o ? (o.productionStatus ?? 1) : 1
+})
+
+/**
+ * 等待时长的颜色分级（2026-09-23 新增）：常规灰 / 超 15 分琥珀 / 超 30 分红。
+ * 卡片底是浅色（白或浅绿），故用深色调保证可读。
+ */
+function waitedColor(o: MerchantOrderRow): string {
+  const t = parseTime(o.createTime)
+  if (!t) return '#8F9499'
+  const min = Math.floor((Date.now() - t) / 60000)
+  if (min >= 30) return '#A32D2D'
+  if (min >= 15) return '#854F0B'
+  return '#8F9499'
+}
+
+/** 撤销：已出品(3) → 出品中(2)。原实现 `if (cur >= 3) return` 导致误点无法回退 */
+async function revert(o: MerchantOrderRow) {
+  busyId.value = o.id
+  try {
+    await updateProductionStatus(o.id, 2)
+    await load()
+  } catch (e) {
+    console.error('[kanban] 撤销失败', e)
+    alert((e as Error).message || '操作失败')
+  } finally {
+    busyId.value = null
+  }
+}
 
 const KEY_TO_STATUS: Record<string, 1 | 2 | 3> = { todo: 1, doing: 2, done: 3 }
 
@@ -126,9 +216,9 @@ const columns = computed(() => {
   const psOf = (o: MerchantOrderRow) => o.productionStatus ?? 1
   const pick = (s: number) => orders.value.filter(o => psOf(o) === s).map(o => item(o))
   return [
-    { key: 'todo', title: `待制作（${pick(1).length}）`, items: pick(1), nextLabel: '点击开始出品' },
-    { key: 'doing', title: `出品中（${pick(2).length}）`, items: pick(2), nextLabel: '点击标记已出品' },
-    { key: 'done', title: `已出品（${pick(3).length} 今日）`, items: pick(3), nextLabel: '已出品' }
+    { key: 'todo', title: `待制作（${pick(1).length}）`, items: pick(1), nextLabel: '开始出品', btnLabel: '开始出品' },
+    { key: 'doing', title: `出品中（${pick(2).length}）`, items: pick(2), nextLabel: '标记已出品', btnLabel: '标记已出品' },
+    { key: 'done', title: `已出品（${pick(3).length} 今日）`, items: pick(3), nextLabel: '已出品', btnLabel: '已出品' }
   ]
 })
 
