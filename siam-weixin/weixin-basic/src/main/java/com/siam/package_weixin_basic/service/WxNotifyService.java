@@ -29,6 +29,9 @@ public class WxNotifyService {
 
     String miniprogram_state = "formal";
 
+    /** 「点餐成功通知」模板 ID —— 微信后台实际创建的模板（用 gettemplate 接口读回核对过） */
+    private static final String TEMPLATE_PICKUP_READY = "I-ZIODvOYe6te7Q-wX0EcKi_jyM0DhMcVgcGNJWXCew";
+
 //    /**
 //     * 订单支付提醒/付款成功通知
 //     */
@@ -80,37 +83,54 @@ public class WxNotifyService {
     /**
      * 自取订单制作完成后通知用户及时领取/自取消息提醒
      */
-    public void sendPickUpOrderCompleteMessage(String openId, String queueNo, String shopName, String shopAddress, String goodsName){
+    /**
+     * 「自取已备好」通知（模板：点餐成功通知 / TEMPLATE_PICKUP_READY）
+     *
+     * <p>2026-09-23 重写：字段名按**微信后台实际创建的模板**对齐（用 gettemplate 接口读回的真实定义）：
+     * <pre>
+     *   门店名称  → thing6
+     *   订单号码  → character_string1
+     *   订单状态  → phrase5            （phrase 类型上限 5 个汉字 ⇒ 只能写「已出餐」这类短语，放不下引导语）
+     *   取餐号码  → character_string3
+     * </pre>
+     * 原先用的 thing1/thing2/thing3/thing8 属于另一个（且**本小程序并不存在**的）模板 ⇒ 发送必然失败。
+     *
+     * @param openId   下单会员的微信 openId
+     * @param orderNo  订单号（填入「订单号码」）
+     * @param queueNo  取餐号，已格式化为 A-001 形态（填入「取餐号码」）
+     * @param shopName 门店名称
+     */
+    public void sendPickUpOrderCompleteMessage(String openId, String orderNo, String queueNo, String shopName){
         String access_token = this.getAccessToken();
+        if (access_token == null || access_token.trim().isEmpty()) {
+            // 未配置 wxlogin.appId/secret 时静默跳过：通知是旁路，不能影响主流程
+            return;
+        }
 
         Map data = new HashMap();
 
         Map subMap = new HashMap();
-        subMap.put("value", queueNo);
-        data.put("character_string5", subMap);
-
-        subMap = new HashMap();
         subMap.put("value", shopName);
-        data.put("thing1", subMap);
+        data.put("thing6", subMap);
 
         subMap = new HashMap();
-        subMap.put("value", shopAddress);
-        data.put("thing2", subMap);
+        subMap.put("value", orderNo);
+        data.put("character_string1", subMap);
 
         subMap = new HashMap();
-        subMap.put("value", goodsName);
-        data.put("thing3", subMap);
+        subMap.put("value", "已出餐");
+        data.put("phrase5", subMap);
 
         subMap = new HashMap();
-        subMap.put("value", "为了不影响饮品口感，请及时提取和饮用。");
-        data.put("thing8", subMap);
+        subMap.put("value", queueNo);
+        data.put("character_string3", subMap);
 
         Map paramsMap = new HashMap();
         paramsMap.put("access_token", access_token);
         paramsMap.put("touser", openId);
-        paramsMap.put("template_id", "eF29ugG7ZKKKHCDH2Nk48Q2JCH1qKDLBMX2LnAzCz-w");
+        paramsMap.put("template_id", TEMPLATE_PICKUP_READY);
         paramsMap.put("data", data);
-        paramsMap.put("miniprogram_state", miniprogram_state);
+        paramsMap.put("miniprogram_state", miniprogram_state);//
 
         try {
             HttpPost httpPost = new HttpPost("https://api.weixin.qq.com/cgi-bin/message/subscribe/send?access_token=" + access_token);
