@@ -23,6 +23,10 @@ import java.util.Map;
 @Service
 public class WxNotifyService {
 
+    /** 小程序 appid/secret 配置（前缀 wxlogin），供 getAccessToken 使用 */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.siam.package_weixin_basic.config.WxNotifyConfig wxNotifyConfig;
+
     String miniprogram_state = "formal";
 
 //    /**
@@ -270,8 +274,16 @@ public class WxNotifyService {
      * 获取access_token
      */
     private String getAccessToken() {
-        String appid = "wx2e1a8193d3ed12fe";
-        String secret = "2774e3a86dc30fbf1ac63d81b56f2291";
+        // 2026-09-23 修正（项5）：原实现把 appid/secret **硬编码成另一个小程序**
+        // （wx2e1a8193d3ed12fe，而本小程序是 wx0ce2826a2aeb1e29）—— 取到的 access_token 属于别的小程序，
+        // 拿它给本小程序的 openid 发订阅消息必然失败（典型 40003 invalid openid）。
+        // 现改为读配置 wxlogin.appId/secret（本地/云托管注入 WXLOGIN_APPID / WXLOGIN_SECRET）。
+        String appid = wxNotifyConfig == null ? null : wxNotifyConfig.getAppId();
+        String secret = wxNotifyConfig == null ? null : wxNotifyConfig.getSecret();
+        if (appid == null || appid.trim().isEmpty() || secret == null || secret.trim().isEmpty()) {
+            log.warn("服务通知-未配置 wxlogin.appId/secret（需设 WXLOGIN_APPID / WXLOGIN_SECRET），跳过发送");
+            return null;
+        }
         //获取access_token
         String access_token = "";
         try {
