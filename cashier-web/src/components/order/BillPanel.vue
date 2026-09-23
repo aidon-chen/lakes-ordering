@@ -116,7 +116,9 @@
 
     <!-- 底注 83:28 -->
     <div class="text-[11px] leading-relaxed" style="color: #8f967f">
-      收款后：订单→已完成 · 台位→待清台 · 自动打印结账小票（P-03）
+      {{ pos.isTakeaway
+        ? '收款后：订单→待处理 · 顾客凭取餐号取餐 · 自动打印小票（P-03）'
+        : '收款后：订单→已完成 · 台位→待清台 · 自动打印结账小票（P-03）' }}
     </div>
   </div>
 </template>
@@ -136,8 +138,9 @@ const received = ref('0.00')
 
 const minSpend = computed(() => pos.currentTable?.minSpend ?? 0)
 
-/** 台位行：「散台 A03 · 就餐 4 人」（83:2） */
+/** 台位行：「散台 A03 · 就餐 4 人」（83:2）；外带自提单无台位（2026-09-23 补） */
 const tableLine = computed(() => {
+  if (pos.isTakeaway) return '外带自提 · 免台位'
   const t = pos.currentTable
   if (!t) return '未选台位'
   return `${t.typeName} ${t.tableNo} · 就餐 ${t.session?.memberNum ?? 0} 人`

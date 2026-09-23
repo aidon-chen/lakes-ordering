@@ -5,6 +5,9 @@ import { clearTable, changeTable as changeTableApi, fetchTableList, openTable, s
 import { fetchGoods, fetchMenus, fetchSpecs, updateGoodsStatus, type GoodsRow, type MenuRow, type SpecGroupMap } from '@/api/menu'
 import { submitOrder, type OrderDetailSubmit } from '@/api/order'
 
+/** 点单模式：堂食（需台位）/ 外带自提（免台位，散客入口） */
+export type OrderMode = 'dinein' | 'takeaway'
+
 /**
  * 收银台全局状态（Odoo PosStore / Screen 状态机映射）
  * - view: floor（桌台总览）/ order（点单管理）/ ticket（未结订单）
@@ -49,10 +52,22 @@ export const usePosStore = defineStore('pos', {
     remark: '',
     /** 单品备注 */
     itemRemark: '',
-    loadingSpecs: false
+    loadingSpecs: false,
+    /**
+     * 点单模式（2026-09-23 补散客入口）
+     * - 'dinein'   堂食：必须先在台位图点桌（占用台=加酒 / 空闲台=开台）
+     * - 'takeaway' 外带自提：**免台位**，散客带走场景；仍落 tb_order，orderScene=2
+     *   顾客端对「无桌号快照」的订单会自动展示「取餐码 A-0NN」（= 取餐号 queue_no 格式化），
+     *   无需新字段/新接口 —— 这正是散客走取餐号而不是自提码的原因。
+     */
+    orderMode: 'dinein' as OrderMode
   }),
 
   getters: {
+    /** 是否外带自提单（免台位） */
+    isTakeaway(s): boolean {
+      return s.orderMode === 'takeaway'
+    },
     currentTable(s): TableInfo | null {
       return s.tables.find(t => t.id === s.currentTableId) ?? null
     },
@@ -455,12 +470,26 @@ export const usePosStore = defineStore('pos', {
       line.added = true
     },
 
+    /**
+     * 切换点单模式。
+     * 切到外带自提时**清空台位上下文**，避免把外带单挂到别人的台位上；
+     * 切回堂食同样清空，要求重新去台位图点桌（不猜台位）。
+     */
+    setOrderMode(m: OrderMode) {
+      if (this.orderMode === m) return
+      this.orderMode = m
+      this.currentTableId = null
+      this.currentSessionId = null
+    },
+
     /** 下单送厨：方案 A 一次性提交购物车 → POST /rest/merchant/order/insert */
     async sendItems(): Promise<boolean> {
+      const takeaway = this.orderMode === 'takeaway'
       const table = this.currentTable
       const sessionId = this.currentSessionId
-      if (!table || sessionId == null) {
-        alert('未关联台位会话，无法下单')
+      // 堂食单仍必须绑台位；**外带自提单免台位**（散客入口，2026-09-23）
+      if (!takeaway && (!table || sessionId == null)) {
+        alert('堂食单需先在台位图点桌；如需免台位下单，请切到「外带自提」模式')
         return false
       }
       const lines = this.cart.filter(l => l.added)
@@ -482,12 +511,13 @@ export const usePosStore = defineStore('pos', {
         await submitOrder({
           orderDetailListStr: JSON.stringify(details),
           actualPrice: total,
-          tableId: table.id,
-          tableNo: table.tableNo,
-          tableName: table.tableName,
-          diningNum: table.session?.memberNum ?? 1,
-          diningSessionId: sessionId,
-          orderScene: 1
+          // 外带自提单不带台位/会话（后端 insertByMerchant 不校验，仅 setTableId(param)）
+          tableId: takeaway ? null : table!.id,
+          tableNo: takeaway ? null : table!.tableNo,
+          tableName: takeaway ? null : table!.tableName,
+          diningNum: takeaway ? 1 : (table?.session?.memberNum ?? 1),
+          diningSessionId: takeaway ? null : sessionId,
+          orderScene: takeaway ? 2 : 1
         })
         // 下单成功：清空已提交行（保留已下单行语义：本期无已下单行，直接全清）
         this.cart = []

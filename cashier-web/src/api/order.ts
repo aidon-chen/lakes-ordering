@@ -17,12 +17,14 @@ export interface OrderDetailSubmit {
 export interface OrderSubmitParam {
   orderDetailListStr: string // 明细 JSON 数组字符串
   actualPrice: number
-  tableId: number
-  tableNo: string
-  tableName: string
+  /** 堂食必填；**外带自提可空**（散客免台位，2026-09-23 补入口） */
+  tableId: number | null
+  tableNo: string | null
+  tableName: string | null
   diningNum: number
-  diningSessionId: number
-  orderScene: 1 | 2 // 1=堂食
+  diningSessionId: number | null
+  /** 1=堂食 2=外带自提 */
+  orderScene: 1 | 2
 }
 
 /** 下单：一次性提交购物车（生成一张订单，挂到当前会话） */
