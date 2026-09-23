@@ -32,6 +32,8 @@
 					<text class="shop-name">{{ item.shopName }}</text>
 					<text :class="'status-text ' + (item.statusActive ? 'blue' : 'gray')">{{ item.statusText }}</text>
 				</view>
+				<!-- 出品小标（2026-09-23 新增）：进行中订单让顾客在列表就能看到「做好没有」 -->
+				<text class="prod-badge" v-if="prodBadge(item)">{{ prodBadge(item) }}</text>
 				<text class="goods-summary">{{ item.description }}</text>
 				<view class="money-row">
 					<text class="money-label">合计</text>
@@ -178,6 +180,25 @@
 		},
 		onShareAppMessage: function() {},
 		methods: {
+
+			/**
+			 * 出品小标（2026-09-23 新增）：仅「进行中」订单展示。
+			 * 口径：status ∈ {2,3,4}（已支付未终态）时，按出品状态给标：
+			 *   production_status=2 → 出品中；=3 → 已出餐·可自取（自提）/ 已出品（堂食）
+			 * ⚠️ 列表接口返回的是**下划线键 `production_status`**（`select o.*` 的 Map 原样列名），
+			 *    与同一响应里的驼峰键（queueNo / status）**混用** —— 别读成 productionStatus（会拿到 undefined）。
+			 */
+			prodBadge(item) {
+				const s = Number(item.status);
+				if ([2, 3, 4].indexOf(s) === -1) return '';
+				const p = Number(item.production_status);
+				if (p === 2) return '出品中';
+				if (p === 3) {
+					const isTakeaway = !item.tableName || !String(item.tableName).trim();
+					return isTakeaway ? '已出餐 · 可自取' : '已出品';
+				}
+				return '';
+			},
 			// 解析入口状态：{ currentTab, modeType, currentOrderTab }
 			applyEntry(entry) {
 				this.currentTab = Number(entry.currentTab) || 0;
@@ -536,6 +557,17 @@
 	.status-text {
 		font-size: 24rpx;
 		flex-shrink: 0;
+	}
+
+	/* 出品小标（2026-09-23） */
+	.prod-badge {
+		align-self: flex-start;
+		font-size: 22rpx;
+		color: #5f7d22;
+		background: #EDF2DE;
+		border-radius: 8rpx;
+		padding: 4rpx 12rpx;
+		margin-top: 12rpx;
 	}
 
 	.status-text.blue {

@@ -9,7 +9,7 @@
     <!-- 顶栏 2:979 -->
     <div class="shrink-0 flex items-center" style="height: 52px">
       <span class="text-[20px] font-medium" style="color: #FFFFFF">
-        出品进度看板 · 声呐 SONAR（M-04 出品进度跟踪）
+        出品进度看板 · 湖里Lakes（M-04 出品进度跟踪）
       </span>
       <span class="flex-1" />
       <button
@@ -141,12 +141,21 @@ function cardStyle(key: string) {
   return `background: ${bg}; padding: 12px; min-height: 96px; display: flex; flex-direction: column; gap: 6px`
 }
 
-/** 头行：「A03 · 散台」（取餐号 + 台位类型，类型来自 diningTable/list） */
+/**
+ * 头行：「A03 · 散台」（取餐号 + 台位类型，类型来自 diningTable/list）
+ *
+ * 2026-09-23 修正：**外带自提单必须明确标注**。
+ * 外带单的 tableNo 落的是占位「外带」→ 按台位号查类型查不到 → 原先只显示一个数字，
+ * 出品员看不出「该送桌还是该喊号自取」，交接必错。
+ * 判定口径与顾客端 isDineIn 保持一致：**有无桌号快照**（tableName 为空即非堂食）。
+ */
 function headText(it: KanbanItem): string {
   const o = it.order
   const no = o.queueNo ?? o.tableNo ?? '—'
-  const type = it.order.tableNo ? typeByTableNo.value[it.order.tableNo] : ''
-  return type ? `${no} · ${type}` : String(no)
+  const isTakeaway = !o.tableName || !String(o.tableName).trim()
+  if (isTakeaway) return `${no} · 外带自取`
+  const type = typeByTableNo.value[o.tableNo ?? ''] ?? ''
+  return type ? `${no} · ${type}` : `${no} · 台位`
 }
 
 /** 品项串：「威士忌(单杯·加冰)×2 · 果盘×1」；无明细时回落数量 */

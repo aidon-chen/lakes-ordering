@@ -19,6 +19,19 @@
 			<text class="queue-tip">向店员出示此码，核销后取货</text>
 		</view>
 
+		<!-- 出品进度卡（2026-09-23 新增）：订单进行中时让顾客看到「做到哪了」。
+		     数据源＝后端已返回的 order.productionStatus（1待制作/2出品中/3已出品），无需新接口 -->
+		<view class="production-card" v-if="showProduction">
+			<text class="production-label">出品进度</text>
+			<view class="production-steps">
+				<view class="prod-step" v-for="(s, i) in productionSteps" :key="i">
+					<view :class="'prod-dot' + (i <= productionIndex ? ' on' : '')"></view>
+					<text :class="'prod-text' + (i <= productionIndex ? ' on' : '')">{{ s }}</text>
+				</view>
+			</view>
+			<text class="production-tip">{{ productionTip }}</text>
+		</view>
+
 		<!-- 退款进度 -->
 		<view class="refund-card" v-if="order.isRefundOrder" hover-class="row-hover" @tap="bindRefundProcess">
 			<text class="refund-label">退款进度</text>
@@ -272,6 +285,33 @@
 		computed: {
 			statusTitle() {
 				return this.order.statusText || '-';
+			},
+			/**
+			 * 出品进度（2026-09-23 新增）。
+			 * 读后端已返回的 productionStatus（1待制作 / 2出品中 / 3已出品；批次 D 新增列），
+			 * 与「订单状态」是两套东西 —— 原先顾客只能看到「商家正在备餐」且永不变化。
+			 */
+			productionIndex() {
+				const p = Number(this.order.productionStatus);
+				return p >= 1 && p <= 3 ? p - 1 : -1;
+			},
+			/** 仅「已支付且未到终态」时展示：status 2=待处理 3=待自取/已处理 4=待配送 */
+			showProduction() {
+				return this.productionIndex >= 0 && [2, 3, 4].indexOf(Number(this.order.status)) !== -1;
+			},
+			productionSteps() {
+				return ['已接单', '制作中', '已出品'];
+			},
+			/** 自提单在「已出品」时给出可取的明确信号 —— 这是本次优化的核心收益点 */
+			productionTip() {
+				const p = Number(this.order.productionStatus);
+				if (p === 3) {
+					return this.isDineIn
+						? '已出品，即将送至您的桌位'
+						: ('已出餐，凭取餐码 ' + (this.pickupCode || '') + ' 到前台取');
+				}
+				if (p === 2) return '正在制作中，请稍候';
+				return this.isDineIn ? '后厨已接单' : '已接单，正在排单';
 			},
 			statusDesc() {
 				const s = Number(this.order.status);
@@ -805,6 +845,61 @@
 		font-size: 22rpx;
 		color: #999999;
 		margin-top: 12rpx;
+	}
+
+	/* ===== 出品进度（2026-09-23）===== */
+	.production-card {
+		background: #ffffff;
+		border-radius: 24rpx;
+		padding: 32rpx;
+		margin-top: 20rpx;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.production-label {
+		font-size: 24rpx;
+		color: #999999;
+	}
+
+	.production-steps {
+		display: flex;
+		justify-content: space-between;
+		margin-top: 24rpx;
+	}
+
+	.prod-step {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+	}
+
+	.prod-dot {
+		width: 20rpx;
+		height: 20rpx;
+		border-radius: 50%;
+		background: #e0e0e0;
+	}
+
+	.prod-dot.on {
+		background: #5f7d22;
+	}
+
+	.prod-text {
+		font-size: 24rpx;
+		color: #999999;
+		margin-top: 12rpx;
+	}
+
+	.prod-text.on {
+		color: #5f7d22;
+		font-weight: 600;
+	}
+
+	.production-tip {
+		font-size: 22rpx;
+		color: #666666;
+		margin-top: 20rpx;
 	}
 
 	/* ===== 退款进度 ===== */
