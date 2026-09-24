@@ -131,6 +131,7 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { resetTokenCache } from '@/router'
 import {
   forgetPasswordStep1,
   forgetPasswordStep2,
@@ -251,6 +252,7 @@ async function doMobileLogin() {
 
 async function afterLogin(token: string) {
   localStorage.setItem('token', token)
+  resetTokenCache() // 新 token：重置守卫的校验缓存，避免用旧结论
   await auth.load(true)
   void router.replace(DEFAULT_PATH)
 }

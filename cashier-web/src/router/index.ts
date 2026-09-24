@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { defineAsyncComponent, type Component } from 'vue'
 import { DEFAULT_PATH, MENU_LEAVES } from '@/config/menu'
+import { http } from '@/api/http'
 import { usePosStore } from '@/stores/pos'
 import PageStub from '@/components/PageStub.vue'
 
@@ -66,13 +67,60 @@ const router = createRouter({
 })
 
 // 登录守卫：无 token 一律进登录页
-router.beforeEach(to => {
+/**
+ * token 有效性校验结果（进程内缓存）：null = 未验证。
+ * 登录成功后由 LoginView 调 resetTokenCache() 重置（新 token 不必再走一次校验请求）。
+ */
+let tokenVerified: boolean | null = null
+
+/** 登录成功后重置校验缓存 */
+export function resetTokenCache() {
+  tokenVerified = null
+}
+
+/**
+ * 轻量校验 token：调统计接口，success 即视为有效。
+ * 实测（2026-09-24）：假 token 时后端把失效吞成 {"success":false,"code":0,"message":"系统异常"}
+ * —— 无法与真业务错区分，故这里**任何失败都视为 token 无效**（清 token 跳登录）。
+ * 已知取舍：后端宕机时也会被弹回登录页（此时页面反正无数据可用）。
+ */
+async function verifyToken(): Promise<boolean> {
+  try {
+    await http.post('/rest/merchant/order/statistic', { pageNo: 1, pageSize: 1 })
+    return true
+  } catch {
+    return false
+  }
+}
+
+router.beforeEach(async to => {
   const token = localStorage.getItem('token')
-  if (to.path !== '/login' && !token) {
+
+  // 登录页：有 token 但**已失效** ⇒ 清掉并停留，让用户能重新登录
+  //（原实现会把用户从登录页弹回看板空页 —— 业务方 09-24 反馈的 bug）
+  if (to.path === '/login') {
+    if (token && tokenVerified === null) {
+      tokenVerified = await verifyToken()
+      if (!tokenVerified) localStorage.removeItem('token')
+    }
+    if (token && tokenVerified) {
+      return { path: DEFAULT_PATH }
+    }
+    return true
+  }
+
+  // 其它页面：无 token ⇒ 登录页
+  if (!token) {
     return { path: '/login' }
   }
-  if (to.path === '/login' && token) {
-    return { path: DEFAULT_PATH }
+  // 2026-09-24 修复：原实现只查 token **存在与否**，过期/无效 token 会放行进页面
+  // ⇒ 接口全部失败 ⇒ 空数据卡死、不跳登录（业务方 09-24 反馈的 bug）。现补一次有效性校验。
+  if (tokenVerified === null) {
+    tokenVerified = await verifyToken()
+    if (!tokenVerified) {
+      localStorage.removeItem('token')
+      return { path: '/login' }
+    }
   }
   return true
 })
