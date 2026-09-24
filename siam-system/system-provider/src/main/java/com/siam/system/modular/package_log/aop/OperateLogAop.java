@@ -66,7 +66,10 @@ public class OperateLogAop {
     /** 需脱敏的字段名（小写比较），不落明文到日志表 */
     private static final Set<String> SENSITIVE_KEYS = new HashSet<>(Arrays.asList(
             "password", "oldpassword", "newpassword", "paypassword", "confirmpassword",
-            "mobilecode", "token", "idcard"));
+            "mobilecode", "token", "idcard",
+            // ★ 2026-09-24 补：顾客付款码（扫码收款 authCode）。属支付凭据，
+            //   明文落日志等于泄漏可扣款凭据，必须在源头脱敏。
+            "authcode", "auth_code", "barcode", "paymentcode"));
 
     @Autowired
     private OperateLogService operateLogService;

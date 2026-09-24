@@ -374,6 +374,39 @@ public interface OrderMapper extends BaseMapper<Order> {
                              @Param("targetTableName") String targetTableName);
 
     /**
+     * 确认收款 · 按会话批量（2026-09-24 新增，收银台「点单即收款」= 先付后吃）
+     *
+     * <p>把该会话下未付的堂食订单一次性置为已收款：
+     * <ul>
+     *   <li>payment_mode：1=微信收款码，4=到店支付(现金)
+     *       —— 与 A-07 营收看板 {@code selectRevenuePaymentDistribution} 的
+     *       「payment_mode 为空视为到店支付=4」同一口径，不新造枚举</li>
+     *   <li>status：1(未付款) → 2(待处理)，对齐画板「未收款不下厨 · 收款后订单→待处理」</li>
+     *   <li><b>不动台位/会话</b>：顾客仍在用餐，离店由 DiningTableServiceImpl.clearTable
+     *       一步完成「结台 + 放台」</li>
+     * </ul>
+     *
+     * <p>⚠️ 不走 {@code orderService.paymentNotify}：收银台订单的 memberId 被复用为商家 id
+     * （{@code OrderServiceImpl.insertByMerchant} 里 setMemberId(loginMerchant.getId())），
+     * 走支付回调会给商家自己发积分、甚至查不到会员直接报错。批次 H 真接入微信收款后，
+     * 本方法由「拉起收款码 → 回调置 is_payment」取代，届时方可复用 paymentNotify。
+     */
+    @Update("UPDATE tb_order SET is_payment = 1, payment_mode = #{payMode}, status = 2, " +
+            "payment_success_time = NOW(), update_time = NOW() " +
+            "WHERE dining_session_id = #{sessionId} AND order_scene = 1 AND is_payment = 0")
+    int payUnpaidBySession(@Param("sessionId") Long sessionId, @Param("payMode") Integer payMode);
+
+    /**
+     * 确认收款 · 按订单号（外带自提等「无台位、无会话」的散客单）
+     * 口径同 {@link #payUnpaidBySession}；shopId 用于防越权（只能收本店单）
+     */
+    @Update("UPDATE tb_order SET is_payment = 1, payment_mode = #{payMode}, status = 2, " +
+            "payment_success_time = NOW(), update_time = NOW() " +
+            "WHERE order_no = #{orderNo} AND shop_id = #{shopId} AND is_payment = 0")
+    int payUnpaidByOrderNo(@Param("orderNo") String orderNo, @Param("shopId") Integer shopId,
+                           @Param("payMode") Integer payMode);
+
+    /**
      * A-07 营收看板 - 营业额/订单量趋势（按日/周/月聚合）
      * 口径：已成交订单 status in (6,7,9)；dateFormat 由统计维度决定（%Y-%m-%d / %x-W%v / %Y-%m）
      */
