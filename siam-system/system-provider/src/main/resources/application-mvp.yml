@@ -11,6 +11,11 @@ spring:
     url: jdbc:mysql://${MYSQL_ADDRESS}/siam_db?useUnicode=true&characterEncoding=utf8&autoReconnect=true&useSSL=false&zeroDateTimeBehavior=convertToNull&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true
     username: ${MYSQL_USERNAME}
     password: ${MYSQL_PASSWORD}
+    #连接池显式配置（默认仅 10，并发下易成瓶颈；4G 容器 20 连接无压力）
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 10000
 
   #thymeleaf
   thymeleaf:
@@ -62,6 +67,13 @@ siam:
     store: db
   redis:
     enabled: false
+  #会员身份认证
+  identityAuth:
+    #证件材料保留天数：审核结论作出后满 N 天自动删除图片（plan §8 要求 4「审核即弃」）
+    #2026-09-23 用户拍板：30 天。隐私政策 4.5 条与认证页告知书弹窗共用此口径
+    keepDays: 30
+    #清理节流：两次清理动作的最小间隔（秒），避免每次打开审核列表都全表扫
+    cleanIntervalSeconds: 600
 
 #阿里云配置
 aliyun:
@@ -82,8 +94,19 @@ aliyun:
   oss:
     accessKeyId: ${ALIYUN_OSS_KEY:}
     secret: ${ALIYUN_OSS_SECRET:}
-    endpoint: http://oss-cn-hangzhou.aliyuncs.com
-    bucketName: ${ALIYUN_OSS_BUCKET:siam-hangzhou}
+    endpoint: http://oss-cn-chengdu.aliyuncs.com
+    bucketName: ${ALIYUN_OSS_BUCKET:lakes-public}
+    #证件类私有桶（会员身份认证材料专用）：桶级禁止匿名读，取图走后端短时效签名 URL
+    #⚠️ 该桶必须在阿里云侧创建为「私有」并把上面这对 AccessKey 授权到它，否则证件图上传成功但读不回来
+    #2026-09-24 用户拍板：桶名 lakes（西南1成都）
+    privateBucketName: ${ALIYUN_OSS_PRIVATE_BUCKET:lakes}
+    #私有桶专用 endpoint：2026-09-24 换桶后两桶同在西南1（成都）——默认桶 lakes-public（自原作者
+    #桶 siam-hangzhou 迁出）与私有桶 lakes。OSS 的 bucket 命名空间按地域隔离，
+    #endpoint 必须与桶地域一致，否则报 NoSuchBucket。
+    #留空 ⇒ 跟随上面的 endpoint（两桶同地域时的最简配置，当前即是）；非空 ⇒ 私有桶操作走该 endpoint
+    privateEndpoint: ${ALIYUN_OSS_PRIVATE_ENDPOINT:http://oss-cn-chengdu.aliyuncs.com}
+    #签名 URL 有效期（秒）
+    privateUrlExpireSeconds: 300
 
   #全国快递物流查询
   express:

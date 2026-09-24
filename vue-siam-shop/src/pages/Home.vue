@@ -190,10 +190,10 @@ export default {
 			isOpenOrderAudio: false,
 			isOpenLocalPrint: false,
 			isOpenCloudPrint: false,
-			sysName: '暹罗点餐-商家中心',
+			sysName: '湖里Lakes-商家中心',
 			collapsed: false,
 			sysUserName: '',
-			sysUserAvatar: 'https://siam-hangzhou.oss-cn-hangzhou.aliyuncs.com/data/images/system/logo.png',
+			sysUserAvatar: 'https://lakes-public.oss-cn-chengdu.aliyuncs.com/data/images/system/logo.png',
 			form: {
 				name: '',
 				region: '',
@@ -478,8 +478,9 @@ export default {
 		var user = sessionStorage.getItem('user');
 		if (user) {
 			user = JSON.parse(user);
-			this.sysUserName = user.shopName || '';
-			this.sysUserAvatar = "https://siam.oss-cn-hangzhou.aliyuncs.com/" + user.shopLogoImg;
+			// 顶部店名不从 sessionStorage.user 取：该对象是商家账号（Merchant 无 shopName 字段），
+			// 取到的恒为空。真实店名统一在下方的 getLoginMerchantShopInfo 回调里赋值。
+			this.sysUserAvatar = "https://lakes-public.oss-cn-chengdu.aliyuncs.com/" + user.shopLogoImg;
 			if (user.issaler) {
 				this.routerArr = this.formatRouter()
 			}
@@ -492,6 +493,7 @@ export default {
 		vue.$http.post(vue, '/rest/merchant/shop/getLoginMerchantShopInfo', {},
 			(vue, data) => {
 				let shop = data.data
+				this.sysUserName = shop.name || '';
 				this.isOperating = shop.isOperating;
 				this.isOpenOrderAudio = shop.isOpenOrderAudio;
 				this.isOpenLocalPrint = shop.isOpenLocalPrint;

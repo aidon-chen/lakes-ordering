@@ -1,4 +1,4 @@
-﻿﻿﻿﻿HELP.md
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿HELP.md
 .gradle
 /build/
 !gradle/wrapper/gradle-wrapper.jar
@@ -57,3 +57,6 @@ application-siamcloud-prod.yml
 
 # 云库应用脚本产生的数据备份（含业务数据，禁止入库）
 sql/mysql/cloudrun/backup/
+
+# 本地联调上传的图片（application-local.yml 的 aliyun.oss.localStorageDir，写入本机磁盘，不入库）
+/upload/
