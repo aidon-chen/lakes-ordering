@@ -14,8 +14,8 @@
 					</view>
 					<block v-else>
 						<view class="flex_start">
-							<!-- 设计稿 A-05 门店栏·门店名（5:441）：沿用画板文案「乐章 LIVE 酒馆」，不取真实店名 -->
-							<view class="out_of_range one_row">乐章 LIVE 酒馆</view>
+							<!-- 门店栏·门店名：取当前门店真实名称（tb_shop.name），见 computed.shopDisplayName -->
+							<view class="out_of_range one_row">{{ shopDisplayName }}</view>
 							<view class="dine-table-tag" v-if="dineInfo">堂食·{{dineInfo.tableNo}}</view>
 							<van-icon name="arrow" />
 						</view>
@@ -35,8 +35,8 @@
 			</view>
 		</view>
 		<view class="shopping-commodity-details">
-			<!-- 设计稿 A-05 商品明细卡·门店名（5:451）：与门店栏一致，沿用画板文案 -->
-			<view v-if="shopInfo">乐章 LIVE 酒馆</view>
+			<!-- 商品明细卡·门店名：与门店栏一致，取当前门店真实名称 -->
+			<view v-if="shopInfo">{{ shopDisplayName }}</view>
 			<view class="commodity-name-price-detail" v-for="(item, index) in orderDetail.orderDetailList" :key="index">
 				<view class="commodity-name-types">
 					<view class="commodity-name">{{ item.goodsName }}</view>
@@ -204,7 +204,7 @@
 		<van-overlay :show="isVipDialogShow" z-index="1">
 			<view class="flex_column content_box" style="margin-top: 50px;">
 				<image
-					:src="'https://siam-hangzhou.oss-cn-hangzhou.aliyuncs.com/data/images/business/vip_recharge_guide.png?v=' + timestamp"
+					:src="'https://lakes-public.oss-cn-chengdu.aliyuncs.com/data/images/business/vip_recharge_guide.png?v=' + timestamp"
 					mode="widthFix" class="now-order-image" @tap="goToRecharge"></image>
 				<van-icon name="clear" @tap="close" style="font-size: 40px;color: wheat;" />
 			</view>
@@ -339,6 +339,18 @@
 				fullPriceReduction: 0
 			};
 		},
+		computed: {
+			// 门店名：优先 /rest/shop/detail 的 shopInfo.shop.name，其次门店列表记录，最后兜底品牌名
+			shopDisplayName() {
+				if (this.shopInfo && this.shopInfo.shop && this.shopInfo.shop.name) {
+					return this.shopInfo.shop.name;
+				}
+				if (this.initShopInfo && this.initShopInfo.name) {
+					return this.initShopInfo.name;
+				}
+				return '湖里Lakes';
+			}
+		},
 		/**
 		 * 生命周期函数--监听页面加载
 		 */
@@ -358,6 +370,8 @@
 		 */
 		onShow: function() {
 
+			// 桌位信息以 globalData 为唯一数据源：台位确认页（C-04）确认人数返回后同步点亮
+			this.dineInfo = app.globalData.deliveryAndSelfTaking.dineInfo || null;
 			if (this.showPayPwdInput) {
 				this.showPwdLayer();
 			}
@@ -1212,18 +1226,12 @@
 							toastService.showToast('桌台码无效，请扫描桌台二维码');
 							return;
 						}
-						const area = (text.match(/[?&]area=(\w+)/i) || [])[1] || '';
-						const tableId = match[2];
-						const dineInfo = {
-							tableId: tableId,
-							area: area,
-							tableNo: (area ? area + '区' : '') + tableId + '桌',
-							tableLabel: tableId,
-							personCount: 4
-						};
-						getApp().globalData.deliveryAndSelfTaking.dineInfo = dineInfo;
-						this.dineInfo = dineInfo;
-						toastService.showToast('已切换为堂食点餐');
+						// 进台位确认页（C-04）确认人数后返回本页继续结算（scene=查询串，URL 取 ? 后部分）
+						const qIdx = text.indexOf('?');
+						const scene = qIdx > -1 ? text.substring(qIdx + 1) : text;
+						uni.navigateTo({
+							url: '/pages/menu/scan-table/scan-table?scene=' + encodeURIComponent(scene) + '&from=pay'
+						});
 					},
 					fail: () => {}
 				});

@@ -1,6 +1,7 @@
 <template>
 	<view class="page">
-		<!-- 顶部分栏Tabs + 状态子Tab（C-11） -->
+		<!-- 顶部分栏Tabs（C-11）：状态子Tab（全部/待付款/待自提/退款售后）已按 2026-09-24 拍板移除，
+		     只保留「点单订单/商城订单」主 Tab，列表固定拉全量 -->
 		<view class="top-tabs">
 			<view class="main-tabs">
 				<view class="main-tab-item" v-for="(item, index) in tabList" :key="index" @tap="clickTab(index)">
@@ -8,43 +9,66 @@
 					<view class="tab-indicator" v-if="currentTab == index"></view>
 				</view>
 			</view>
-			<view class="sub-tabs">
-				<scroll-view scroll-x class="sub-tab-scroll" :show-scrollbar="false">
-					<view class="sub-tab-list">
-						<view class="sub-tab-item" v-for="(item, index) in activeSubTabs" :key="index"
-							@tap="clickOrderTab(index)">
-							<view class="sub-tab-inner">
-								<text :class="'sub-tab-text ' + (currentOrderTab == index ? 'active' : '')">{{ item.modeName }}</text>
-								<view class="badge" v-if="item.number > 0">{{ item.number > 99 ? '99+' : item.number }}</view>
-							</view>
-							<view class="sub-indicator" v-if="currentOrderTab == index"></view>
-						</view>
-					</view>
-				</scroll-view>
-			</view>
 		</view>
 
 		<!-- 订单列表 -->
 		<view class="order-list" v-if="activeList.length > 0">
-			<view class="order-card" v-for="(item, index) in activeList" :key="item.id" hover-class="card-hover"
-				@tap="goDetail(item)">
-				<view class="card-header">
-					<text class="shop-name">{{ item.shopName }}</text>
-					<text :class="'status-text ' + (item.statusActive ? 'blue' : 'gray')">{{ item.statusText }}</text>
+			<template v-for="(item, index) in activeList" :key="item.id">
+				<!-- 点单订单：复刻版卡片（2026-09-23 设计稿「订单卡片·复刻」；13:2x 追加拍板：删logo占位与出品小标，进行中右下角=再来一单） -->
+				<view class="order-card" v-if="currentTab == 0" hover-class="card-hover" @tap="goDetail(item)">
+					<view class="card-header">
+						<text class="shop-name">{{ item.shopName }}</text>
+						<text class="header-arrow">›</text>
+						<text :class="'status-text ' + (item.statusActive ? 'blue' : 'gray')">{{ item.statusText }}</text>
+					</view>
+					<view class="card-main">
+						<view class="thumb-row">
+							<view class="thumb-item" v-for="n in thumbCount(item)" :key="n">
+								<image class="thumb-img" v-if="thumbSrc(item, n - 1)" :src="thumbSrc(item, n - 1)"
+									mode="aspectFill" />
+								<view class="thumb-placeholder" v-else></view>
+							</view>
+						</view>
+						<view class="price-col">
+							<view class="price-line">
+								<text class="price-symbol">¥</text>
+								<text class="price-num">{{ fmtPrice(item.actualPrice) }}</text>
+							</view>
+							<text class="price-count">共{{ totalQty(item) }}件</text>
+						</view>
+					</view>
+					<text class="goods-names" :decode="true">{{ item.description }}</text>
+					<view class="time-row">
+						<text class="time-text">下单: {{ (item.createTime || '').slice(0, 16) }}</text>
+					</view>
+					<view class="card-footer" v-if="hasMore(item) || cardButtons(item).length > 0">
+						<text class="more-link" v-if="hasMore(item)" hover-class="btn-hover"
+							@tap.stop="onMore(item)">更多</text>
+						<view class="btn-row" v-if="cardButtons(item).length > 0">
+							<view v-for="btn in cardButtons(item)" :key="btn.key" :class="'card-btn btn-' + btn.type"
+								hover-class="btn-hover" @tap.stop="onCardButton(btn.key, item)">{{ btn.text }}</view>
+						</view>
+					</view>
 				</view>
-				<!-- 出品小标（2026-09-23 新增）：进行中订单让顾客在列表就能看到「做好没有」 -->
-				<text class="prod-badge" v-if="prodBadge(item)">{{ prodBadge(item) }}</text>
-				<text class="goods-summary">{{ item.description }}</text>
-				<view class="money-row">
-					<text class="money-label">合计</text>
-					<text class="money-value">¥{{ item.actualPrice }}</text>
+				<!-- 商城订单：沿用旧卡片 -->
+				<view class="order-card" v-else hover-class="card-hover" @tap="goDetail(item)">
+					<view class="card-header">
+						<text class="shop-name">{{ item.shopName }}</text>
+						<text :class="'status-text ' + (item.statusActive ? 'blue' : 'gray')">{{ item.statusText }}</text>
+					</view>
+					<text class="prod-badge" v-if="prodBadge(item)">{{ prodBadge(item) }}</text>
+					<text class="goods-summary" :decode="true">{{ item.description }}</text>
+					<view class="money-row">
+						<text class="money-label">合计</text>
+						<text class="money-value">¥{{ item.actualPrice }}</text>
+					</view>
+					<view class="btn-row" v-if="cardButtons(item).length > 0">
+						<view v-for="btn in cardButtons(item)" :key="btn.key"
+							:class="'card-btn ' + (btn.type == 'primary' ? 'btn-primary' : 'btn-stroke')"
+							hover-class="btn-hover" @tap.stop="onCardButton(btn.key, item)">{{ btn.text }}</view>
+					</view>
 				</view>
-				<view class="btn-row" v-if="cardButtons(item).length > 0">
-					<view v-for="btn in cardButtons(item)" :key="btn.key"
-						:class="'card-btn ' + (btn.type == 'primary' ? 'btn-primary' : 'btn-stroke')"
-						hover-class="btn-hover" @tap.stop="onCardButton(btn.key, item)">{{ btn.text }}</view>
-				</view>
-			</view>
+			</template>
 			<view class="loading-box" v-if="isLoading">
 				<van-loading />
 			</view>
@@ -52,8 +76,7 @@
 		</view>
 
 		<!-- 空状态 -->
-		<van-empty v-if="!isLoading && activeList.length <= 0"
-			:description="'暂无' + activeSubTabs[currentOrderTab].modeName + '订单'">
+		<van-empty v-if="!isLoading && activeList.length <= 0" description="暂无订单">
 			<van-button type="primary" size="small" color="#5f7d22" round @tap="goDrink">
 				{{ currentTab == 0 ? '去喝一杯' : '去逛逛' }}
 			</van-button>
@@ -76,7 +99,6 @@
 		data() {
 			return {
 				currentTab: 0,
-				currentOrderTab: 0,
 				tabList: [{
 						modeId: 0,
 						modeName: '点单订单'
@@ -86,55 +108,9 @@
 						modeName: '商城订单'
 					}
 				],
-				// 点单订单状态子Tab：本项目纯堂食 + 到店自提，无配送 → 已去掉「待收货」（外卖口径）
-				// 后端 tabType 取值见 OrderMapper：waitPayment=status1、waitPickedUp=status2/3、afterSales=7/8/9/11
-				shopOrderTabList: [{
-						modeId: 0,
-						modeType: 'all',
-						modeName: '全部'
-					},
-					{
-						modeId: 1,
-						modeType: 'waitPayment',
-						modeName: '待付款'
-					},
-					{
-						modeId: 2,
-						modeType: 'waitPickedUp',
-						modeName: '待自提'
-					},
-					{
-						modeId: 3,
-						modeType: 'afterSales',
-						modeName: '退款/售后'
-					}
-				],
-				pointsOrderTabList: [{
-						modeId: 0,
-						modeType: 'all',
-						modeName: '全部'
-					},
-					{
-						modeId: 1,
-						modeType: 'waitPayment',
-						modeName: '待付款'
-					},
-					{
-						modeId: 2,
-						modeType: 'waitDelivered',
-						modeName: '待发货'
-					},
-					{
-						modeId: 3,
-						modeType: 'waitReceived',
-						modeName: '待收货'
-					},
-					{
-						modeId: 4,
-						modeType: 'afterSales',
-						modeName: '退款/售后'
-					}
-				],
+				// 状态子Tab（全部/待付款/待自提/退款售后 等）已按 2026-09-24 拍板移除：
+				// 列表固定 tabType='all' 拉全量，后端 tabType 口径见 OrderMapper（waitPayment=status1、
+				// waitPickedUp=status2/3、afterSales=7/8/9/11），后续若恢复筛选直接复用该口径
 				list: [],
 				mallList: [],
 				pageNo: 1,
@@ -143,9 +119,6 @@
 			};
 		},
 		computed: {
-			activeSubTabs() {
-				return this.currentTab == 0 ? this.shopOrderTabList : this.pointsOrderTabList;
-			},
 			activeList() {
 				return this.currentTab == 0 ? this.list : this.mallList;
 			}
@@ -155,7 +128,8 @@
 			this.applyEntry(options || {});
 		},
 		onShow: function() {
-			// tabBar 页后续每次进入只触发 onShow：消费「我的」页经 globalData 传入的入口状态
+			// tabBar 页后续每次进入只触发 onShow：消费经 globalData 传入的入口状态。
+			// 状态子Tab已移除（09-24 拍板），旧入口参数里的 modeType/currentOrderTab 不再消费
 			const app = getApp();
 			const entry = app.globalData.orderCenterEntry;
 			if (entry) {
@@ -165,7 +139,6 @@
 			authService.checkIsLogin().then((result) => {
 				if (result) {
 					this.reload();
-					this.refreshTabNumbers();
 					return;
 				}
 				app.globalData.checkIsAuth('scope.userInfo');
@@ -199,18 +172,9 @@
 				}
 				return '';
 			},
-			// 解析入口状态：{ currentTab, modeType, currentOrderTab }
+			// 解析入口状态：只保留主 Tab（点单/商城）；旧参数 modeType/currentOrderTab 兼容但不消费
 			applyEntry(entry) {
 				this.currentTab = Number(entry.currentTab) || 0;
-				const tabs = this.currentTab == 0 ? this.shopOrderTabList : this.pointsOrderTabList;
-				let idx = 0;
-				if (entry.modeType) {
-					const found = tabs.findIndex((t) => t.modeType == entry.modeType);
-					if (found >= 0) idx = found;
-				} else if (entry.currentOrderTab !== undefined) {
-					idx = Number(entry.currentOrderTab) || 0;
-				}
-				this.currentOrderTab = idx;
 			},
 			reload() {
 				this.pageNo = 1;
@@ -230,7 +194,7 @@
 				https.request(url, {
 					pageNo: this.pageNo,
 					pageSize: PAGE_SIZE,
-					tabType: this.activeSubTabs[this.currentOrderTab].modeType,
+					tabType: 'all',
 					keyWords: ''
 				}).then((result) => {
 					this.isLoading = false;
@@ -253,60 +217,30 @@
 			clickTab(index) {
 				if (this.currentTab === index) return;
 				this.currentTab = index;
-				this.currentOrderTab = 0;
 				this.reload();
 			},
-			clickOrderTab(index) {
-				if (this.currentOrderTab === index) return;
-				this.currentOrderTab = index;
-				this.reload();
-			},
-			refreshTabNumbers() {
-				https.request('/rest/member/order/selectTabNumber', {}).then((result) => {
-					if (result.success) {
-						this.shopOrderTabList.forEach((item) => {
-							if (item.modeType == 'all') return;
-							for (let key in result.data) {
-								if (key.indexOf(item.modeType) != -1) {
-									item.number = result.data[key];
-									break;
-								}
-							}
-						});
-					}
+		// 订单卡按钮（2026-09-23 复刻改版）：待付款[取消/立即支付] 进行中[再来一单，退款收进「更多」]
+		// 已完成[评价/再来一单] 已取消[再来一单]；点单 tab 申请退款收进「更多」，商城 tab 旧卡片按钮平铺不变
+		cardButtons(item) {
+			const s = Number(item.status);
+			const isShop = this.currentTab == 0;
+			const btns = [];
+			if (s === 1) {
+				btns.push({
+					key: 'cancel',
+					text: '取消订单',
+					type: 'stroke'
 				});
-				https.request('/rest/member/pointsMall/order/selectTabNumber', {}).then((result) => {
-					if (result.success) {
-						this.pointsOrderTabList.forEach((item) => {
-							if (item.modeType == 'all') return;
-							for (let key in result.data) {
-								if (key.indexOf(item.modeType) != -1) {
-									item.number = result.data[key];
-									break;
-								}
-							}
-						});
-					}
+				btns.push({
+					key: 'pay',
+					text: '立即支付',
+					type: 'primary'
 				});
-			},
-			// C-11 订单卡按钮：待付款[取消/立即支付] 进行中[申请退款/取消订单] 已完成[评价/再来一单]
-			cardButtons(item) {
-				const s = Number(item.status);
-				const btns = [];
-				if (s === 1) {
-					btns.push({
-						key: 'cancel',
-						text: '取消订单',
-						type: 'stroke'
-					});
-					btns.push({
-						key: 'pay',
-						text: '立即支付',
-						type: 'primary'
-					});
-					return btns;
-				}
-				if (s >= 2 && s <= 5) {
+				return btns;
+			}
+			if (s >= 2 && s <= 5) {
+				if (!isShop) {
+					// 商城订单沿用旧卡片：申请退款平铺 + 取消订单保留
 					btns.push({
 						key: 'refund',
 						text: '申请退款',
@@ -319,24 +253,70 @@
 							type: 'stroke'
 						});
 					}
-				} else if (s === 6) {
-					if (item.isAllowAppraise) {
-						btns.push({
-							key: 'evaluate',
-							text: '评价',
-							type: 'stroke'
+				}
+				// 点单 tab：进行中不放「取消订单」（2026-09-23 13:2x 拍板），申请退款收在「更多」
+			} else if (s === 6) {
+				if (item.isAllowAppraise) {
+					btns.push({
+						key: 'evaluate',
+						text: '评价',
+						type: 'stroke'
+					});
+				}
+			}
+			// 点单 tab：进行中(s2-5)也显示「再来一单」（2026-09-23 13:2x 拍板，替代原取消订单位）
+			const showReorder = s === 6 || s === 10 || s === 11 || (isShop && s >= 2 && s <= 5);
+			if (showReorder) {
+				btns.push({
+					key: 'reorder',
+					text: '再来一单',
+					// 点单 tab 照设计稿=描边胶囊；商城旧卡片维持绿色实底
+					type: isShop ? 'strokeGreen' : 'primary'
+				});
+			}
+			return btns;
+		},
+		// 「更多」入口（2026-09-23 复刻拍板）：点单 tab 进行中订单，把申请退款收进来
+		hasMore(item) {
+			if (this.currentTab != 0) return false;
+			const s = Number(item.status);
+			return s >= 2 && s <= 5;
+		},
+		onMore(item) {
+			uni.showActionSheet({
+				itemList: ['申请退款'],
+				itemColor: '#333333',
+				success: (res) => {
+					if (res.tapIndex === 0) {
+						uni.navigateTo({
+							url: '../refund/apply/apply?orderId=' + item.id
 						});
 					}
 				}
-				if (s === 6 || s === 10 || s === 11) {
-					btns.push({
-						key: 'reorder',
-						text: '再来一单',
-						type: 'primary'
-					});
-				}
-				return btns;
-			},
+			});
+		},
+		// ===== 复刻卡片数据辅助 =====
+		// 共N件：tb_order.goods_total_quantity（列表 SQL 为 select o.*，Map 键驼峰/下划线都兜住）
+		totalQty(item) {
+			const raw = item.goodsTotalQuantity != null ? item.goodsTotalQuantity : item.goods_total_quantity;
+			const q = Number(raw);
+			return q > 0 ? q : 1;
+		},
+		thumbCount(item) {
+			// 设计稿一行最多 4 张缩略图
+			return Math.min(Math.max(this.totalQty(item), 1), 4);
+		},
+		// 商品缩略图：拍板=占位先行，后续列表接口附带 orderDetailList(mainImage) 后此处自动显示真图
+		thumbSrc(item, idx) {
+			const list = item.orderDetailList;
+			if (list && list[idx] && list[idx].mainImage) return list[idx].mainImage;
+			return '';
+		},
+		// ¥19.8：去掉多余尾零（"19.80" → 19.8）
+		fmtPrice(price) {
+			const n = Number(price);
+			return isNaN(n) ? price : String(n);
+		},
 			onCardButton(key, item) {
 				const s = Number(item.status);
 				if (key === 'cancel') {
@@ -349,7 +329,6 @@
 								if (result.success) {
 									toastService.showSuccess('取消成功', true);
 									this.reload();
-									this.refreshTabNumbers();
 								}
 							});
 						}, null);
@@ -426,6 +405,8 @@
 		display: flex;
 		background: #ffffff;
 		height: 88rpx;
+		/* 状态子Tab行已移除（09-24 拍板），分隔线收进主 Tab 行自身 */
+		border-bottom: 1rpx solid #f0f0f0;
 	}
 
 	.main-tab-item {
@@ -454,72 +435,7 @@
 		margin-top: 8rpx;
 	}
 
-	/* ===== 状态子Tab ===== */
-	.sub-tabs {
-		background: #ffffff;
-		border-top: 1rpx solid #f0f0f0;
-	}
-
-	.sub-tab-scroll {
-		width: 100%;
-		white-space: nowrap;
-	}
-
-	.sub-tab-list {
-		display: inline-flex;
-		padding: 0 12rpx;
-	}
-
-	.sub-tab-item {
-		display: inline-flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		height: 76rpx;
-		padding: 0 26rpx;
-		position: relative;
-	}
-
-	.sub-tab-inner {
-		position: relative;
-	}
-
-	.sub-tab-text {
-		font-size: 24rpx;
-		color: #666666;
-	}
-
-	.sub-tab-text.active {
-		color: #5f7d22;
-		font-weight: 500;
-	}
-
-	.sub-indicator {
-		position: absolute;
-		bottom: 4rpx;
-		left: 50%;
-		margin-left: -16rpx;
-		width: 32rpx;
-		height: 4rpx;
-		border-radius: 2rpx;
-		background: #5f7d22;
-	}
-
-	.badge {
-		position: absolute;
-		top: -10rpx;
-		right: -24rpx;
-		min-width: 28rpx;
-		height: 28rpx;
-		line-height: 28rpx;
-		padding: 0 6rpx;
-		box-sizing: border-box;
-		border-radius: 999rpx;
-		background-color: #ee0a24;
-		font-size: 18rpx;
-		color: #ffffff;
-		text-align: center;
-	}
+	/* ===== 状态子Tab样式已随该行一并移除（09-24 拍板） ===== */
 
 	/* ===== 订单卡（C-11 163:78/163:89） ===== */
 	.order-list {
@@ -642,6 +558,122 @@
 	.btn-primary {
 		background: #5f7d22;
 		color: #ffffff;
+	}
+
+	.btn-strokeGreen {
+		background: #ffffff;
+		border: 1rpx solid #5f7d22;
+		color: #5f7d22;
+	}
+
+	/* ===== 订单卡·复刻版（2026-09-23 设计稿「订单卡片·复刻」） ===== */
+	.header-arrow {
+		font-size: 28rpx;
+		color: #999999;
+		margin: 0 8rpx 0 4rpx;
+		flex-shrink: 0;
+	}
+
+	.card-main {
+		display: flex;
+		align-items: center;
+		margin-top: 20rpx;
+	}
+
+	.thumb-row {
+		flex: 1;
+		display: flex;
+		overflow: hidden;
+	}
+
+	.thumb-item {
+		width: 120rpx;
+		height: 120rpx;
+		border-radius: 16rpx;
+		overflow: hidden;
+		flex-shrink: 0;
+		margin-right: 12rpx;
+	}
+
+	.thumb-img {
+		width: 100%;
+		height: 100%;
+		display: block;
+	}
+
+	.thumb-placeholder {
+		width: 100%;
+		height: 100%;
+		background: #f5f1e8;
+	}
+
+	.price-col {
+		flex-shrink: 0;
+		margin-left: 8rpx;
+		display: flex;
+		flex-direction: column;
+		align-items: flex-end;
+	}
+
+	.price-line {
+		display: flex;
+		align-items: baseline;
+	}
+
+	.price-symbol {
+		font-size: 24rpx;
+		font-weight: 700;
+		color: #1a1a1a;
+	}
+
+	.price-num {
+		font-size: 40rpx;
+		font-weight: 700;
+		color: #1a1a1a;
+		line-height: 1;
+	}
+
+	.price-count {
+		font-size: 22rpx;
+		color: #999999;
+		margin-top: 8rpx;
+	}
+
+	.goods-names {
+		display: block;
+		font-size: 24rpx;
+		color: #666666;
+		margin-top: 16rpx;
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+	}
+
+	.time-row {
+		margin-top: 20rpx;
+	}
+
+	.time-text {
+		font-size: 22rpx;
+		color: #999999;
+	}
+
+	.card-footer {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-top: 16rpx;
+		min-height: 56rpx;
+	}
+
+	.card-footer .btn-row {
+		margin-top: 0;
+	}
+
+	.more-link {
+		font-size: 26rpx;
+		color: #666666;
+		padding: 8rpx 16rpx 8rpx 0;
 	}
 
 	.loading-box {

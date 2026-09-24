@@ -11,10 +11,32 @@
 				</block>
 			</swiper>
 		</view>
+		<!-- 商城首页增强 v3（2026-09-23）：猜你喜欢 = 一行三个（3 列小卡）；推荐好物 = 一行两个 -->
+		<view class="like-section" v-if="likeList.length > 0">
+			<view class="section-header">
+				<text class="section-title">猜你喜欢</text>
+				<text class="section-more theme-color" @tap="bindToMenu">查看全部</text>
+			</view>
+			<view class="like-grid">
+				<view class="like-card" v-for="(item, index) in likeList" :key="index" hover-class="hover-class-public"
+					@tap="commodityDetailTap" :data-id="item.id" :data-shopid="item.shopId">
+					<image v-if="item.mainImage" :src="item.mainImage" mode="aspectFill" class="like-card-img"></image>
+					<view v-else class="like-card-img like-card-img-empty"></view>
+					<view class="like-card-name out_of_range one_row">{{ item.name }}</view>
+					<view class="like-card-bottom">
+						<view class="like-card-price">
+							<text class="price-symbol">￥</text>
+							<text class="like-card-price-value">{{ item.price }}</text>
+						</view>
+					</view>
+				</view>
+			</view>
+		</view>
+
 		<!-- C-10 批次6：分类宫格已按画板 B-01 移除（分类入口只在商城点单页左栏），改为「推荐好物」分区 -->
+		<!-- 商城首页增强 v2（2026-09-23）：去掉「查看全部」入口；改为触底继续加载（不再固定 4 卡） -->
 		<view class="section-header">
 			<text class="section-title">推荐好物</text>
-			<text class="section-more theme-color" @tap="bindToMenu">查看全部</text>
 		</view>
 
 		<view class="like-items">
@@ -42,7 +64,14 @@
 				</view>
 			</view>
 		</view>
-		<van-divider contentPosition="center" style="padding-bottom: 20px;" v-if="isMore">没有更多啦</van-divider>
+		<view class="list-loading" v-if="loadingMore">正在加载...</view>
+		<van-divider contentPosition="center" style="padding-bottom: 20px;"
+			v-if="!hasMore && !loadingMore && recommendGoodsList.length > 0">没有更多啦</van-divider>
+
+		<!-- 底部占位：避免末行内容被固定悬浮购物车栏遮挡
+		     （原「服务保障条」正品保障/到店自提/营业时间 已按用户 2026-09-23 要求删除） -->
+		<view class="bottom-space"></view>
+
 		<!-- 底部购物车悬浮栏：画板 B-01 未画入口，但首页加购后需可达购物车（工程补充，已在计划登记） -->
 		<view class="cart-float" v-if="cartCount > 0" hover-class="hover-class-public" @tap="goToCart">
 			<view class="cart-float-icon theme-bg">
@@ -107,8 +136,8 @@
 	import authService from '../../../../utils/auth';
 	let app = null;
 	var pageNo = 1;
-	// C-10 批次6：首页「推荐好物」为固定展示位（画板 B-01 为 2 列 ×2 行 = 4 卡），不再做无限追加
-	var pageSize = 4;
+	// 商城首页增强 v2（2026-09-23）：「推荐好物」改为可分页追加（2 列 × 5 行），不再固定 4 卡
+	var pageSize = 10;
 	export default {
 		data() {
 			return {
@@ -121,8 +150,11 @@
 				//当前选中的指示点颜色
 				opacity: 0.4,
 				recommendGoodsList: [],
+				likeList: [],
 				specList: [],
-				isMore: false,
+				// 商城首页增强 v2：hasMore=是否还有下一页（触底继续加载）；loadingMore=追加中
+				hasMore: true,
+				loadingMore: false,
 				carouselUrls: '',
 				priceAfter: '',
 				specListString: '',
@@ -143,6 +175,7 @@
 			pageNo = 1;
 			this.getSystemUsageRecord();
 			this.getRecommendGoodsList();
+			this.getGuessLikeList();
 		},
 		/**
 		 * 生命周期函数--监听页面初次渲染完成
@@ -173,13 +206,20 @@
 		 */
 		onPullDownRefresh: function() {
 			pageNo = 1;
+			this.hasMore = true;
 			this.getRecommendGoodsList();
+			this.getGuessLikeList();
 		},
 		/**
 		 * 页面上拉触底事件的处理函数
 		 */
 		onReachBottom: function() {
-			// C-10 批次6：首页「推荐好物」为固定 4 卡展示位（画板 B-01），不再触底追加
+			// 商城首页增强 v2（2026-09-23）：「推荐好物」触底继续加载（不再固定 4 卡）
+			if (!this.hasMore || this.loadingMore) {
+				return;
+			}
+			pageNo++;
+			this.getRecommendGoodsList();
 		},
 		/**
 		 * 用户点击右上角分享
@@ -229,24 +269,53 @@
 			// 分类入口由「查看全部」→ 商城点单页左栏承载。
 
 			getRecommendGoodsList() {
-				toastService.showLoading();
+				// 商城首页增强 v2（2026-09-23）：「推荐好物」改为分页追加（触底继续加载），不再固定 4 卡
+				const isFirstPage = pageNo === 1;
+				if (isFirstPage) {
+					toastService.showLoading();
+				} else {
+					this.loadingMore = true;
+				}
 				https.request('/rest/pointsMall/goods/recommendGoodsList', {
 					pageNo: pageNo,
 					pageSize: pageSize
 				}).then((result) => {
 					toastService.hideLoading();
 					uni.stopPullDownRefresh();
+					this.loadingMore = false;
 					if (result.success) {
-						result.data.records.forEach(function(item, index) {
+						const records = (result.data && result.data.records) || [];
+						records.forEach(function(item) {
 							// 种子商品的 main_image 可能为空 → 交由模板渲染灰底占位（画板 B-01 图位即灰块）
 							if (item.mainImage) {
 								item.mainImage = GlobalConfig.ossUrl + item.mainImage;
 							}
 						});
-						// C-10 批次6：vue3 运行时未挂载小程序数据刷新方法，改响应式赋值；
-						// 首页推荐为固定 4 卡展示位，直接显示「没有更多啦」
-						this.recommendGoodsList = result.data.records;
-						this.isMore = true;
+						// vue3 运行时未挂载小程序数据刷新方法，改响应式赋值（勿改回 setData 式写法）
+						this.recommendGoodsList = isFirstPage ?
+							records :
+							this.recommendGoodsList.concat(records);
+						// MyBatis-Plus Page 元信息：current=当前页、pages=总页数
+						const meta = result.data || {};
+						const current = meta.current || pageNo;
+						const pages = meta.pages || 0;
+						this.hasMore = current < pages;
+					}
+				});
+			},
+
+			/** 商城首页增强（2026-09-23）：猜你喜欢（近30天热销 Top6），复用 car.vue 已用接口 */
+			getGuessLikeList() {
+				https.request('/rest/pointsMall/goods/guessLikeGoodsList', {}).then((result) => {
+					if (result.success) {
+						const list = (result.data || []).slice(0, 6);
+						list.forEach(function(item) {
+							if (item.mainImage) {
+								item.mainImage = GlobalConfig.ossUrl + item.mainImage;
+							}
+						});
+						// vue3 运行时限制：响应式赋值（勿改回 setData 式写法）
+						this.likeList = list;
 					}
 				});
 			},
@@ -753,6 +822,79 @@
 		line-height: 80rpx;
 		text-align: center;
 		flex-shrink: 0;
+	}
+
+	/* 商城首页增强 v3（2026-09-23）：猜你喜欢 = 一行三个（3 列小卡）；推荐好物 = 一行两个（.like-items/.like-item） */
+	.like-section {
+		margin-top: 10rpx;
+	}
+
+	.like-grid {
+		display: grid;
+		grid-template-columns: 1fr 1fr 1fr;
+		grid-column-gap: 12rpx;
+		grid-row-gap: 16rpx;
+		padding: 0 24rpx 20rpx 24rpx;
+		background-color: #f5f5f5;
+	}
+
+	.like-card {
+		background-color: #ffffff;
+		border-radius: 15rpx;
+		padding-bottom: 10rpx;
+		overflow: hidden;
+	}
+
+	.like-card-img {
+		width: 100%;
+		height: 172rpx;
+	}
+
+	.like-card-img-empty {
+		background-color: #f2f2f2;
+	}
+
+	.like-card-name {
+		font-size: 26rpx;
+		color: #202020;
+		padding: 10rpx 12rpx 0 12rpx;
+	}
+
+	.like-card-bottom {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 6rpx 12rpx 0 12rpx;
+	}
+
+	.like-card-price {
+		display: flex;
+		align-items: baseline;
+	}
+
+	.like-card-price .price-symbol {
+		font-size: 20rpx;
+		font-weight: bold;
+	}
+
+	.like-card-price-value {
+		font-size: 28rpx;
+		font-weight: bold;
+		color: #202020;
+	}
+
+	/* 触底追加时的加载提示 */
+	.list-loading {
+		text-align: center;
+		font-size: 26rpx;
+		color: #999999;
+		padding-bottom: 20px;
+	}
+
+	/* 底部占位高度：与固定悬浮购物车栏（距底 24rpx + 高 104rpx）留出余量
+	   原「服务保障条」样式（.service-bar/.service-item/.service-icon/.service-text）已随组件一并删除 */
+	.bottom-space {
+		height: 140rpx;
 	}
 
 </style>

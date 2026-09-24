@@ -101,10 +101,9 @@
 				// 海报区文案（设计稿文案池；后端 tb_advertisement 无标题字段，故为静态配置项）
 				posterTitle: '中秋主题夜',
 				posterSubtitle: '9/25 乐队现场 · 双款特调首发',
-				// 门店信息：暂不接设备定位，用占位文案（改这里即可换地址/营业时间文案）。
-				// 接回真实取数：uni.getLocation → /rest/shop/listForPickup 取最近门店，
-				// 地址拼 shop.street + shop.houseNumber，营业时间用 shop.endTime / isOperatingOfShop。
-				shopName: '乐章 LIVE 酒馆',
+				// 门店信息：优先取用户在「门店列表」选过的 currentShopId，其次按定位取最近可自提门店；
+				// 取不到时保留下面的兜底文案，不阻塞首页渲染。取数见 loadShopInfo()。
+				shopName: '湖里Lakes',
 				shopLogo: '/static/assets/icons/home-brand-mark.png',
 				shopInfoLine: '***市 **区 **路 **号 · 营业中至 02:00',
 				// 会员信息：/rest/member/getLoginMemberInfo（未登录时为空对象）
@@ -136,15 +135,26 @@
 		onLoad: function() {
 			app = getApp();
 			this.statusBarHeight = app.globalData.systemInfoSync.statusBarHeight;
-			this.getActivityDialog();
 			this.getMemberInfo();
 		},
 		onShow: function() {
+			if (!app) {
+				app = getApp();
+			}
+			// C-02 首页活动弹窗：每次都弹 —— 由 App.vue 的 onShow 置位（= 每次打开小程序），此处消费。
+			// 放在 onShow 而非 onLoad：冷启动/后台恢复都走 onShow；切 tab 回来时 App.onShow 未触发、
+			// 标记已被消费，故不会重复弹。
+			if (app.globalData.needActivityPopup) {
+				app.globalData.needActivityPopup = false;
+				this.getActivityDialog();
+			}
 			const addressInfo = app.globalData.deliveryAndSelfTaking.initRegeoInfo;
 			if (addressInfo) {
 				app.globalData.deliveryAndSelfTaking.regeoInfo = addressInfo;
 				app.globalData.deliveryAndSelfTaking.location = addressInfo.location;
 			}
+			// 门店名/地址：切 tab 回来或换过门店都要刷新
+			this.loadShopInfo();
 		},
 		onPullDownRefresh() {
 			this.getMemberInfo();
@@ -158,6 +168,52 @@
 		methods: {
 			swiperChange(e) {
 				this.swiperCurrent = e.detail.current;
+			},
+
+			// 门店信息：① 用户选过的 currentShopId → /rest/shop/detail；
+			// ② 否则按定位 → /rest/shop/listForPickup 取最近一家 → 再用 detail 补全；
+			// ③ 全失败则保留 data 里的兜底文案。任何一步失败都静默降级，不阻塞首页。
+			loadShopInfo() {
+				const applyShop = (shop) => {
+					if (!shop) return;
+					if (shop.name) {
+						this.shopName = shop.name;
+					}
+					const address = [shop.street, shop.houseNumber].filter(Boolean).join('');
+					const operating = shop.isOperating ? ('营业中至 ' + (shop.endTime || '')) : '暂停营业';
+					const line = [address, operating].filter(Boolean).join(' · ');
+					if (line) {
+						this.shopInfoLine = line;
+					}
+				};
+				const loadById = (shopId) => https.request('/rest/shop/detail', {
+					id: shopId
+				}).then((result) => {
+					if (result && result.success && result.data && result.data.shop) {
+						applyShop(result.data.shop);
+					}
+				});
+				const currentShopId = uni.getStorageSync('currentShopId');
+				if (currentShopId) {
+					loadById(currentShopId).catch(() => {});
+					return;
+				}
+				const globalData = (app && app.globalData && app.globalData.deliveryAndSelfTaking) || {};
+				const location = globalData.location;
+				if (!location) {
+					return;
+				}
+				https.request('/rest/shop/listForPickup', {
+					pageNo: -1,
+					pageSize: 1,
+					position: location
+				}).then((result) => {
+					const records = result && result.data && result.data.records;
+					if (records && records.length > 0) {
+						applyShop(records[0]);
+						return loadById(records[0].id);
+					}
+				}).catch(() => {});
 			},
 
 			// A-01 会员中心行：登录态才返回数据，未登录保持 0 值空态
@@ -214,14 +270,24 @@
 				});
 			},
 
-			// A-01 会员入口条
+			// A-01 会员入口条：先判登录态。未登录直接引导登录 ——
+			// 否则会被会员中心页的守卫弹回（实测 navigateTo:ok → 800ms 后 navigateBack），
+			// 用户看到「闪一下回来」会误判为「跳转失败」（2026-09-22 复现）
 			memberCenterTap() {
-				uni.navigateTo({
-					url: '/pages/mine/member/index/index'
+				authService.checkIsLogin().then((isLogin) => {
+					if (isLogin) {
+						uni.navigateTo({
+							url: '/pages/mine/member/index/index'
+						});
+						return;
+					}
+					uni.navigateTo({
+						url: '/pages/internal/login/choose/choose'
+					});
 				});
 			},
 
-			// A-01 点餐：扫桌台码 → 写入 dineInfo → 进点餐台（与点餐台切换逻辑一致）
+			// A-01 点餐：扫桌台码 → 台位确认页（C-04：校验台位＋选人数）→ 开始点餐进点单台
 			dineScanTap() {
 				uni.scanCode({
 					success: (res) => {
@@ -235,17 +301,11 @@
 							});
 							return;
 						}
-						const area = (text.match(/[?&]area=(\w+)/i) || [])[1] || '';
-						const tableId = match[2];
-						app.globalData.deliveryAndSelfTaking.dineInfo = {
-							tableId: tableId,
-							area: area,
-							tableNo: (area ? area + '区' : '') + tableId + '桌',
-							tableLabel: (area ? area + ' 区 · ' : '') + '散台 ' + tableId,
-							personCount: 4
-						};
-						uni.switchTab({
-							url: '/pages/menu/index/index'
+						// 取查询串作为 scene 传台位确认页（URL 取 ? 后部分，裸参数原样）
+						const qIdx = text.indexOf('?');
+						const scene = qIdx > -1 ? text.substring(qIdx + 1) : text;
+						uni.navigateTo({
+							url: '/pages/menu/scan-table/scan-table?scene=' + encodeURIComponent(scene)
 						});
 					},
 					fail: () => {}

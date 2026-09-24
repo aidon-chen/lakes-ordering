@@ -16,7 +16,7 @@
                             <text :class="'detail-status ' + (index == 0 ? 'theme-color' : 'detail-out')">{{ item.name }}</text>
                             <text class="detail-time">{{ item.createTime }}</text>
                         </view>
-                        <view class="detail-tip" v-if="item.description">{{ item.description }}</view>
+                        <view class="detail-tip" v-if="item.description"><text :decode="true">{{ item.description }}</text></view>
                     </view>
                 </view>
             </view>

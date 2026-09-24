@@ -89,11 +89,11 @@
 		<!-- 底部按钮占位 -->
 		<view class="bottom-space" v-if="bottomButtons.length > 0"></view>
 
-		<!-- 底部按钮栏（163:133） -->
+		<!-- 底部按钮栏（163:133）：more=左下角小字灰色「更多」（收纳取消订单） -->
 		<view class="bottom-bar" v-if="bottomButtons.length > 0">
 			<view v-for="btn in bottomButtons" :key="btn.key"
-				:class="'bar-btn ' + (btn.type == 'primary' ? 'btn-primary' : 'btn-stroke')" hover-class="btn-hover"
-				@tap="onBarButton(btn.key)">{{ btn.text }}</view>
+				:class="'bar-btn ' + (btn.type == 'primary' ? 'btn-primary' : (btn.type == 'more' ? 'bar-more' : 'btn-stroke'))"
+				hover-class="btn-hover" @tap="onBarButton(btn.key)">{{ btn.text }}</view>
 		</view>
 
 		<!-- 取消原因（无理由取消） -->
@@ -344,15 +344,16 @@
 				return !this.isDineIn && !!this.order.queueNo &&
 					[2, 3].indexOf(Number(this.order.status)) != -1;
 			},
-			// 底部按钮栏（C-11 163:133）
+			// 底部按钮栏（C-11 163:133）；2026-09-24 拍板：取消订单收进左下角「更多」（小字灰色），
+			// 栏内只留主按钮（立即支付/再来一单/评价）
 			bottomButtons() {
 				const s = Number(this.order.status);
 				const btns = [];
 				if (s === 1) {
 					btns.push({
-						key: 'cancel',
-						text: '取消订单',
-						type: 'stroke'
+						key: 'more',
+						text: '更多',
+						type: 'more'
 					});
 					btns.push({
 						key: 'pay',
@@ -361,19 +362,13 @@
 					});
 					return btns;
 				}
-				if (s >= 2 && s <= 5) {
-					if (this.order.isAllowApplyRefund) {
+			if (s >= 2 && s <= 5) {
+				// 「申请退款」入口已下线（2026-09-23 13:5x 用户拍板）；已申请的退款进度仍走上方「退款进度」卡
+				if (s <= 3 && this.order.isAllowCancelNoReason) {
 						btns.push({
-							key: 'refund',
-							text: '申请退款',
-							type: 'stroke'
-						});
-					}
-					if (s <= 3 && this.order.isAllowCancelNoReason) {
-						btns.push({
-							key: 'cancel',
-							text: '取消订单',
-							type: 'stroke'
+							key: 'more',
+							text: '更多',
+							type: 'more'
 						});
 					}
 				}
@@ -473,11 +468,24 @@
 			},
 
 			onBarButton(key) {
+				if (key === 'more') this.showMoreSheet();
 				if (key === 'cancel') this.cancelOrderTap();
 				if (key === 'pay') this.openConfirm();
-				if (key === 'refund') this.applyRefund();
 				if (key === 'evaluate') this.evaluateTip();
 				if (key === 'reorder') this.reorder();
+			},
+
+			// 「更多」（2026-09-24 拍板）：收纳取消订单入口，小字灰色样式；后续更多次级动作往这里加
+			showMoreSheet() {
+				uni.showActionSheet({
+					itemList: ['取消订单'],
+					itemColor: '#333333',
+					success: (res) => {
+						if (res.tapIndex === 0) {
+							this.cancelOrderTap();
+						}
+					}
+				});
 			},
 
 			cancelOrderTap() {
@@ -1085,6 +1093,19 @@
 		background: #5f7d22;
 		color: #ffffff;
 		font-weight: 500;
+	}
+
+	/* 「更多」（09-24 拍板）：小字灰色文本钮，贴左；margin-right:auto 把主按钮推到右侧 */
+	.bar-more {
+		flex: none;
+		width: auto;
+		height: 80rpx;
+		display: flex;
+		align-items: center;
+		margin-right: auto;
+		padding: 0 12rpx;
+		font-size: 26rpx;
+		color: #999999;
 	}
 
 	/* ===== 弹层 ===== */

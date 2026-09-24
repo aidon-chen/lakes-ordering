@@ -14,9 +14,9 @@
 	import AMapLoader from "@amap/amap-jsapi-loader";
 	// #endif
 	var initRegeoInfo = {
-		name: '麓谷小镇',
-		address: '岳麓大道尖山路口北300米',
-		location: '112.885538,28.232363',
+		name: '湖里Lakes',
+		address: '成都市锦江区红星路三段1号IFS国际金融中心',
+		location: '104.088083,30.663008',
 		isAutoLocation: false
 	};
 	export default {
@@ -90,8 +90,16 @@
 			// #endif
 		},
 		onHide() {},
-		onShow: function() {},
+		onShow: function() {
+			// C-02 首页活动弹窗「触发位」：
+			// 小程序每次进入前台（冷启动 / 从后台恢复）都置位，由 pages/index/index.vue 的 onShow 消费。
+			// 不用 onLaunch 是因为它只在冷启动跑一次；不用页面 onShow 直接请求，是因为切 tab 也会触发页面 onShow。
+			// App.onShow 只在「打开小程序」时触发 → 正好等于「每次打开小程序弹一次」。
+			this.globalData.needActivityPopup = true;
+		},
 		globalData: {
+			// C-02 首页活动弹窗：待弹标记（App.onShow 置位 → 首页 onShow 消费后复位）
+			needActivityPopup: false,
 			userInfo: null,
 			appVersion: 5.28,
 

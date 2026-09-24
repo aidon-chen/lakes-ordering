@@ -112,7 +112,7 @@
 				// 模板提示条：正式发布前把这里改为 false（或由运营方确认后移除）
 				showTemplateNotice: true,
 				// ⚠️ 品牌名为暂定值，运营主体/联系方式均为占位符，须由运营方替换
-				brandName: '乐章酒馆',
+				brandName: '湖里Lakes',
 				operator: '【运营主体全称，待确认】',
 				contactEmail: '【客服邮箱，待确认】',
 				contactPhone: '【客服电话，待确认】',

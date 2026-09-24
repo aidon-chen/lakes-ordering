@@ -24,7 +24,7 @@
 		</view>
 
 		<view class="login-card">
-			<view class="card-title">登录乐章，开启你的深夜现场</view>
+			<view class="card-title">登录湖里Lakes，开启你的深夜现场</view>
 			<view class="card-sub">首次登录将自动创建会员账号</view>
 			<button class="card-btn theme-bg" @tap="wxAuthLogin">微信授权登录</button>
 			<button class="card-btn card-btn-ghost theme-color theme-border-color" @tap="phoneLogin">手机号验证码登录</button>
@@ -51,7 +51,7 @@
 		},
 		data() {
 			return {
-				brandName: '乐章 LIVE 酒馆',
+				brandName: '湖里Lakes',
 				slogan: '一杯敬深夜 · 一场敬热爱',
 				inviterId: '',
 				agreed: true

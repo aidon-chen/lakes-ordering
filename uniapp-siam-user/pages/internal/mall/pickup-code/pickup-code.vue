@@ -34,7 +34,7 @@
 		<view class="card shop-card">
 			<van-icon name="location-o" class="theme-color shop-icon" />
 			<view class="shop-main">
-				<view class="shop-name">{{ shopName || '乐章 LIVE 酒馆' }}</view>
+				<view class="shop-name">{{ shopName || '湖里Lakes' }}</view>
 				<view class="shop-addr">{{ shopAddress || '请到门店前台出示自提码取货' }}</view>
 			</view>
 		</view>
