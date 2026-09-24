@@ -7,7 +7,6 @@ import com.siam.system.modular.package_user.service.MemberService;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -57,7 +56,6 @@ public class MemberController {
      */
 
     @PostMapping(value = "/login")
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public BasicResult login(@RequestBody @Validated(value = {}) MemberParam param) {
         this.applyWxHeaders(param);
         MemberResult result = memberService.login(param);

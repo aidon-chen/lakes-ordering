@@ -16,6 +16,8 @@ spring:
       maximum-pool-size: 20
       minimum-idle: 5
       connection-timeout: 10000
+      #泄漏诊断：借出超 5s 未归还即打警告栈（定位并发登录连接不归还问题，定位完成后可移除）
+      leak-detection-threshold: 5000
 
   #thymeleaf
   thymeleaf:
