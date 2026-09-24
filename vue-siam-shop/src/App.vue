@@ -254,4 +254,61 @@ body {
 ul.el-upload-list--text{
   display: none!important;
 }
+
+/* ==================== Pad 端适配（≤1024px 生效，PC 端不受影响） ==================== */
+/* 依据《Pad端适配-实施计划-v1.1》§3.3；所有规则只在窄屏命中，>1024 的 PC 渲染路径不变 */
+@media (max-width: 1024px) {
+	// 超宽表单标签收窄（覆盖上方 300/400px 的 !important 规则——同文件内靠源顺序取胜）
+	.mainImageFileItem .el-form-item__label,
+	.subImagesFileItem .el-form-item__label,
+	.detailImagesFileItem .el-form-item__label,
+	.firstPosterFileItem .el-form-item__label,
+	.shopLogoImgFileItem .el-form-item__label,
+	.shopWithinImgFileItem .el-form-item__label {
+		width: 140px !important;
+	}
+	.mainImageFileItem .el-form-item__content,
+	.subImagesFileItem .el-form-item__content,
+	.detailImagesFileItem .el-form-item__content,
+	.firstPosterFileItem .el-form-item__content,
+	.shopLogoImgFileItem .el-form-item__content,
+	.shopWithinImgFileItem .el-form-item__content {
+		margin-left: 140px !important;
+	}
+	// 大尺寸上传卡片允许随屏收缩，图片等比裁切不变形
+	.advertisementForm .el-upload-list--picture-card .el-upload-list__item,
+	.firstPosterFileItem .el-upload-list--picture-card .el-upload-list__item {
+		max-width: 100% !important;
+	}
+	.el-upload-list--picture-card .el-upload-list__item img {
+		object-fit: cover;
+	}
+	// 表格容器不撑破页面（element-ui 自带横向滚动条）
+	.container .main .content-container .el-table {
+		max-width: 100% !important;
+	}
+	// 弹窗与确认框不超出屏宽
+	.el-dialog {
+		max-width: calc(100vw - 24px);
+	}
+	.el-message-box {
+		max-width: calc(100vw - 40px);
+	}
+	// 头部：收窄 logo 与右侧间距，防止窄屏挤爆（!important 压过 Home.vue scoped 规则与内联样式）
+	.container .header .logo-width[data-v-5a90ec03] {
+		width: 150px !important;
+		font-size: 16px;
+	}
+	.container .header .userinfo[data-v-5a90ec03] {
+		padding-right: 10px !important;
+	}
+	.container .header .userinfo .el-button {
+		margin-right: 4px !important;
+		padding: 8px 12px;
+	}
+	// 内容区留白收窄
+	.container .main .content-container[data-v-5a90ec03] {
+		padding: 10px !important;
+	}
+}
 </style>

@@ -114,18 +114,48 @@
 			</el-col>
 		</el-card>
 
+		<!--资金流水（2026-09-24 点亮：/rest/admin/memberBillingRecord/list 已启用）-->
+		<el-card shadow="never" class="block">
+			<div slot="header" class="block-title">
+				资金流水
+				<span class="block-tip">共 {{ billingTotal }} 条</span>
+			</div>
+			<el-table :data="billings" v-loading="billingLoading" style="width: 100%;"
+				:cell-style="cellStyle" :header-cell-style="headerCellStyle">
+				<el-table-column label="账户" width="90">
+					<template slot-scope="scope">{{ billingCoinText(scope.row) }}</template>
+				</el-table-column>
+				<el-table-column label="金额" width="130">
+					<template slot-scope="scope">
+						<!-- 进账红 / 出账绿（中文财务习惯），符号与颜色同时给出，避免只看颜色误读 -->
+						<span :style="{ color: scope.row.operateType == 1 ? '#c0392b' : '#27795a' }">
+							{{ scope.row.operateType == 1 ? '+' : '-' }}{{ money(scope.row.number) }}
+						</span>
+					</template>
+				</el-table-column>
+				<el-table-column prop="message" label="说明" min-width="260" show-overflow-tooltip></el-table-column>
+				<el-table-column prop="createTime" label="时间" :formatter="formatTime" width="160"></el-table-column>
+			</el-table>
+			<el-col :span="24" class="toolbar">
+				<el-pagination @size-change="handleBillingSizeChange" @current-change="handleBillingCurrentChange"
+					:page-sizes="[10, 20, 50]" :page-size="billingQuery.pageSize"
+					layout="total, sizes, prev, pager, next" :total="billingTotal" style="float:right;">
+				</el-pagination>
+			</el-col>
+		</el-card>
+
 		<!--暂未开放的数据块-->
 		<el-card shadow="never" class="block">
-			<div slot="header" class="block-title">优惠券 / 存酒 / 余额流水</div>
+			<div slot="header" class="block-title">优惠券 / 存酒</div>
 			<div class="pending">
-				<div class="pending-lead">以下三项后端尚未提供按会员查询的接口，因此暂不展示（不放置点了没反应的死按钮）：</div>
+				<div class="pending-lead">以下两项后端尚未提供按会员查询的接口，因此暂不展示（不放置点了没反应的死按钮）：</div>
 				<ul class="pending-list">
 					<li><b>优惠券</b>：<code>/rest/admin/couponsMemberRelation</code> 只有发券接口（giveCoupons / giveSingleCoupons），没有按会员查券的列表接口。</li>
 					<li><b>存酒记录</b>：目前只有收银端接口 <code>/rest/merchant/wineStorage</code>，后台无对应查询接口。</li>
-					<li><b>余额流水</b>：<code>AdminMemberBillingRecordController</code> 整个类处于注释状态，接口未启用。</li>
 				</ul>
 				<div class="pending-foot">
 					数据库侧三张表都已存在（tb_coupons_member_relation、tb_wine_storage、tb_member_billing_record），补齐查询接口后可直接点亮。
+					<br><b>余额流水已于 2026-09-24 点亮</b> —— 见上方「资金流水」卡（<code>/rest/admin/memberBillingRecord/list</code> 已重写启用）。
 				</div>
 			</div>
 		</el-card>
@@ -173,6 +203,14 @@
 				orderQuery: {
 					pageNo: 1,
 					pageSize: 10
+				},
+				// 资金流水（2026-09-24 新增：接口 /rest/admin/memberBillingRecord/list 已启用）
+				billings: [],
+				billingTotal: 0,
+				billingLoading: false,
+				billingQuery: {
+					pageNo: 1,
+					pageSize: 10
 				}
 			};
 		},
@@ -180,6 +218,7 @@
 			this.memberId = this.$route.query.id;
 			this.getMember();
 			this.getOrders(1);
+			this.getBillings(1);
 		},
 		methods: {
 			cellStyle({
@@ -323,6 +362,55 @@
 			handleOrderCurrentChange(val) {
 				this.orderQuery.pageNo = val;
 				this.getOrders();
+			},
+
+			/* ===== 资金流水（2026-09-24 新增：余额/积分变动明细）===== */
+			getBillings(pageNo) {
+				let vue = this;
+				if (!vue.memberId) {
+					return;
+				}
+				vue.billingLoading = true;
+				if (pageNo) {
+					vue.billingQuery.pageNo = pageNo;
+				}
+				// Param 继承实体，直接按 memberId 过滤；不传 coinType 以便同时看到余额与积分变动
+				vue.$http.post(vue, '/rest/admin/memberBillingRecord/list', {
+						pageNo: vue.billingQuery.pageNo,
+						pageSize: vue.billingQuery.pageSize,
+						memberId: Number(vue.memberId)
+					},
+					(vue, data) => {
+						vue.billings = (data.data && data.data.records) || [];
+						vue.billingTotal = (data.data && data.data.total) || 0;
+						vue.billingLoading = false;
+					}, (error, data) => {
+						vue.billingLoading = false;
+						vue.$message({
+							showClose: true,
+							message: data && data.message ? data.message : '获取资金流水失败',
+							type: 'error'
+						});
+					});
+			},
+			/** 币种：见 MemberBillingRecord.COIN_TYPE_*（1积分 2余额 3奖励金 4待入账积分 5待入账奖励金） */
+			billingCoinText(row) {
+				const map = {
+					1: '积分',
+					2: '余额',
+					3: '奖励金',
+					4: '待入账积分',
+					5: '待入账奖励金'
+				};
+				return map[row.coinType] || '其他';
+			},
+			handleBillingSizeChange(val) {
+				this.billingQuery.pageSize = val;
+				this.getBillings(1);
+			},
+			handleBillingCurrentChange(val) {
+				this.billingQuery.pageNo = val;
+				this.getBillings();
 			}
 		}
 	};

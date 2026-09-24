@@ -156,7 +156,11 @@
 </el-dialog> -->
 <el-drawer :visible.sync="cashierDialog" size="90%" direction="btt" :withHeader="false" :before-close="handleClose"
 	custom-class="cashier_drawer_custom_class">
-	<iframe id="huoduan_frame" frameborder="0" scrolling="auto" name="main" :src="item" style="
+	<!-- allow="camera"（2026-09-24）：收银台与商家端是跨域（8001 → 5270）。
+	     Permissions Policy 默认不给跨域 iframe 摄像头权限，收银台「扫码收款」调
+	     navigator.mediaDevices 会被直接拒掉 → 必须在此显式放行。
+	     另注：父页自身也得是 https:// 或 localhost，否则整条链仍不满足安全上下文。 -->
+	<iframe id="huoduan_frame" frameborder="0" scrolling="auto" name="main" allow="camera" :src="item" style="
               height: 90vh;
               visibility: inherit;
               width: 60%;
@@ -474,6 +478,11 @@ export default {
 		}
 	},
 	mounted() {
+		// Pad 端适配（Pad端适配-实施计划-v1.1 §3.3）：窄屏（pad 竖屏/手机横屏 ≤900px）
+		// 默认折叠侧栏为 60px 图标栏，点顶部图标可展开；仅进入时判定一次。
+		if (window.innerWidth <= 900) {
+			this.collapsed = true;
+		}
 		this.routerArr = this.$router.options.routes
 		var user = sessionStorage.getItem('user');
 		if (user) {
