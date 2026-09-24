@@ -67,3 +67,56 @@ export const settleTable = (id: number) =>
  */
 export const clearTable = (id: number) =>
   http.post<unknown, null>('/rest/merchant/diningTable/clear', { id })
+
+/**
+ * 确认收款（2026-09-24 新增）
+ *
+ * 口径＝「点单即收款」（先付后吃，用户 2026-09-24 拍板）：与下单同一动作完成，
+ * 后端置 is_payment=1 + payment_mode + status 1→2（待处理=下厨）。
+ * **台位保持不变**（顾客仍在用餐），离店点「清台」一步完成「结台 + 放台」。
+ *
+ * 定位方式二选一：堂食传 tableId（收该桌全部未付订单，含漏收与后续加酒）；外带传 orderNo。
+ * payMode：1=微信收款码，4=到店支付(现金) —— 对齐 A-07 营收看板的 payment_mode 口径。
+ * 返回 paidCount=0 表示已收过（幂等，前端提示「无需重复收款」）。
+ */
+export const confirmPayment = (param: {
+  tableId?: number | null
+  orderNo?: string | null
+  payMode: number
+}) =>
+  http.post<unknown, { paidCount: number; paidAmount: number; payMode: number }>(
+    '/rest/merchant/diningTable/confirmPayment',
+    param
+  )
+
+/**
+ * 扫码收款（付款码支付 · 被扫，2026-09-24 新增）
+ *
+ * 收银员用扫码枪/摄像头扫顾客手机上的微信付款码 → 后端调微信 /pay/micropay
+ * **真扣款**，成功即落库（is_payment=1 + payment_mode=1 + status 1→2）。
+ *
+ * 与 confirmPayment 的分工对应画板结算栏两档：微信收款码 → 本接口（真扣款）；
+ * 现金 → confirmPayment（人工确认记账）。
+ *
+ * 结果三态（看 data.status）：
+ *  - `SUCCESS`    已扣款，data.paidAmount / transactionId 有值
+ *  - `USERPAYING` 顾客仍在输密码，**未收款**，提示收银员稍后重扫（微信对同单号同参数幂等，重扫安全）
+ *  - 失败         抛异常，message 为微信原文（「付款码已过期」「余额不足」等）
+ *
+ * ⚠️ authCode 是支付凭据，不要打印到控制台或上报。
+ */
+export const scanPay = (param: {
+  tableId?: number | null
+  orderNo?: string | null
+  authCode: string
+}) =>
+  http.post<
+    unknown,
+    {
+      status: 'SUCCESS' | 'USERPAYING'
+      outTradeNo: string
+      paidAmount?: number
+      transactionId?: string
+      message?: string
+    }
+  >('/rest/merchant/diningTable/scanPay', param)
