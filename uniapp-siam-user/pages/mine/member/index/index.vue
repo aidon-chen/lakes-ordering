@@ -1,62 +1,115 @@
 <template>
 	<view class="c03">
-		<!-- 等级卡（画板 298:97）—— 全宽绿带，非卡片 -->
-		<view class="c03-level theme-bg">
-			<view class="c03-level-row">
-				<view class="c03-level-name">{{ levelText }}</view>
-				<view class="c03-level-more" @tap="goGrowth">成长值明细 ›</view>
-			</view>
-			<!-- 成长值进度（画板 298:101/102/103）：等级与阈值统一走 utils/member-level.js，
-			     growth 为 0/缺失时整块不渲染，避免造数 -->
-			<block v-if="hasGrowth">
-				<view class="c03-track">
-					<view class="c03-track-bar" :style="'width:' + level.percent + '%'"></view>
-				</view>
-				<view class="c03-growth-text">成长值 {{ member.growth }}/{{ level.nextMin }} · 距{{ level.nextName }}还差 {{ level.gap }}</view>
-			</block>
+		<!-- 未登录空态：原实现是「toast + 800ms 后 navigateBack」，用户只看到页面
+		     闪一下被弹回 → 误判为「跳转失败」（2026-09-22 实测复现）。
+		     改为：停留本页 + 明确引导登录。-->
+		<view class="c03-guest" v-if="!loggedIn">
+			<view class="c03-guest-title">登录后查看会员权益</view>
+			<view class="c03-guest-desc">会员等级、成长值、积分与优惠券将在这里展示</view>
+			<view class="c03-guest-btn theme-bg" @tap="goLogin">去登录</view>
 		</view>
 
-		<!-- 权益卡（画板 298:104）—— 4 条权益为画板文案池，后端无权益表，暂静态配置 -->
-		<view class="c03-card">
-			<view class="c03-card-title">会员权益</view>
-			<view class="c03-benefit-row" v-for="(row, rowIndex) in benefitRows" :key="rowIndex">
-				<view class="c03-benefit-item" v-for="(item, itemIndex) in row" :key="itemIndex">· {{ item }}</view>
+		<block v-else>
+		<!-- 顶部渐变带（画板 5:3 #EDF2DE→白）：头像昵称行 + 等级卡 -->
+		<view class="c03-hero">
+			<!-- 头部行（画板 5:17/5:26）：头像 56pt + 昵称 15pt；画板红色徽标为品牌占位，
+			     有真实头像显示头像，无头像时用品牌红圆 + Lakes 首字母 -->
+			<view class="c03-headrow">
+				<view class="c03-avatar">
+					<image v-if="member.headImg" class="c03-avatar-img" :src="member.headImg" mode="aspectFill"></image>
+					<view v-else class="c03-avatar-brand">L</view>
+				</view>
+				<view class="c03-nickname">{{ member.username || '未登录' }}</view>
+			</view>
+
+			<!-- 等级卡（画板 5:27）：横渐变圆角卡 + 右侧竖排等级名 21pt。
+			     到期胶囊不渲染：vip_end_time 全库无读写（技术说明 §8.9），无字段不造数 -->
+			<view class="c03-level-card">
+				<view class="c03-level-vertical">
+					<view class="c03-level-char" v-for="(ch, index) in levelChars" :key="index">{{ ch }}</view>
+				</view>
+				<!-- 工程既成入口：C-08 成长值明细（画板无此链接，功能保留） -->
+				<view class="c03-level-growth-link" @tap="goGrowth">成长值明细 ›</view>
+			</view>
+
+			<!-- 等级说明（画板 5:33）：等级表后端无配置（§4.3），先置灰提示 -->
+			<view class="c03-level-note" @tap="goLevelNote">等级说明 ›</view>
+		</view>
+
+		<!-- 五级刻度轴（画板 5:36~5:57）：阈值/等级名统一走 utils/member-level.js（工程口径
+		     0/300/600/1000/2000，画板 0/20/100/300/1000 是参考图残留，拍板 2.2 以工程为准）。
+		     growth 为 0/缺失时整块不渲染，避免造数 -->
+		<view class="c03-axis" v-if="hasGrowth">
+			<view class="c03-axis-track"></view>
+			<view class="c03-axis-row">
+				<view class="c03-axis-col" v-for="(lv, index) in levels" :key="lv.level">
+					<view class="c03-axis-val">{{ lv.min }}</view>
+					<view class="c03-axis-dot" :class="{ 'c03-axis-dot-on': lv.level <= level.level }"></view>
+					<view class="c03-axis-name">V{{ lv.level }}{{ lv.name }}</view>
+				</view>
+			</view>
+			<view class="c03-axis-tip" v-if="level.nextLevel">
+				当前成长值 <text class="c03-axis-tip-num">{{ member.growth }}</text>，距离{{ level.nextName }}只差
+				<text class="c03-axis-tip-num">{{ level.gap }}</text>
+			</view>
+			<view class="c03-axis-tip" v-else>已达最高等级，感谢相伴</view>
+		</view>
+
+		<!-- 权益 3×3（画板 5:58/5:89/5:115）：icon 圆 44pt + 限时角标 + 名称/说明两行居中。
+		     解锁=主题绿圆白 glyph / 未解锁=浅灰圆灰 glyph（前端按等级现算，方案 C 混合）。
+		     文案为 utils/member-benefit.js 占位文案池（正式清单待产品）；
+		     堂食85折/专属客服两项暂无图标源，先渲染空圆 -->
+		<view class="c03-benefit-grid">
+			<view class="c03-benefit-cell" v-for="(item, index) in benefits" :key="item.key">
+				<view class="c03-benefit-iconwrap" :class="item.unlocked ? 'c03-benefit-icon-on' : 'c03-benefit-icon-off'">
+					<image v-if="item.unlocked && item.icon" class="c03-benefit-glyph" :src="item.icon" mode="aspectFit"></image>
+					<image v-else-if="!item.unlocked && item.iconOff" class="c03-benefit-glyph" :src="item.iconOff" mode="aspectFit"></image>
+					<view class="c03-benefit-badge" v-if="item.unlocked && item.badge">{{ item.badge }}</view>
+				</view>
+				<view class="c03-benefit-name" :class="{ 'c03-benefit-name-off': !item.unlocked }">{{ item.title }}</view>
+				<view class="c03-benefit-desc">{{ item.unlocked ? item.desc : 'V' + item.unlockLevel + ' 解锁' }}</view>
 			</view>
 		</view>
 
-		<!-- 积分积点卡（画板 298:112） -->
-		<view class="c03-card">
-			<view class="c03-card-head">
-				<view class="c03-card-title">我的积分 / 积点</view>
-				<view class="c03-card-more" @tap="goIntegral">收支明细 ›</view>
+		<!-- ===== 以下为工程既成功能区块（画板页2未画出，保留不回退）===== -->
+		<view class="c03-legacy">
+			<!-- 积分 / 绩点卡（画板 298:112）—— 口径 2026-09-23 拍板：
+			     积分=仅用于会员等级成长；绩点=可用于金额支付（沿用 balance 字段承载） -->
+			<view class="c03-card">
+				<view class="c03-card-head">
+					<view class="c03-card-title">我的积分 / 绩点</view>
+					<view class="c03-card-more" @tap="goIntegral">收支明细 ›</view>
+				</view>
+				<view class="c03-data-row">
+					<view class="c03-data-item">
+						<view class="c03-data-value theme-color">{{ member.points || 0 }}</view>
+						<view class="c03-data-label">积分（等级成长）</view>
+					</view>
+					<!-- 绩点：后端无独立字段，沿用 balance（余额=可支付金额）承载，与 C-01 同口径 -->
+					<view class="c03-data-item">
+						<view class="c03-data-value theme-color">{{ member.balance || 0 }}</view>
+						<view class="c03-data-label">绩点（可抵扣支付）</view>
+					</view>
+				</view>
 			</view>
-			<view class="c03-data-row">
-				<view class="c03-data-item">
-					<view class="c03-data-value theme-color">{{ member.points || 0 }}</view>
-					<view class="c03-data-label">积分（可抵扣）</view>
+
+			<!-- 优惠券卡（画板 298:123） -->
+			<view class="c03-card">
+				<view class="c03-card-head">
+					<view class="c03-card-title">我的优惠券</view>
+					<view class="c03-card-more" @tap="goCoupons">{{ couponCount }} 张 ›</view>
 				</view>
-				<!-- 积点（等级成长）：后端无独立字段，沿用 C-01「我的」页同口径取 balance -->
-				<view class="c03-data-item">
-					<view class="c03-data-value theme-color">{{ member.balance || 0 }}</view>
-					<view class="c03-data-label">积点（等级成长）</view>
+				<view class="c03-coupon-row" v-if="couponList.length">
+					<view class="c03-coupon" v-for="(item, index) in couponList" :key="index" @tap="goCoupons">
+						<view class="c03-coupon-value" :class="{ 'c03-coupon-value-sm': item.small }">{{ item.value }}</view>
+						<view class="c03-coupon-cond">{{ item.cond }}</view>
+					</view>
 				</view>
+				<view class="c03-coupon-empty" v-else>暂无可用优惠券</view>
 			</view>
 		</view>
 
-		<!-- 优惠券卡（画板 298:123） -->
-		<view class="c03-card">
-			<view class="c03-card-head">
-				<view class="c03-card-title">我的优惠券</view>
-				<view class="c03-card-more" @tap="goCoupons">{{ couponCount }} 张 ›</view>
-			</view>
-			<view class="c03-coupon-row" v-if="couponList.length">
-				<view class="c03-coupon" v-for="(item, index) in couponList" :key="index" @tap="goCoupons">
-					<view class="c03-coupon-value" :class="{ 'c03-coupon-value-sm': item.small }">{{ item.value }}</view>
-					<view class="c03-coupon-cond">{{ item.cond }}</view>
-				</view>
-			</view>
-			<view class="c03-coupon-empty" v-else>暂无可用优惠券</view>
-		</view>
+		</block>
 
 		<!-- 身份认证行（画板 298:137）已按用户要求移除：本页不再展示认证状态入口；
 		     认证能力仍保留在「我的」页常用服务 · 身份认证 → pages/mine/security/index/index -->
@@ -68,6 +121,7 @@
 	import authService from '../../../../utils/auth';
 	import systemStatus from '../../../../utils/system-status';
 	import memberLevel from '../../../../utils/member-level';
+	import memberBenefit from '../../../../utils/member-benefit';
 
 	let app = null;
 
@@ -89,11 +143,9 @@
 					nextGrowth: null,
 					nextLevelName: ''
 				},
-				benefitRows: [
-					['专属折扣', '生日礼遇'],
-					['优先取酒', '会员日积分翻倍']
-				],
-				couponList: []
+				couponList: [],
+				// 登录态（onShow 由 checkIsLogin 确定）。默认 true 避免首屏闪出未登录空态
+				loggedIn: true
 			};
 		},
 		computed: {
@@ -105,11 +157,24 @@
 			level() {
 				return memberLevel.levelOf(this.member.growth);
 			},
+			// 五级刻度轴数据源（正本=member-level.js，验收#1 三页同源）
+			levels() {
+				return memberLevel.LEVELS;
+			},
+			// 竖排等级名：拆字符逐行渲染（小程序对 writing-mode 支持不稳）
+			levelChars() {
+				return String(this.levelText).split('');
+			},
 			levelText() {
 				if (this.hasGrowth) {
 					return this.level.name;
 				}
 				return this.member.levelName ? this.member.levelName : systemStatus.typeVipText(this.member.type);
+			},
+			// 权益 3×3：文案/图标来自 member-benefit.js（占位文案池），
+			// 解锁态按当前等级现算（growth=0 → level=1 → 仅 V1 权益亮起，不造数）
+			benefits() {
+				return memberBenefit.withUnlockState(this.level.level);
 			},
 			couponCount() {
 				return this.member.couponsNumber || 0;
@@ -120,22 +185,20 @@
 		},
 		onShow() {
 			authService.checkIsLogin().then((result) => {
+				this.loggedIn = !!result;
 				if (result) {
 					this.getMemberInfo();
 					this.getCouponList();
 					return;
 				}
+				// 未登录：保留本页并展示未登录空态（模板 v-if="!loggedIn"）。
+				// ⚠️ 原实现是 toast 后 800ms 自动 navigateBack —— 用户只看到「闪一下被弹回」，
+				//    会误判成「跳转失败」。实测（2026-09-22）：navigateTo 返回 ok，随后
+				//    showToast「请先登录」→ navigateBack，路由本身并无问题。
 				this.member = {
 					id: ''
 				};
 				this.couponList = [];
-				uni.showToast({
-					title: '请先登录',
-					icon: 'none'
-				});
-				setTimeout(() => {
-					uni.navigateBack();
-				}, 800);
 			});
 		},
 		methods: {
@@ -192,10 +255,23 @@
 					small: true
 				};
 			},
+			// 未登录空态的「去登录」：跳登录方式选择页（E-08b）
+			goLogin() {
+				uni.navigateTo({
+					url: '/pages/internal/login/choose/choose'
+				});
+			},
 			// C-08「我的成长值」（画板 21:660）已落地 → 直接跳转
 			goGrowth() {
 				uni.navigateTo({
 					url: '/pages/mine/growth/index/index'
+				});
+			},
+			// 等级说明（画板 5:33）：等级阈值/规则仍为前端配置（§4.3），无说明页可落 → 提示待定档
+			goLevelNote() {
+				uni.showToast({
+					title: '等级规则即将上线',
+					icon: 'none'
 				});
 			},
 			goIntegral() {
@@ -214,61 +290,296 @@
 
 <style>
 	page {
-		background: #F0F3F2;
+		background: #ffffff;
 	}
 
 	.c03 {
 		min-height: 100vh;
-		background: #F0F3F2;
+		background: #ffffff;
 		padding-bottom: 40rpx;
 	}
 
-	/* ========== 等级卡（画板 298:97）：全宽绿带 ========== */
-	.c03-level {
-		padding: 32rpx 32rpx 36rpx 32rpx;
+	/* ========== 未登录空态（与 C-01 白卡同口径：24rpx 边距 / 24rpx 圆角 / 28rpx 内边距） ========== */
+	.c03-guest {
+		margin: 80rpx 24rpx 0 24rpx;
+		padding: 80rpx 40rpx;
+		background: #ffffff;
+		border-radius: 24rpx;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
 	}
 
-	.c03-level-row {
+	.c03-guest-title {
+		font-size: 32rpx;
+		font-weight: 600;
+		line-height: 46rpx;
+		color: #333333;
+	}
+
+	.c03-guest-desc {
+		font-size: 24rpx;
+		line-height: 36rpx;
+		color: #999999;
+		margin-top: 12rpx;
+		text-align: center;
+	}
+
+	.c03-guest-btn {
+		margin-top: 48rpx;
+		width: 320rpx;
+		height: 80rpx;
+		line-height: 80rpx;
+		text-align: center;
+		border-radius: 40rpx;
+		font-size: 28rpx;
+		color: #ffffff;
+	}
+
+	/* ========== 顶部渐变带（画板 5:3）：#EDF2DE → 透明（渐变是唯一无法走主题类的例外） ========== */
+	.c03-hero {
+		background: linear-gradient(180deg, #EDF2DE 0%, #EDF2DE 55%, rgba(237, 242, 222, 0) 100%);
+		padding-bottom: 8rpx;
+	}
+
+	/* 头部行（画板 5:17/5:26）：头像 56pt→116rpx + 昵称 15pt→30rpx */
+	.c03-headrow {
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
+		padding: 10rpx 20rpx 0 20rpx;
 	}
 
-	.c03-level-name {
-		font-size: 36rpx;
-		font-weight: 700;
-		line-height: 52rpx;
-		color: #ffffff;
-	}
-
-	.c03-level-more {
-		font-size: 22rpx;
-		color: #ffffff;
-		opacity: 0.95;
-	}
-
-	.c03-track {
-		height: 12rpx;
-		border-radius: 6rpx;
-		background: #ffffff;
+	.c03-avatar {
+		width: 116rpx;
+		height: 116rpx;
+		border-radius: 50%;
 		overflow: hidden;
-		margin-top: 20rpx;
+		flex-shrink: 0;
+		/* 品牌红徽标（retheme.py 有意保留 #C8102E，画板 5:17） */
+		background: #C8102E;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 	}
 
-	.c03-track-bar {
-		height: 12rpx;
-		border-radius: 6rpx;
-		background: #F0DCAB;
+	.c03-avatar-img {
+		width: 116rpx;
+		height: 116rpx;
 	}
 
-	.c03-growth-text {
-		font-size: 22rpx;
-		line-height: 32rpx;
+	.c03-avatar-brand {
+		font-size: 52rpx;
+		font-weight: 700;
 		color: #ffffff;
-		margin-top: 20rpx;
 	}
 
-	/* ========== 白卡通用：与 C-01「我的」页同口径（24rpx 页边距 / 24rpx 圆角 / 28rpx 内边距 / 20rpx 卡间距） ========== */
+	.c03-nickname {
+		font-size: 30rpx;
+		font-weight: 500;
+		color: #26301B;
+		margin-left: 20rpx;
+	}
+
+	/* 等级卡（画板 5:27）：300×124pt → 624×258rpx，横渐变 #E8F0D9→#C7D9A1 */
+	.c03-level-card {
+		position: relative;
+		margin: 34rpx 62rpx 0 62rpx;
+		height: 258rpx;
+		border-radius: 28rpx;
+		/* 画板 5:27 横向渐变（渐变是唯一无法走主题类的例外，色值取自画板 stops） */
+		background: linear-gradient(90deg, #E8F0D9 0%, #C7D9A1 100%);
+	}
+
+	/* 竖排等级名（画板 5:32）：21pt→44rpx，右侧一字一行 */
+	.c03-level-vertical {
+		position: absolute;
+		top: 38rpx;
+		right: 60rpx;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+	}
+
+	.c03-level-char {
+		font-size: 44rpx;
+		line-height: 46rpx;
+		font-weight: 500;
+		color: #3F5518;
+	}
+
+	/* 工程既成入口：C-08 成长值明细（画板无，功能保留） */
+	.c03-level-growth-link {
+		position: absolute;
+		left: 40rpx;
+		bottom: 32rpx;
+		font-size: 22rpx;
+		color: #516B1D;
+	}
+
+	/* 等级说明（画板 5:33）：11pt→22rpx 右对齐 */
+	.c03-level-note {
+		margin: 20rpx 62rpx 0 62rpx;
+		text-align: right;
+		font-size: 22rpx;
+		color: #8A917F;
+	}
+
+	/* ========== 五级刻度轴（画板 5:36~5:57） ========== */
+	.c03-axis {
+		position: relative;
+		margin: 44rpx 62rpx 0 62rpx;
+	}
+
+	/* 轴线：2pt→4rpx，两端缩进半列宽让线穿过首尾刻度点中心 */
+	.c03-axis-track {
+		position: absolute;
+		left: 10%;
+		right: 10%;
+		top: 74rpx;
+		height: 4rpx;
+		border-radius: 2rpx;
+		background: #DFE3D5;
+	}
+
+	.c03-axis-row {
+		position: relative;
+		display: flex;
+	}
+
+	.c03-axis-col {
+		width: 20%;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+	}
+
+	.c03-axis-val {
+		font-size: 22rpx;
+		line-height: 30rpx;
+		color: #8A917F;
+	}
+
+	/* 刻度点：当前 10pt→20rpx 主题绿 / 其余 9pt→18rpx 浅灰（到达过的档位全亮） */
+	.c03-axis-dot {
+		width: 18rpx;
+		height: 18rpx;
+		border-radius: 50%;
+		background: #E6EADD;
+		margin-top: 16rpx;
+	}
+
+	.c03-axis-dot-on {
+		width: 20rpx;
+		height: 20rpx;
+		background: #5F7D22;
+	}
+
+	.c03-axis-name {
+		font-size: 20rpx;
+		line-height: 28rpx;
+		color: #5A614E;
+		margin-top: 14rpx;
+		white-space: nowrap;
+	}
+
+	.c03-axis-tip {
+		margin: 40rpx 20rpx 0 20rpx;
+		font-size: 20rpx;
+		line-height: 28rpx;
+		color: #5A614E;
+	}
+
+	.c03-axis-tip-num {
+		color: #5F7D22;
+		font-weight: 600;
+	}
+
+	/* ========== 权益 3×3（画板 5:58/5:89/5:115）：开放列布局，无卡片底 ========== */
+	.c03-benefit-grid {
+		display: flex;
+		flex-wrap: wrap;
+		margin: 56rpx 20rpx 0 20rpx;
+		row-gap: 48rpx;
+	}
+
+	.c03-benefit-cell {
+		width: 33.33%;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+	}
+
+	/* icon 圆 44pt→92rpx：解锁=主题绿 / 未解锁=浅灰（画板 icon-wrap / icon-wrap-未解锁） */
+	.c03-benefit-iconwrap {
+		position: relative;
+		width: 92rpx;
+		height: 92rpx;
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.c03-benefit-icon-on {
+		background: #5F7D22;
+	}
+
+	.c03-benefit-icon-off {
+		background: #E6EADD;
+	}
+
+	.c03-benefit-glyph {
+		width: 50rpx;
+		height: 50rpx;
+	}
+
+	/* 限时角标（画板 badge-每周三 29×13pt→60×27rpx，红 #E23A3A 有意保留） */
+	.c03-benefit-badge {
+		position: absolute;
+		top: -8rpx;
+		right: -14rpx;
+		height: 27rpx;
+		line-height: 27rpx;
+		padding: 0 10rpx;
+		border-radius: 14rpx;
+		background: #E23A3A;
+		font-size: 14rpx;
+		color: #ffffff;
+		white-space: nowrap;
+	}
+
+	.c03-benefit-name {
+		font-size: 20rpx;
+		line-height: 28rpx;
+		color: #26301B;
+		margin-top: 16rpx;
+		text-align: center;
+	}
+
+	.c03-benefit-name-off {
+		color: #5A614E;
+	}
+
+	.c03-benefit-desc {
+		font-size: 14rpx;
+		line-height: 20rpx;
+		color: #9AA38C;
+		margin-top: 6rpx;
+		text-align: center;
+		max-width: 100%;
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+	}
+
+	/* ========== 工程既成区块容器（画板页2未画出，浅灰底与画板区隔） ========== */
+	.c03-legacy {
+		margin-top: 48rpx;
+		padding: 4rpx 0 36rpx 0;
+		background: #F4F5F0;
+	}
+
+	/* ========== 白卡通用：与 C-01「我的」页同口径（24rpx 边距 / 24rpx 圆角 / 28rpx 内边距 / 20rpx 卡间距） ========== */
 	.c03-card {
 		margin: 20rpx 24rpx 0 24rpx;
 		padding: 28rpx;
@@ -294,21 +605,7 @@
 		color: #999999;
 	}
 
-	/* ========== 权益行（画板 298:106 / 298:109） ========== */
-	.c03-benefit-row {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		margin-top: 20rpx;
-	}
-
-	.c03-benefit-item {
-		font-size: 24rpx;
-		line-height: 34rpx;
-		color: #666666;
-	}
-
-	/* ========== 积分 / 积点数据行（画板 298:116） ========== */
+	/* ========== 积分 / 绩点数据行（画板 298:116） ========== */
 	.c03-data-row {
 		display: flex;
 		align-items: flex-start;
