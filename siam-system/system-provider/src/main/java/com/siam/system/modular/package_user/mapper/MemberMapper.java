@@ -15,6 +15,19 @@ import java.util.List;
 import java.util.Map;
 
 public interface MemberMapper extends BaseMapper<Member> {
+
+    /**
+     * 会员列表查询的安全列集合。
+     * 显式排除 password / password_salt / payment_password / payment_password_salt /
+     * open_id / wx_public_platform_open_id —— 后台列表接口不得把凭据与微信标识下发给前端。
+     * 其余列全部保留，避免影响既有列表页已使用的字段。
+     */
+    String SAFE_COLUMNS = "m.id, m.username, m.mobile, m.nickname, m.head_img, m.sex, m.type, " +
+            "m.vip_no, m.vip_status, m.vip_type, m.vip_start_time, m.vip_end_time, " +
+            "m.balance, m.points, m.growth, m.real_name, m.is_disabled, m.is_deleted, " +
+            "m.invite_code, m.login_count, m.create_time, m.last_login_time, " +
+            "m.last_use_time, m.last_use_address";
+
     int countByExample(MemberExample example);
 
     int deleteByExample(MemberExample example);
@@ -48,14 +61,14 @@ public interface MemberMapper extends BaseMapper<Member> {
     Member selectByUsernameOrMobile(@Param("username") String username);
 
     @ResultMap("BaseResultMap")
-    @Select("<script>select m.* from tb_member m" +
+    @Select("<script>select " + SAFE_COLUMNS + " from tb_member m" +
             "<where> 1=1 " +
             "<if test=\"member.id != null\"> AND m.id = #{member.id} </if>" +
             "<if test=\"member.username != null and member.username !=''\"> AND m.username like '%${member.username}%' </if>" +
-            "<if test=\"member.mobile != null and member.mobile !=''\"> AND m.mobile like '%${member.mobile}%' </if>" +
+            "<if test=\"member.mobile != null and member.mobile !=''\"> AND m.mobile like CONCAT('%', #{member.mobile}, '%') </if>" +
             "<if test=\"member.password != null and member.password !=''\"> AND m.password like '%${member.password}%' </if>" +
             "<if test=\"member.passwordSalt != null and member.passwordSalt !=''\"> AND m.password_salt like '%${member.passwordSalt}%' </if>" +
-            "<if test=\"member.nickname != null and member.nickname !=''\"> AND m.nickname like '%${member.nickname}%' </if>" +
+            "<if test=\"member.nickname != null and member.nickname !=''\"> AND m.nickname like CONCAT('%', #{member.nickname}, '%') </if>" +
             "<if test=\"member.balance != null\"> AND m.balance = #{member.balance} </if>" +
             "<if test=\"member.loginCount != null\"> AND m.login_count = #{member.loginCount} </if>" +
             "<if test=\"member.inviteCode != null and member.inviteCode !=''\"> AND m.invite_code like '%${member.inviteCode}%' </if>" +
@@ -63,7 +76,7 @@ public interface MemberMapper extends BaseMapper<Member> {
             "<if test=\"member.roles != null and member.roles !=''\"> AND m.roles like '%${member.roles}%' </if>" +
             "<if test=\"member.sex != null\"> AND m.sex = #{member.sex} </if>" +
             "<if test=\"member.email != null and member.email !=''\"> AND m.email like '%${member.email}%' </if>" +
-            "<if test=\"member.isDisabled != null\"> AND m.isDisabled = #{member.isDisabled} </if>" +
+            "<if test=\"member.isDisabled != null\"> AND m.is_disabled = #{member.isDisabled} </if>" +
             "<if test=\"member.isDeleted != null\"> AND m.is_deleted = #{member.isDeleted} </if>" +
             "<if test=\"member.openId != null\"> AND m.open_id = #{member.openId} </if>"+
             "<if test=\"member.isBindWx != null\"> AND m.is_bind_wx = #{member.isBindWx} </if>"+
@@ -130,14 +143,14 @@ public interface MemberMapper extends BaseMapper<Member> {
     Page<Member> getMemberListByInviterId(@Param("page") Page page, @Param("inviterId") Integer inviterId);
 
     @ResultMap("BaseResultMap")
-    @Select("<script>select m.* from tb_member m " +
+    @Select("<script>select " + SAFE_COLUMNS + " from tb_member m " +
             "<where> 1=1 and m.id in (SELECT DISTINCT member_id FROM tb_order WHERE STATUS NOT IN (1, 10)) " +
             "<if test=\"member.id != null\"> AND m.id = #{member.id} </if>" +
             "<if test=\"member.username != null and member.username !=''\"> AND m.username like '%${member.username}%' </if>" +
-            "<if test=\"member.mobile != null and member.mobile !=''\"> AND m.mobile like '%${member.mobile}%' </if>" +
+            "<if test=\"member.mobile != null and member.mobile !=''\"> AND m.mobile like CONCAT('%', #{member.mobile}, '%') </if>" +
             "<if test=\"member.password != null and member.password !=''\"> AND m.password like '%${member.password}%' </if>" +
             "<if test=\"member.passwordSalt != null and member.passwordSalt !=''\"> AND m.password_salt like '%${member.passwordSalt}%' </if>" +
-            "<if test=\"member.nickname != null and member.nickname !=''\"> AND m.nickname like '%${member.nickname}%' </if>" +
+            "<if test=\"member.nickname != null and member.nickname !=''\"> AND m.nickname like CONCAT('%', #{member.nickname}, '%') </if>" +
             "<if test=\"member.balance != null\"> AND m.balance = #{member.balance} </if>" +
             "<if test=\"member.loginCount != null\"> AND m.login_count = #{member.loginCount} </if>" +
             "<if test=\"member.inviteCode != null and member.inviteCode !=''\"> AND m.invite_code like '%${member.inviteCode}%' </if>" +
@@ -145,7 +158,7 @@ public interface MemberMapper extends BaseMapper<Member> {
             "<if test=\"member.roles != null and member.roles !=''\"> AND m.roles like '%${member.roles}%' </if>" +
             "<if test=\"member.sex != null\"> AND m.sex = #{member.sex} </if>" +
             "<if test=\"member.email != null and member.email !=''\"> AND m.email like '%${member.email}%' </if>" +
-            "<if test=\"member.isDisabled != null\"> AND m.isDisabled = #{member.isDisabled} </if>" +
+            "<if test=\"member.isDisabled != null\"> AND m.is_disabled = #{member.isDisabled} </if>" +
             "<if test=\"member.isDeleted != null\"> AND m.is_deleted = #{member.isDeleted} </if>" +
             "<if test=\"member.openId != null\"> AND m.open_id = #{member.openId} </if>"+
             "<if test=\"member.isBindWx != null\"> AND m.is_bind_wx = #{member.isBindWx} </if>"+
@@ -162,14 +175,14 @@ public interface MemberMapper extends BaseMapper<Member> {
     Page<Member> purchasedList(@Param("page") Page page, @Param("member") MemberParam member);
 
     @ResultMap("BaseResultMap")
-    @Select("<script>select m.* from tb_member m " +
+    @Select("<script>select " + SAFE_COLUMNS + " from tb_member m " +
             "<where> 1=1 and m.id not in (SELECT DISTINCT member_id FROM tb_order WHERE STATUS NOT IN (1, 10)) " +
             "<if test=\"member.id != null\"> AND m.id = #{member.id} </if>" +
             "<if test=\"member.username != null and member.username !=''\"> AND m.username like '%${member.username}%' </if>" +
-            "<if test=\"member.mobile != null and member.mobile !=''\"> AND m.mobile like '%${member.mobile}%' </if>" +
+            "<if test=\"member.mobile != null and member.mobile !=''\"> AND m.mobile like CONCAT('%', #{member.mobile}, '%') </if>" +
             "<if test=\"member.password != null and member.password !=''\"> AND m.password like '%${member.password}%' </if>" +
             "<if test=\"member.passwordSalt != null and member.passwordSalt !=''\"> AND m.password_salt like '%${member.passwordSalt}%' </if>" +
-            "<if test=\"member.nickname != null and member.nickname !=''\"> AND m.nickname like '%${member.nickname}%' </if>" +
+            "<if test=\"member.nickname != null and member.nickname !=''\"> AND m.nickname like CONCAT('%', #{member.nickname}, '%') </if>" +
             "<if test=\"member.balance != null\"> AND m.balance = #{member.balance} </if>" +
             "<if test=\"member.loginCount != null\"> AND m.login_count = #{member.loginCount} </if>" +
             "<if test=\"member.inviteCode != null and member.inviteCode !=''\"> AND m.invite_code like '%${member.inviteCode}%' </if>" +
@@ -177,7 +190,7 @@ public interface MemberMapper extends BaseMapper<Member> {
             "<if test=\"member.roles != null and member.roles !=''\"> AND m.roles like '%${member.roles}%' </if>" +
             "<if test=\"member.sex != null\"> AND m.sex = #{member.sex} </if>" +
             "<if test=\"member.email != null and member.email !=''\"> AND m.email like '%${member.email}%' </if>" +
-            "<if test=\"member.isDisabled != null\"> AND m.isDisabled = #{member.isDisabled} </if>" +
+            "<if test=\"member.isDisabled != null\"> AND m.is_disabled = #{member.isDisabled} </if>" +
             "<if test=\"member.isDeleted != null\"> AND m.is_deleted = #{member.isDeleted} </if>" +
             "<if test=\"member.openId != null\"> AND m.open_id = #{member.openId} </if>"+
             "<if test=\"member.isBindWx != null\"> AND m.is_bind_wx = #{member.isBindWx} </if>"+

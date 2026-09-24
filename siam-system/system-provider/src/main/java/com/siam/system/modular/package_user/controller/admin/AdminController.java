@@ -8,6 +8,7 @@ import com.siam.system.modular.package_user.model.result.AdminResult;
 import com.siam.system.modular.package_user.service.AdminService;
 import io.swagger.annotations.Api;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -38,6 +39,7 @@ public class AdminController {
      * @author 暹罗
      */
     @PostMapping(value = "/login")
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public BasicResult login(@RequestBody @Validated(value = {}) AdminParam param) {
         AdminResult result = adminService.login(param);
         return BasicResult.success(result);
@@ -49,6 +51,7 @@ public class AdminController {
      * @author 暹罗
      */
     @PostMapping(value = "/loginByMobile")
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public BasicResult loginByMobile(@RequestBody @Validated(value = {}) AdminParam param) {
         AdminResult result = adminService.loginByMobile(param);
         return BasicResult.success(result);

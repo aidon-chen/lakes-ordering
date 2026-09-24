@@ -7,6 +7,7 @@ import com.siam.system.modular.package_user.model.result.MerchantResult;
 import com.siam.system.modular.package_user.service.MerchantService;
 import io.swagger.annotations.Api;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -26,6 +27,7 @@ public class MerchantController {
      * @author 暹罗
      */
     @PostMapping(value = "/login")
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public BasicResult login(@RequestBody @Validated(value = {}) MerchantParam param) {
         MerchantResult result = merchantService.login(param);
         return BasicResult.success(result);
