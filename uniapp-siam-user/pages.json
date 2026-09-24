@@ -8,6 +8,12 @@
 			}
 		},
 		{
+			"path": "pages/index/popup-link-test/popup-link-test",
+			"style": {
+				"navigationBarTitleText": "弹窗跳转测试"
+			}
+		},
+		{
 			"path": "pages/order/index/index",
 			"style": {
 				"navigationBarTitleText": "订单中心",

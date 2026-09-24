@@ -125,6 +125,7 @@
 <script>
 	import https from '../../../utils/http';
 	import toastService from '../../../utils/toast.service';
+	import authService from '../../../utils/auth';
 	import GlobalConfig from '../../../utils/global-config';
 	// 合规数值单一源（保存期限等），与隐私政策 4.5 条共用，避免两处文案漂移
 	import memberConsent from '../../../utils/member-consent';
@@ -150,7 +151,22 @@
 			};
 		},
 		onLoad() {
-			this.loadDetail();
+			// 登录守卫（09-24 未登录拦截修复）：未登录不进表单页，静默退回。
+			// 登录引导弹窗由上一页（认证中心 onShow）统一弹出，此处不重复弹
+			authService.checkIsLogin().then((result) => {
+				if (!result) {
+					uni.navigateBack({
+						delta: 1,
+						fail: () => {
+							uni.reLaunch({
+								url: '/pages/mine/index/index'
+							});
+						}
+					});
+					return;
+				}
+				this.loadDetail();
+			});
 		},
 		methods: {
 			// 回显：驳回重提时带出上次填写内容，避免重新输入
@@ -266,6 +282,16 @@
 			},
 
 			submit() {
+				// 登录守卫（双保险，09-24 修复）：正常流已被 onLoad 拦截，此处兜「停留期间 token 失效」
+				authService.checkIsLogin().then((result) => {
+					if (!result) {
+						getApp().globalData.checkIsAuth('scope.userInfo');
+						return;
+					}
+					this.doSubmit();
+				});
+			},
+			doSubmit() {
 				// 单独同意是提交的前置条件（双重拦截：chooseImage 已拦一次，此处再兜一次）
 				if (!this.agreed) {
 					toastService.showToast('请先阅读并同意《实名认证个人信息处理告知书》');

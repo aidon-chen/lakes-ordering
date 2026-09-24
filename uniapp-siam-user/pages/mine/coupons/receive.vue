@@ -16,32 +16,36 @@
 		</view>
 
 		<view class="rcc-list" v-if="couponsList.length > 0">
-			<view class="rcc-card" v-for="(item, index) in couponsList" :key="item.id">
-				<view class="rcc-face">
-					<view class="rcc-face-amount">{{ amountText(item) }}</view>
-					<view class="rcc-face-cond">{{ condText(item) }}</view>
-				</view>
-				<view class="rcc-info">
-					<view class="rcc-name">{{ item.name }}</view>
-					<view class="rcc-valid">{{ validText(item) }}</view>
-					<view class="rcc-rule" v-if="item.description" @tap="toggleRule(item)">
-						使用规则
-						<text v-if="item.ruleShow"> ▴</text>
-						<text v-else> ▾</text>
+			<!-- ⚠️ Vue3 禁止 v-for 与 v-if 同节点（v-if 先求值，item 未定义 → 渲染函数崩 → 整页白屏，
+			     09-24 排障实录：Cannot read properties of undefined (reading 'ruleShow')）。
+			     因此外层 rcc-item 只做 v-for，展开区 v-if 放内层节点 -->
+			<view class="rcc-item" v-for="item in couponsList" :key="item.id">
+				<view class="rcc-card">
+					<view class="rcc-face">
+						<view class="rcc-face-amount">{{ amountText(item) }}</view>
+						<view class="rcc-face-cond">{{ condText(item) }}</view>
 					</view>
+					<view class="rcc-info">
+						<view class="rcc-name">{{ item.name }}</view>
+						<view class="rcc-valid">{{ validText(item) }}</view>
+						<view class="rcc-rule" v-if="item.description" @tap="toggleRule(item)">
+							使用规则
+							<text v-if="item.ruleShow"> ▴</text>
+							<text v-else> ▾</text>
+						</view>
+					</view>
+					<!-- 已领取：灰按钮 + 去使用（对应画板 C-18 第三态） -->
+					<block v-if="isReceived(item.id)">
+						<view class="rcc-btn rcc-btn-received">已领取</view>
+						<view class="rcc-use" @tap="goUse">去使用 ›</view>
+					</block>
+					<!-- 可领：主题绿按钮（防连点 submitting 锁） -->
+					<view class="rcc-btn" v-else-if="!submitting" @tap="onReceive(item)">立即领取</view>
+					<view class="rcc-btn rcc-btn-received" v-else>领取中…</view>
 				</view>
-				<!-- 已领取：灰按钮 + 去使用（对应画板 C-18 第三态） -->
-				<block v-if="isReceived(item.id)">
-					<view class="rcc-btn rcc-btn-received">已领取</view>
-					<view class="rcc-use" @tap="goUse">去使用 ›</view>
-				</block>
-				<!-- 可领：主题绿按钮（防连点 submitting 锁） -->
-				<view class="rcc-btn" v-else-if="!submitting" @tap="onReceive(item)">立即领取</view>
-				<view class="rcc-btn rcc-btn-received" v-else>领取中…</view>
+				<!-- 使用规则展开区（跟随所属卡片） -->
+				<view class="rcc-rule-panel" v-if="item.ruleShow && item.description">{{ item.description }}</view>
 			</view>
-			<!-- 使用规则展开区（折叠在对应卡片下方） -->
-			<view class="rcc-rule-panel" v-for="item in couponsList" :key="'rule-' + item.id"
-				v-if="item.ruleShow && item.description">{{ item.description }}</view>
 		</view>
 		<!-- 空态/错误态：自绘（van-empty 未在 usingComponents 注册会渲染为空白节点，券包页同款隐患，这里不依赖组件库） -->
 		<view class="rcc-empty" v-else-if="isLogin && !loading && !loadError">
@@ -308,6 +312,10 @@
 		padding: 20rpx 24rpx 0;
 	}
 
+	.rcc-item {
+		margin-bottom: 20rpx;
+	}
+
 	.rcc-card {
 		display: flex;
 		flex-direction: row;
@@ -315,7 +323,6 @@
 		background: white;
 		border-radius: 24rpx;
 		padding: 24rpx;
-		margin-bottom: 20rpx;
 	}
 
 	.rcc-face {
@@ -370,7 +377,7 @@
 		background: white;
 		border-radius: 16rpx;
 		padding: 20rpx 24rpx;
-		margin: -12rpx 0 20rpx;
+		margin-top: 16rpx;
 		font-size: 22rpx;
 		color: #999999;
 		line-height: 1.6;

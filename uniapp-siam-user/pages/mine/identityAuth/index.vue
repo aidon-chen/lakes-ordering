@@ -197,10 +197,31 @@
 					this.loadDetail();
 					return;
 				}
+				// 未登录彻底拦截（09-24 修复）：不停留本页，弹登录引导并退回上一页。
+				// 弹窗是全局的，退回后仍可见；上一页若为「我的」页，其 onShow 也会再兜一次引导
 				getApp().globalData.checkIsAuth('scope.userInfo');
+				uni.navigateBack({
+					delta: 1,
+					fail: () => {
+						// 直链进入（无上一页）时兜底回「我的」页
+						uni.reLaunch({
+							url: '/pages/mine/index/index'
+						});
+					}
+				});
 			});
 		},
 		methods: {
+			// 登录守卫：未登录弹引导、不执行回调（提交入口的兜底，正常流已被 onShow 拦截）
+			requireLogin(cb) {
+				authService.checkIsLogin().then((result) => {
+					if (result) {
+						cb();
+						return;
+					}
+					getApp().globalData.checkIsAuth('scope.userInfo');
+				});
+			},
 			loadDetail() {
 				https.request('/rest/member/identityAuth/detail', {}).then((result) => {
 					if (result && result.success && result.data) {
@@ -243,8 +264,10 @@
 				if (this.stage1Status === STATUS_WAIT || this.stage1Status === STATUS_PASS) {
 					return;
 				}
-				uni.navigateTo({
-					url: '/pages/mine/identityAuth/realname'
+				this.requireLogin(() => {
+					uni.navigateTo({
+						url: '/pages/mine/identityAuth/realname'
+					});
 				});
 			},
 			goIdentity() {
@@ -258,8 +281,10 @@
 				if (this.stage2Status === STATUS_WAIT || this.stage2Status === STATUS_PASS) {
 					return;
 				}
-				uni.navigateTo({
-					url: '/pages/mine/identityAuth/identity'
+				this.requireLogin(() => {
+					uni.navigateTo({
+						url: '/pages/mine/identityAuth/identity'
+					});
 				});
 			}
 		}

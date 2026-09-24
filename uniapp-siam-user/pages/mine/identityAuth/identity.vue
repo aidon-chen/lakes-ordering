@@ -88,6 +88,7 @@
 <script>
 	import https from '../../../utils/http';
 	import toastService from '../../../utils/toast.service';
+	import authService from '../../../utils/auth';
 	import GlobalConfig from '../../../utils/global-config';
 
 	export default {
@@ -107,7 +108,22 @@
 			};
 		},
 		onLoad() {
-			this.loadDetail();
+			// 登录守卫（09-24 未登录拦截修复）：未登录不进表单页，静默退回。
+			// 原实现未登录时 detail 接口静默失败、页面停留可操作——正是拦截不彻底的缺口之一
+			authService.checkIsLogin().then((result) => {
+				if (!result) {
+					uni.navigateBack({
+						delta: 1,
+						fail: () => {
+							uni.reLaunch({
+								url: '/pages/mine/index/index'
+							});
+						}
+					});
+					return;
+				}
+				this.loadDetail();
+			});
 		},
 		methods: {
 			// 回显：驳回重提时带出上次填写内容
@@ -212,6 +228,16 @@
 			},
 
 			submit() {
+				// 登录守卫（双保险，09-24 修复）：正常流已被 onLoad 拦截，此处兜「停留期间 token 失效」
+				authService.checkIsLogin().then((result) => {
+					if (!result) {
+						getApp().globalData.checkIsAuth('scope.userInfo');
+						return;
+					}
+					this.doSubmit();
+				});
+			},
+			doSubmit() {
 				if (this.uploading) {
 					toastService.showToast('图片上传中，请稍候');
 					return;

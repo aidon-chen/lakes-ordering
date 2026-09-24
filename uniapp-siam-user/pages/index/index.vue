@@ -50,7 +50,9 @@
 				<view class="member-row-left">
 					<image class="member-crown" src="/static/assets/icons/home-crown.png" mode="widthFix" />
 					<view class="member-title">会员中心</view>
-					<view class="member-desc">成长值 {{ growthValue }} · 优惠券 {{ couponsNumber }} 张</view>
+					<!-- 余额段用 hasMember 包住：接口返回前 / 未登录时不渲染，
+					     避免出现「余额 ¥0.00」这种会被误读成"钱没了"的假 0（金额场景不做假占位） -->
+					<view class="member-desc"><text v-if="hasMember">余额 ¥{{ balanceValue }} · </text>成长值 {{ growthValue }} · 优惠券 {{ couponsNumber }} 张</view>
 				</view>
 				<van-icon name="arrow" class="member-arrow" />
 			</view>
@@ -121,7 +123,18 @@
 			dotCount() {
 				return this.posterSlides.length;
 			},
-			// 后端 tb_member 无 growth（成长值）字段，退化取积分，保证展示数字真实非造数
+			// 是否已拿到会员数据：决定「余额」段是否渲染（避免未加载时显示 ¥0.00 造成误读）
+			hasMember() {
+				return !!(this.member && this.member.id);
+			},
+			// 账户余额（后端 getLoginMemberInfo 的 balance，decimal(10,2) → 固定两位小数）。
+			// 会员条此前只显示"成长值 + 优惠券"，用户反馈「小程序里看不到余额」故补上。
+			balanceValue() {
+				const member = this.member || {};
+				const value = Number(member.balance);
+				return isFinite(value) ? value.toFixed(2) : '0.00';
+			},
+			// 成长值：tb_member.growth（2026-09-19 已加列）；老数据无该字段时退化取积分，保证展示真实非造数
 			growthValue() {
 				const member = this.member || {};
 				const value = member.growth !== null && member.growth !== undefined ? member.growth : member.points;
@@ -289,6 +302,9 @@
 
 			// A-01 点餐：扫桌台码 → 台位确认页（C-04：校验台位＋选人数）→ 开始点餐进点单台
 			dineScanTap() {
+				// 原生扫码界面会把小程序压后台再回前台 → App.onShow 误触发活动弹窗标记；
+				// 扫码期间置抑制位，complete 后 500ms 复位（09-24 修复）
+				app.globalData.scanInProgress = true;
 				uni.scanCode({
 					success: (res) => {
 						const text = res.result || '';
@@ -308,7 +324,13 @@
 							url: '/pages/menu/scan-table/scan-table?scene=' + encodeURIComponent(scene)
 						});
 					},
-					fail: () => {}
+					fail: () => {},
+					complete: () => {
+						// 500ms 宽限：兜住「App.onShow 晚于 complete 回调」的时序抖动
+						setTimeout(() => {
+							app.globalData.scanInProgress = false;
+						}, 500);
+					}
 				});
 			},
 
@@ -476,6 +498,9 @@
 	.member-row-left {
 		display: flex;
 		align-items: center;
+		/* 允许内部文字收缩并可省略：不加这两行，flex 子项不肯收缩，长文本会顶破固定高的容器 */
+		flex: 1;
+		min-width: 0;
 	}
 
 	.member-crown {
@@ -495,6 +520,12 @@
 		font-size: 22rpx;
 		font-weight: 400;
 		color: #999999;
+		/* 会员条是固定高 64rpx 的单行：内容超长时省略号截断。
+		   加入「余额 ¥xxxx.xx」后文本明显变长，更易触发，故补此保护。 */
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+		min-width: 0;
 	}
 
 	/* 箭头：画板 343:9，6.6pt × 16.4pt，描边 #739B8D */

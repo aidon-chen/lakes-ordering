@@ -95,11 +95,20 @@
 			// 小程序每次进入前台（冷启动 / 从后台恢复）都置位，由 pages/index/index.vue 的 onShow 消费。
 			// 不用 onLaunch 是因为它只在冷启动跑一次；不用页面 onShow 直接请求，是因为切 tab 也会触发页面 onShow。
 			// App.onShow 只在「打开小程序」时触发 → 正好等于「每次打开小程序弹一次」。
+			// ⚠️ 09-24 修正：上句假设不成立——页内调起 uni.scanCode（原生扫码界面）结束时
+			// App.onShow 同样会触发，「扫码选桌」被误当成「打开小程序」而弹活动弹窗。
+			// 故扫码进行中（scanInProgress）不置位：扫桌台码回前台不算「重新打开小程序」。
+			if (this.globalData.scanInProgress) {
+				return;
+			}
 			this.globalData.needActivityPopup = true;
 		},
 		globalData: {
 			// C-02 首页活动弹窗：待弹标记（App.onShow 置位 → 首页 onShow 消费后复位）
 			needActivityPopup: false,
+			// 扫码抑制位：三处 uni.scanCode（首页/点单台/结算页）调起前置 true、complete 后 500ms 复位，
+			// 盖住「原生扫码界面压后台→回前台」触发的 App.onShow，防止误弹首页活动弹窗
+			scanInProgress: false,
 			userInfo: null,
 			appVersion: 5.28,
 

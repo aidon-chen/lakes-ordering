@@ -1652,6 +1652,9 @@
 				const mode = e.currentTarget.dataset.mode;
 				if (mode === 'dine') {
 					if (this.dineInfo) return;
+					// 原生扫码界面会把小程序压后台再回前台 → App.onShow 误触发活动弹窗标记；
+					// 扫码期间置抑制位，complete 后 500ms 复位（09-24 修复）
+					app.globalData.scanInProgress = true;
 					uni.scanCode({
 						success: (res) => {
 							const text = res.result || '';
@@ -1668,7 +1671,13 @@
 								url: '/pages/menu/scan-table/scan-table?scene=' + encodeURIComponent(scene)
 							});
 						},
-						fail: () => {}
+						fail: () => {},
+						complete: () => {
+							// 500ms 宽限：兜住「App.onShow 晚于 complete 回调」的时序抖动
+							setTimeout(() => {
+								app.globalData.scanInProgress = false;
+							}, 500);
+						}
 					});
 					return;
 				}

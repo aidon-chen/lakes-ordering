@@ -12,12 +12,12 @@
 		<block v-else>
 		<!-- 顶部渐变带（画板 5:3 #EDF2DE→白）：头像昵称行 + 等级卡 -->
 		<view class="c03-hero">
-			<!-- 头部行（画板 5:17/5:26）：头像 56pt + 昵称 15pt；画板红色徽标为品牌占位，
-			     有真实头像显示头像，无头像时用品牌红圆 + Lakes 首字母 -->
+			<!-- 头部行（画板 5:17/5:26）：头像 56pt + 昵称 15pt；
+			     有真实头像显示头像，无头像时用默认头像图（湖里Lakes logo，2026-09-24 用户指定） -->
 			<view class="c03-headrow">
 				<view class="c03-avatar">
 					<image v-if="member.headImg" class="c03-avatar-img" :src="member.headImg" mode="aspectFill"></image>
-					<view v-else class="c03-avatar-brand">L</view>
+					<image v-else class="c03-avatar-img" src="/static/assets/images/default-avatar.jpg" mode="aspectFill"></image>
 				</view>
 				<view class="c03-nickname">{{ member.username || '未登录' }}</view>
 			</view>
@@ -73,22 +73,24 @@
 
 		<!-- ===== 以下为工程既成功能区块（画板页2未画出，保留不回退）===== -->
 		<view class="c03-legacy">
-			<!-- 积分 / 绩点卡（画板 298:112）—— 口径 2026-09-23 拍板：
-			     积分=仅用于会员等级成长；绩点=可用于金额支付（沿用 balance 字段承载） -->
+			<!-- 积分 / 余额卡（画板 298:112）—— 口径 2026-09-24 修正：
+			     积分=仅用于会员等级成长；余额=可用于金额支付。
+			     后端无独立「积点」字段，此格承载的本来就是 member.balance（账户余额）；
+			     此前标签写「绩点」，导致用户以为「前端看不到余额」，故正名并可直接点击进余额页。 -->
 			<view class="c03-card">
 				<view class="c03-card-head">
-					<view class="c03-card-title">我的积分 / 绩点</view>
-					<view class="c03-card-more" @tap="goIntegral">收支明细 ›</view>
+					<view class="c03-card-title">我的积分 / 余额</view>
+					<view class="c03-card-more" @tap="goIntegral">积分明细 ›</view>
 				</view>
 				<view class="c03-data-row">
 					<view class="c03-data-item">
 						<view class="c03-data-value theme-color">{{ member.points || 0 }}</view>
 						<view class="c03-data-label">积分（等级成长）</view>
 					</view>
-					<!-- 绩点：后端无独立字段，沿用 balance（余额=可支付金额）承载，与 C-01 同口径 -->
-					<view class="c03-data-item">
+					<!-- 余额：点击进余额页（该页此前全工程仅充值页一处入口，实际不可达） -->
+					<view class="c03-data-item" @tap="goBalance">
 						<view class="c03-data-value theme-color">{{ member.balance || 0 }}</view>
-						<view class="c03-data-label">绩点（可抵扣支付）</view>
+						<view class="c03-data-label">余额（可支付）›</view>
 					</view>
 				</view>
 			</view>
@@ -279,6 +281,12 @@
 					url: '/pages/mine/integral/integral'
 				});
 			},
+			// 余额页：本页已由 onShow 保证登录态（未登录渲染空态），故直接跳
+			goBalance() {
+				uni.navigateTo({
+					url: '/pages/mine/balance/index/index'
+				});
+			},
 			goCoupons() {
 				uni.navigateTo({
 					url: '/pages/mine/coupons/coupons'
@@ -355,8 +363,8 @@
 		border-radius: 50%;
 		overflow: hidden;
 		flex-shrink: 0;
-		/* 品牌红徽标（retheme.py 有意保留 #C8102E，画板 5:17） */
-		background: #C8102E;
+		/* 默认头像图底色（原品牌红圆已由 Lakes logo 默认头像替代，2026-09-24） */
+		background: #F5F5F5;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -365,12 +373,6 @@
 	.c03-avatar-img {
 		width: 116rpx;
 		height: 116rpx;
-	}
-
-	.c03-avatar-brand {
-		font-size: 52rpx;
-		font-weight: 700;
-		color: #ffffff;
 	}
 
 	.c03-nickname {

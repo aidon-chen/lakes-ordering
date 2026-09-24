@@ -4,7 +4,7 @@
 		<view class="userinfo-item">
 			<text class="title-text">头像</text>
 			<image class="userinfo-avatar"
-				:src="data.headImg ? data.headImg : '/static/assets/images/user-head.png'" mode="cover"></image>
+				:src="data.headImg ? data.headImg : '/static/assets/images/default-avatar.jpg'" mode="cover"></image>
 		</view>
 		<view class="userinfo-item">
 			<text class="title-text">用户名</text>
@@ -186,8 +186,15 @@
 			},
 
 			goIdentityAuth() {
-				uni.navigateTo({
-					url: '/pages/mine/identityAuth/index'
+				// 登录守卫（09-24 未登录拦截修复）：认证中心涉及证件收集，未登录不进入
+				authService.checkIsLogin().then((result) => {
+					if (result) {
+						uni.navigateTo({
+							url: '/pages/mine/identityAuth/index'
+						});
+						return;
+					}
+					app.globalData.checkIsAuth('scope.userInfo');
 				});
 			},
 

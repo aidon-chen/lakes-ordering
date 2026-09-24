@@ -11,7 +11,8 @@
 			<view class="c01-vip-top">
 				<view class="c01-vip-avatar">
 					<image v-if="member.headImg" class="c01-vip-avatar-img" :src="member.headImg" mode="aspectFill"></image>
-					<view v-else class="c01-vip-avatar-brand">L</view>
+					<!-- 默认头像：湖里Lakes logo（2026-09-24 用户指定，替换原品牌红圆+首字母） -->
+					<image v-else class="c01-vip-avatar-img" src="/static/assets/images/default-avatar.jpg" mode="aspectFill"></image>
 				</view>
 				<!-- C-02 个人资料入口：点昵称列进编辑页（原顶部用户行已按画板移入会员卡） -->
 				<view class="c01-vip-info" @tap.stop="goUserInfo">
@@ -44,7 +45,7 @@
 		<view class="c01-vip-card" v-else @tap="goUserInfo">
 			<view class="c01-vip-top">
 				<view class="c01-vip-avatar">
-					<view class="c01-vip-avatar-brand">L</view>
+					<image class="c01-vip-avatar-img" src="/static/assets/images/default-avatar.jpg" mode="aspectFill"></image>
 				</view>
 				<view class="c01-vip-info">
 					<view class="c01-vip-nickname">请登录/注册</view>
@@ -57,12 +58,16 @@
 			</view>
 		</view>
 
-		<!-- 数据二宫格（画板 3:38）：绩点 + 优惠券（口径 2026-09-23 拍板：绩点=金额支付，沿用 balance） -->
+		<!-- 数据二宫格（画板 3:38）：余额 + 优惠券
+		     口径 2026-09-24 修正：左格承载的 member.balance 本就是「账户余额」，
+		     此前标签写「绩点」→ 用户反馈「前端看不到余额」，故正名为「余额」，
+		     并改为**可直接点击进入余额页**（原先是跳会员中心，而余额页全工程仅充值页一处入口、
+		     充值页入口又是点单支付页的会员弹窗 → 实际不可达）。 -->
 		<view class="c01-data-grid" v-if="member.id">
-			<view class="c01-data-card" @tap="goMemberCenter">
+			<view class="c01-data-card" @tap="goBalance">
 				<image class="c01-data-icon" src="/static/assets/icons/data-credit.png" mode="aspectFit"></image>
 				<view class="c01-data-value">{{ member.balance || 0 }}</view>
-				<view class="c01-data-label">绩点</view>
+				<view class="c01-data-label">余额</view>
 			</view>
 			<view class="c01-data-card" @tap="goCoupons">
 				<image class="c01-data-icon" src="/static/assets/icons/data-coupon.png" mode="aspectFit"></image>
@@ -160,11 +165,13 @@
 				},
 				// 「我的订单」入口卡已移除（tabBar 有订单中心常驻入口），orderEntries/goOrderCenter 一并清理
 				// 我的功能（画板 3:128）：2 项；优惠券入口移至数据二宫格的券卡
-				services: [{
-						name: '身份认证',
-						icon: '/static/assets/icons/mine-identity.png',
-						url: '/pages/mine/identityAuth/index'
-					},
+			services: [{
+					name: '身份认证',
+					icon: '/static/assets/icons/mine-identity.png',
+					url: '/pages/mine/identityAuth/index',
+					// 涉及证件收集的敏感功能：未登录不允许进入（09-24 未登录拦截修复）
+					needLogin: true
+				},
 					{
 						name: '公告',
 						icon: '/static/assets/icons/mine-notice.png',
@@ -305,12 +312,38 @@
 					url: '/pages/mine/coupons/coupons'
 				});
 			},
+			// 余额页（数据二宫格左格）：该页此前全工程无有效入口，这里补上主入口。
+			// 余额涉及资金，未登录不跳转，走全站统一登录引导
+			goBalance() {
+				authService.checkIsLogin().then((result) => {
+					if (result) {
+						uni.navigateTo({
+							url: '/pages/mine/balance/index/index'
+						});
+						return;
+					}
+					app.globalData.checkIsAuth('scope.userInfo');
+				});
+			},
 			goWineList() {
 				uni.navigateTo({
 					url: '/pages/mine/wine/list/list'
 				});
 			},
 			goService(item) {
+				// needLogin 项：未登录不跳转，走全站统一登录引导（09-24 未登录拦截修复）
+				if (item.needLogin) {
+					authService.checkIsLogin().then((result) => {
+						if (result) {
+							uni.navigateTo({
+								url: item.url
+							});
+							return;
+						}
+						app.globalData.checkIsAuth('scope.userInfo');
+					});
+					return;
+				}
 				uni.navigateTo({
 					url: item.url
 				});
@@ -372,12 +405,12 @@
 		align-items: center;
 	}
 
-	/* 头像徽标（画板 3:16）：60pt→124rpx 圆，品牌红 #C8102E 有意保留；有真实头像显示头像 */
+	/* 头像徽标（画板 3:16）：60pt→124rpx 圆；默认头像=湖里Lakes logo（default-avatar.jpg），有真实头像显示头像 */
 	.c01-vip-avatar {
 		width: 124rpx;
 		height: 124rpx;
 		border-radius: 50%;
-		background: #C8102E;
+		background: #F5F5F5;
 		overflow: hidden;
 		flex-shrink: 0;
 		display: flex;
@@ -388,12 +421,6 @@
 	.c01-vip-avatar-img {
 		width: 124rpx;
 		height: 124rpx;
-	}
-
-	.c01-vip-avatar-brand {
-		font-size: 56rpx;
-		font-weight: 700;
-		color: #ffffff;
 	}
 
 	.c01-vip-info {
