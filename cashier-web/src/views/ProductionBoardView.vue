@@ -18,11 +18,7 @@
         :disabled="loading"
         @click="load"
       >刷新</button>
-      <button
-        class="ml-3 text-[13px]"
-        style="color: #C9CCBF"
-        @click="toggleFullscreen"
-      >⛶ 全屏</button>
+      <!-- 全屏钮已移至顶栏「代客点单」处（09-24 拍板，AppHeader.vue，仅本页显示） -->
     </div>
 
     <!-- 三列 2:991 -->
@@ -370,12 +366,6 @@ const noteText = computed(() => {
   const head = done.length ? `最近出品：${done.join(' ｜ ')}` : '暂无已出品订单'
   return `${head} —— 卡片点击推进状态（待制作 → 出品中 → 已出品）`
 })
-
-function toggleFullscreen() {
-  const el = document.documentElement
-  if (document.fullscreenElement) document.exitFullscreen()
-  else el.requestFullscreen?.()
-}
 
 function parseTime(v: string | null): number | null {
   if (!v) return null

@@ -3,12 +3,13 @@
     W-07 台位卡（Ardot 2:609~2:661）：180×140 圆角 8 内边距 14
     三态（批次 C 2026-09-19）：
       空闲   —— 白底，无操作钮
-      占用   —— 浅底绿，状态字主色，「加酒」主色钮（+ 转台次钮）
-      待清台 —— 灰底，状态字危险色，「清台」危险色钮
+      占用   —— 浅底绿，状态字主色，三钮三等分「加酒 ｜ 转台 ｜ 清台」
+      待清台 —— 灰底（#FCE3E3），状态字危险色，「清台」危险色钮（全宽）
     ⚠️ 画板另外画了「预定」态（K04），但需求书 0 次提及、工程零表零接口
        → 本期不做（依据见《逐批次实施与验收计划》§4）
-    ⚠️ 画板把占用卡操作画成一个「加酒 / 转台」合并钮；一个钮承载不了两个动作，
-       故拆为「加酒」主钮 + 「转台」次钮，视觉主次与画板一致。
+    ⚠️ 画板把占用卡操作画成一个「加酒 / 转台」合并钮；一个钮承载不了多个动作，
+       故拆为三等分三钮。2026-09-24 拍板：占用态开放「清台」并置于最右，
+       未结账时后端仍会拒（DiningTableServiceImpl.assertNoUnpaidOrder）。
   -->
   <div
     class="relative flex flex-col items-start text-left cursor-pointer w-[180px] h-[140px] rounded-lg"
@@ -41,7 +42,7 @@
         @click="pos.askClear(table.id)"
       >清台</span>
 
-      <!-- 占用：主钮「加酒」＋次钮「转台」 -->
+      <!-- 占用：三钮三等分「加酒 ｜ 转台 ｜ 清台」，清台置于最右（2026-09-24） -->
       <template v-else>
         <span
           class="flex-1 h-[26px] rounded flex items-center justify-center text-[11px] text-white cursor-pointer"
@@ -49,10 +50,15 @@
           @click="pos.resumeOrder(table.id)"
         >加酒</span>
         <span
-          class="w-[52px] h-[26px] rounded flex items-center justify-center text-[11px] cursor-pointer shrink-0"
+          class="flex-1 h-[26px] rounded flex items-center justify-center text-[11px] cursor-pointer"
           style="background: #fff; border: 1px solid var(--tc-line); color: var(--tc-gray)"
           @click="pos.startChange(table.id)"
         >转台</span>
+        <span
+          class="flex-1 h-[26px] rounded flex items-center justify-center text-[11px] text-white cursor-pointer"
+          style="background: var(--warn)"
+          @click="pos.askClear(table.id)"
+        >清台</span>
       </template>
     </div>
   </div>

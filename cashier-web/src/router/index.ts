@@ -27,8 +27,10 @@ const IMPLEMENTED: Record<string, Component> = {
   '/print/templates': defineAsyncComponent(() => import('@/views/PrintTemplateView.vue')),
   '/wine/expiring': defineAsyncComponent(() => import('@/views/WineExpiringView.vue')),
   '/orders/aftersales': defineAsyncComponent(() => import('@/views/ChangeRecordView.vue')),
-  '/shop/account': defineAsyncComponent(() => import('@/views/AccountView.vue'))
-  // 全部 18 项菜单叶子均已落地（W-13 改单/退单：弹窗挂订单详情页，本表落记录页）→ 不再有 PageStub 入口
+  '/shop/account': defineAsyncComponent(() => import('@/views/AccountView.vue')),
+  // W-27 会员现金充值（2026-09-24 新增）
+  '/member/recharge': defineAsyncComponent(() => import('@/views/MemberRechargeView.vue'))
+  // 全部 19 项菜单叶子均已落地（W-13 改单/退单：弹窗挂订单详情页，本表落记录页）→ 不再有 PageStub 入口
   // 注：W-08 台位类型已按 V7 裁决从菜单整项移除，不再出现在本表
 }
 

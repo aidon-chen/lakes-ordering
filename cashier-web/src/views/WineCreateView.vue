@@ -27,6 +27,7 @@
         >{{ looking ? '查询中…' : '查询' }}</button>
         <span v-if="member" class="text-[12px]" style="color: #008000">
           已带出：{{ member.nickname || member.name || '会员' }} · {{ memberTag }}
+          <span v-if="memberBalance !== null" style="color: var(--p)"> · 余额 ¥{{ memberBalance }}</span>
         </span>
         <span v-else-if="lookupErr" class="text-[12px]" style="color: var(--warn)">{{ lookupErr }}</span>
       </div>
@@ -157,6 +158,11 @@ const DEFAULT_DAYS = 90
 const expireDate = ref(toDateInput(addDays(new Date(), DEFAULT_DAYS)))
 
 const memberTag = computed(() => (member.value?.mobile ? member.value.mobile : '会员'))
+
+/** 账户余额（后端 selectByMobile 自 2026-09-24 起下发；为空时不渲染该段，避免出现「余额 ¥NaN」） */
+const memberBalance = computed(() =>
+  member.value && member.value.balance != null ? Number(member.value.balance).toFixed(2) : null
+)
 
 /** 有效期天数由所选日期反算（后端收 expireDays，不收到期日） */
 const expireDays = computed(() => {

@@ -126,10 +126,15 @@
               @click="pos.resumeOrder(pos.drawerTable!.id)"
             >加酒</button>
             <button
-              class="h-[36px] px-4 rounded border text-[13px]"
+              class="flex-1 h-[36px] rounded border text-[13px]"
               style="border-color: var(--tc-line); color: var(--tc-gray)"
               @click="pos.startChange(pos.drawerTable!.id)"
             >转台</button>
+            <button
+              class="flex-1 h-[36px] rounded text-[13px] text-white"
+              style="background: var(--warn)"
+              @click="pos.askClear(pos.drawerTable!.id)"
+            >清台</button>
           </template>
           <template v-else>
             <button

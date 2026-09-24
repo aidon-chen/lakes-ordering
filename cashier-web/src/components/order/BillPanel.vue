@@ -135,24 +135,43 @@
       @click="pos.holdOrder()"
     >挂单（暂存，未收款不下厨）</button>
 
-    <!-- 底注 83:28 -->
+    <!-- 底注 83:28：口径＝「点单即收款」（先付后吃，2026-09-24 拍板并替换画板原「结账」口径） -->
     <div class="text-[11px] leading-relaxed" style="color: #8f967f">
       {{ pos.isTakeaway
-        ? '收款后：订单→待处理 · 顾客凭取餐号取餐 · 自动打印小票（P-03）'
-        : '收款后：订单→已完成 · 台位→待清台 · 自动打印结账小票（P-03）' }}
+        ? '确认收款后：订单→待处理 · 顾客凭取餐号取餐 · 自动打印小票（P-03）'
+        : '确认收款后：订单→待处理（下厨）· 台位保持占用 · 用餐结束点「清台」' }}
     </div>
   </div>
+
+  <!-- 扫码收款弹层（2026-09-24）：与面板平级的多根节点，position:fixed 脱离文档流，
+       避免父级 flex 布局受影响；也避开面板 overflow:hidden 的裁剪 -->
+  <ScanPayDialog
+    :visible="scanVisible"
+    :amount="scanAmount"
+    :busy="scanBusy"
+    :message="scanMessage"
+    :message-kind="scanMessageKind"
+    @close="closeScan"
+    @scan="onScan"
+  />
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { usePosStore } from '@/stores/pos'
+import ScanPayDialog from './ScanPayDialog.vue'
 
 const pos = usePosStore()
 
 /** 支付方式：画板仅这两项（92:3 / 92:7） */
 const PAY_MODES = ['微信收款码', '现金'] as const
 const payMode = ref<(typeof PAY_MODES)[number]>('微信收款码')
+
+/**
+ * 现金落库的 payment_mode（口径对齐 A-07 营收看板「payment_mode 为空视为到店支付=4」）
+ * 1 = 微信支付：由后端扫码收款链路写死（不需要前端传），故此处只定义现金档
+ */
+const PAY_MODE_OFFLINE = 4
 
 /** 常用备注（2026-09-23 随整单备注从做法区移来） */
 const QUICK_REMARKS = ['多加冰', '果盘后上', '拼桌']
@@ -194,20 +213,113 @@ watch(
 )
 
 /**
- * 确认收款
- * ⚠️ 批次 B 仅落地界面与订单提交：微信收款码（Native 扫码）在下单后发起，
- *    真实支付通道属**批次 H**（商户号尚未就绪）。此处先走既有的下单接口，
- *    待批次 H 接入后改为「下单 → 拉起收款码 → 回调置 is_payment=true」。
+ * 确认收款（2026-09-24 改：由「只下单」改为真正的收款动作；同日再改为**分两档**）
+ *
+ * 口径＝「点单即收款」（先付后吃，用户 2026-09-24 拍板）：下单 + 收款一个动作完成；
+ * 后端置 is_payment=1 + payment_mode + status 1→2（待处理=下厨）；台位保持占用，
+ * 顾客离店由桌卡「清台」一步完成「结台 + 放台」。
+ *
+ * 两档支付方式（正好对应画板 92:3 / 92:7）：
+ *   - 微信收款码 → 打开扫码弹层，扫顾客付款码走**真扣款**（后端 /pay/micropay）
+ *   - 现金       → 人工确认记账（后端 confirmPayment，payment_mode=4 到店支付）
+ *
+ * ⚠️ 微信为什么必须扫码而不是记账：收银台是网页，调不了小程序专属的
+ *    wx.requestPayment；付款码支付（被扫）是唯一能在网页侧发起真扣款的通道。
+ *    真实扣款需要商户号（WXPAY_APPID / WXPAY_MCHID / WXPAY_MCHKEY）且已开通
+ *    「付款码支付」产品权限；未配置时后端会返回明确提示，不会静默失败。
+ *
+ * ⚠️ 收款金额以后端统计为准：现金档用 paidAmount，扫码档用微信返回的 paidAmount。
+ *    画板「实收（可改）」的找零/折扣差额本期不落库，仅作展示。
  */
 async function onConfirm() {
   submitting.value = true
   try {
-    const ok = await pos.sendItems()
-    if (ok) {
-      alert(`已下单 ¥${money(Number(received.value) || pos.receivable)}\n\n微信收款码支付将在批次 H 接入（商户号就绪后）`)
+    // 先在清空购物车前记住应收（sendItems 会把 cart 清空 → receivable 归零）
+    const amount = pos.receivable
+    const res = await pos.sendItems()
+    if (!res.ok) return
+
+    if (payMode.value === '现金') {
+      await payByCash(res.orderNo)
+    } else {
+      openScan(res.orderNo, amount)
     }
   } finally {
     submitting.value = false
+  }
+}
+
+/* ==================== 现金档：人工确认记账 ==================== */
+
+async function payByCash(orderNo?: string) {
+  const data = await pos.confirmPayment({
+    tableId: pos.isTakeaway ? null : (pos.currentTable?.id ?? null),
+    orderNo: pos.isTakeaway ? (orderNo ?? null) : null,
+    payMode: PAY_MODE_OFFLINE
+  })
+  if (!data) return
+  if (data.paidCount === 0) {
+    alert('已下单，但该单此前已确认收款，无需重复收款')
+  } else {
+    alert(
+      `已收款 ¥${money(data.paidAmount)}（现金）\n\n` +
+        (pos.isTakeaway
+          ? '订单→待处理，顾客凭取餐号取餐'
+          : '订单→待处理（已下厨）；用餐结束后请在桌卡点「清台」')
+    )
+  }
+}
+
+/* ==================== 微信档：扫码收款弹层 ==================== */
+
+const scanVisible = ref(false)
+const scanAmount = ref(0)
+const scanBusy = ref(false)
+const scanMessage = ref('')
+const scanMessageKind = ref<'info' | 'warn' | 'error' | 'ok'>('info')
+/** 本次要收的订单号（下单返回）；外带场景后端靠它定位订单 */
+const scanOrderNo = ref<string | null>(null)
+
+function openScan(orderNo: string | undefined, amount: number) {
+  scanOrderNo.value = orderNo ?? null
+  scanAmount.value = amount
+  scanMessage.value = ''
+  scanVisible.value = true
+}
+
+function closeScan() {
+  if (scanBusy.value) return
+  scanVisible.value = false
+}
+
+/** 扫码层提交：一个付款码只发一次请求，结果就地反馈（不清弹层，便于连续重扫） */
+async function onScan(code: string) {
+  scanBusy.value = true
+  try {
+    const res = await pos.scanPay({
+      tableId: pos.isTakeaway ? null : (pos.currentTable?.id ?? null),
+      orderNo: scanOrderNo.value,
+      authCode: code
+    })
+    if (res.ok) {
+      scanMessageKind.value = 'ok'
+      scanMessage.value =
+        `收款成功 ¥${money(res.paidAmount ?? scanAmount.value)}` +
+        (res.transactionId ? `（微信流水 ${res.transactionId}）` : '')
+      // 停留片刻让收银员看清结果，再自动关闭
+      window.setTimeout(() => {
+        if (scanMessageKind.value === 'ok') scanVisible.value = false
+      }, 1000)
+    } else if (res.status === 'USERPAYING') {
+      // 顾客还在输密码：未收款，提示重扫（微信对同单号同参数幂等，重扫安全）
+      scanMessageKind.value = 'warn'
+      scanMessage.value = res.message || '顾客正在支付中，请稍候片刻后再次扫描同一付款码'
+    } else {
+      scanMessageKind.value = 'error'
+      scanMessage.value = res.message || '收款失败，请重试或改用现金收款'
+    }
+  } finally {
+    scanBusy.value = false
   }
 }
 

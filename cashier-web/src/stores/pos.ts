@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import router from '@/router'
 import type { CartLine, MenuChip, PosView, TableInfo, TableUiState } from '@/types'
-import { clearTable, changeTable as changeTableApi, fetchTableList, openTable, settleTable, type ZoneRow } from '@/api/table'
+import { clearTable, changeTable as changeTableApi, confirmPayment as confirmPaymentApi, fetchTableList, openTable, scanPay as scanPayApi, settleTable, type ZoneRow } from '@/api/table'
 import { fetchGoods, fetchMenus, fetchSpecs, updateGoodsStatus, type GoodsRow, type MenuRow, type SpecGroupMap } from '@/api/menu'
 import { submitOrder, type OrderDetailSubmit } from '@/api/order'
 
@@ -482,20 +482,23 @@ export const usePosStore = defineStore('pos', {
       this.currentSessionId = null
     },
 
-    /** 下单送厨：方案 A 一次性提交购物车 → POST /rest/merchant/order/insert */
-    async sendItems(): Promise<boolean> {
+    /**
+     * 下单送厨：方案 A 一次性提交购物车 → POST /rest/merchant/order/insert
+     * 返回 { ok, orderNo }：orderNo 供「确认收款」在外带（无台位）时定位订单
+     */
+    async sendItems(): Promise<{ ok: boolean; orderNo?: string }> {
       const takeaway = this.orderMode === 'takeaway'
       const table = this.currentTable
       const sessionId = this.currentSessionId
       // 堂食单仍必须绑台位；**外带自提单免台位**（散客入口，2026-09-23）
       if (!takeaway && (!table || sessionId == null)) {
         alert('堂食单需先在台位图点桌；如需免台位下单，请切到「外带自提」模式')
-        return false
+        return { ok: false }
       }
       const lines = this.cart.filter(l => l.added)
       if (!lines.length) {
         alert('购物车为空')
-        return false
+        return { ok: false }
       }
       const details: OrderDetailSubmit[] = lines.map(l => ({
         goodsId: l.goodsId,
@@ -508,7 +511,7 @@ export const usePosStore = defineStore('pos', {
       }))
       const total = details.reduce((s, d) => s + d.subtotal, 0)
       try {
-        await submitOrder({
+        const created = await submitOrder({
           orderDetailListStr: JSON.stringify(details),
           actualPrice: total,
           // 外带自提单不带台位/会话（后端 insertByMerchant 不校验，仅 setTableId(param)）
@@ -521,11 +524,65 @@ export const usePosStore = defineStore('pos', {
         })
         // 下单成功：清空已提交行（保留已下单行语义：本期无已下单行，直接全清）
         this.cart = []
-        return true
+        return { ok: true, orderNo: created?.orderNo }
       } catch (e) {
         console.error('[pos] 下单失败', e)
         alert((e as Error).message || '下单失败')
-        return false
+        return { ok: false }
+      }
+    },
+
+    /**
+     * 确认收款（2026-09-24 新增）：与下单同一动作完成「点单即收款」
+     *
+     * 堂食传 tableId（后端收该桌全部未付单，含漏收与加酒）；外带传 orderNo。
+     * payMode：1=微信收款码 4=到店支付(现金)。
+     * ⚠️ 目前为**人工确认收款**（线下现金/顾客扫店内收款码后由收银员点确认），
+     *    系统不参与真实资金流 —— 微信网页收款需 Native/被扫通道，属批次 H（商户号未就绪）。
+     * @returns 收款金额（后端口径）；已收过返回 0
+     */
+    async confirmPayment(param: { tableId?: number | null; orderNo?: string | null; payMode: number }) {
+      try {
+        const data = await confirmPaymentApi(param)
+        await this.loadTables()
+        return data
+      } catch (e) {
+        console.error('[pos] 确认收款失败', e)
+        alert((e as Error).message || '确认收款失败')
+        return null
+      }
+    },
+
+    /**
+     * 扫码收款（付款码支付 · 被扫，2026-09-24 新增）
+     *
+     * 扫顾客微信付款码 → 后端调微信真扣款。成功即重拉台位列表。
+     * ⚠️ 失败**不 alert、不吞异常**：归一化成 {ok:false, message} 返回，
+     *    由扫码弹层就地显示微信原文（「付款码已过期」「余额不足」等），
+     *    收银员据此决定重扫、换码还是改用现金。
+     */
+    async scanPay(param: { tableId?: number | null; orderNo?: string | null; authCode: string }) {
+      try {
+        const data = await scanPayApi(param)
+        if (data.status === 'SUCCESS') {
+          await this.loadTables()
+        }
+        return {
+          ok: data.status === 'SUCCESS',
+          status: data.status,
+          paidAmount: data.paidAmount,
+          transactionId: data.transactionId,
+          message: data.message || ''
+        }
+      } catch (e) {
+        console.error('[pos] 扫码收款失败', e)
+        return {
+          ok: false,
+          status: undefined as string | undefined,
+          paidAmount: undefined as number | undefined,
+          transactionId: undefined as string | undefined,
+          message: (e as Error).message || '扫码收款失败'
+        }
       }
     },
 

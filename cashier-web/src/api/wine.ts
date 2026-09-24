@@ -91,6 +91,8 @@ export interface MerchantMemberBrief {
   name: string | null
   /** 已脱敏，如 138****8601 */
   mobile: string | null
+  /** 账户余额（元）。后端 selectByMobile 自 2026-09-24 起下发；老接口调用方可不读 */
+  balance?: number
 }
 
 export const lookupMemberByMobile = (mobile: string) =>

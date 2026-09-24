@@ -31,6 +31,13 @@ const auth = useAuthStore()
 const isLogin = computed(() => route.path === '/login')
 const collapsed = ref(false)
 
+// Pad 端适配（Pad端适配-实施计划-v1.1 §2.3）：小横屏（≤1200px）默认收起侧栏，
+// 点头部「收起/展开侧栏」按钮可手动展开；1280/1366 大横屏不折叠。
+// 仅在进入页面时判定一次（旋转后可手动切换，暂不做 resize 联动）。
+onMounted(() => {
+  if (window.innerWidth <= 1200) collapsed.value = true
+})
+
 // 登录身份信息供头部（店名/头像）与 W-24 账号页共用；登录后与刷新时各拉一次
 onMounted(() => {
   if (!isLogin.value) void auth.load()
