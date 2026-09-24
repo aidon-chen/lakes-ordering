@@ -267,7 +267,7 @@
 				this.$router.go(-1);//返回上一层
 			},		
 			speckText(str) {
-				// 你有新的暹罗点餐订单，请注意查收！
+				// 你有新的湖里Lakes订单，请注意查收！
 				// var url= "http://tts.baidu.com/text2audio?lan=zh&ie=UTF-8&spd=6&text=" + encodeURI(str); 
 				// var url = "order_tip.mp3";
 				// var url = "https://siam-hangzhou.oss-cn-hangzhou.aliyuncs.com/data/file/order_tip.mp3";

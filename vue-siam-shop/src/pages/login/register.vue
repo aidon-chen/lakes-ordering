@@ -1,7 +1,7 @@
 <template>
     <section>
         <el-form :model="ruleForm" :rules="rules" ref="ruleForm" class="login-container">
-          <div class="title"><span>暹罗点餐商家端</span></div>
+          <div class="title"><span>湖里Lakes商家端</span></div>
             <el-form-item prop="mobile">
                 <el-input prefix-icon="el-icon-myshouji" type="text" v-model="ruleForm.mobile" auto-complete="off" placeholder="请输入手机号"></el-input>
             </el-form-item>

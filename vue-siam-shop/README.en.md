@@ -1,7 +1,7 @@
-# 暹罗点餐_单品牌门店版本_商家端
+# 湖里Lakes_单品牌门店版本_商家端
 
 #### Description
-暹罗点餐_单品牌门店版本_商家端
+湖里Lakes_单品牌门店版本_商家端
 
 #### Software Architecture
 Software architecture description

@@ -28,6 +28,10 @@ const specificationList = () => import( './pages/goodsManage/specificationList.v
 const stockList = () => import( './pages/goodsManage/stockList.vue')
 const recommendGoods = () => import( './pages/goodsManage/recommendGoods.vue')
 
+//用户管理（会员管理）
+const memberList = () => import( './pages/memberManage/memberList.vue')
+const memberDetail = () => import( './pages/memberManage/memberDetail.vue')
+
 //订单管理
 const waitHandleOrderList = () => import( './pages/orderManage/waitHandleOrderList.vue')
 const forHereTabsChild1 = () => import( './pages/orderManage/forHereTabsChild1.vue')
@@ -83,7 +87,7 @@ const mallStockList = () => import( './pages/mallManage/goodsManage/stockList.vu
 const mallOrderList = () => import( './pages/mallManage/orderManage/orderList.vue')
 const mallFullReductionRuleList = () => import( './pages/mallManage/promotionManage/fullReductionRuleList.vue')
 
-//数据中心
+//数据中心（2026-09-22：菜单项与路由已下线，页面文件 pages/basicModule/statisticGraph.vue 保留未删）
 const statisticGraph = () => import( './pages/basicModule/statisticGraph.vue')
 
 //财务报表
@@ -94,6 +98,8 @@ const merchantBillingRecord = () => import( './pages/accountModule/merchantBilli
 const revenueList = () => import( './pages/accountModule/revenueList.vue')
 const vipRechargeRecord = () => import( './pages/accountModule/vipRechargeRecord.vue')
 const memberWithdrawRecord = () => import( './pages/accountModule/memberWithdrawRecord.vue')
+//C-17 会员身份认证审核（身份证与身份材料双图同屏）
+const memberIdentityAuth = () => import( './pages/accountModule/memberIdentityAuth.vue')
 
 
 let routes = [
@@ -135,14 +141,24 @@ let routes = [
         hidden: true
     },
     {
+      // 原「数据中心」位置：2026-09-22 起改由「营收统计」占用（数据中心菜单已下线）
       path: '/',
       component: Home,
-      name: '数据中心',
+      name: '营收统计',
       iconCls: 'el-icon-user',
       leaf: true,//只有一个节点
       children: [
-          // { path: '/emptyList', component: emptyList, name: '每日数据' },
-          { path: '/statisticGraph', component: statisticGraph, name: '数据中心' },
+          { path: '/revenueList', component: revenueList, name: '营收统计' },
+      ]
+    },
+    {
+      path: '/',
+      component: Home,
+      name: '用户管理',
+      iconCls: 'el-icon-user',
+      children: [
+          { path: '/memberList', component: memberList, name: '会员列表' },
+          { path: '/memberDetail', component: memberDetail, name: '会员详情', hidden: true },
       ]
     },
     {
@@ -218,6 +234,40 @@ let routes = [
     {
       path: '/',
       component: Home,
+      name: '台位管理',
+      iconCls: 'el-icon-s-grid',
+      children: [
+          { path: '/tableList', component: tableList, name: '台位与桌码' },
+      ]
+    },
+    {
+      path: '/',
+      component: Home,
+      name: '打印机管理',
+      iconCls: 'el-icon-user',
+      children: [
+          { path: '/ticketPrinterList', component: ticketPrinterList, name: '小票打印机列表' },
+          { path: '/labelPrinterList', component: labelPrinterList, name: '标签打印机列表' },
+      ]
+    },
+    {
+      path: '/',
+      component: Home,
+      name: '财务报表',
+      iconCls: 'el-icon-user',
+      children: [
+          // 营收统计已提升为一级菜单（2026-09-22）
+          { path: '/accountInfo', component: accountInfo, name: '账户信息' },          
+          { path: '/merchantBillingRecord', component: merchantBillingRecord, name: '账单记录' },//交易明细          
+          { path: '/merchantWithdrawRecord', component: merchantWithdrawRecord, name: '提现记录' },
+          { path: '/vipRechargeRecord', component: vipRechargeRecord, name: '会员充值记录' },
+          { path: '/memberWithdrawRecord', component: memberWithdrawRecord, name: '奖励金提现记录' },
+          { path: '/memberIdentityAuth', component: memberIdentityAuth, name: '身份认证审核' },
+      ]
+    },        
+    {
+      path: '/',
+      component: Home,
       name: '门店管理',
       iconCls: 'el-icon-house',
       children: [
@@ -242,39 +292,6 @@ let routes = [
           { path: '/loginLogList', component: loginLogList, name: '登录日志' },
       ]
     },
-    {
-      path: '/',
-      component: Home,
-      name: '台位管理',
-      iconCls: 'el-icon-s-grid',
-      children: [
-          { path: '/tableList', component: tableList, name: '台位与桌码' },
-      ]
-    },
-    {
-      path: '/',
-      component: Home,
-      name: '打印机管理',
-      iconCls: 'el-icon-user',
-      children: [
-          { path: '/ticketPrinterList', component: ticketPrinterList, name: '小票打印机列表' },
-          { path: '/labelPrinterList', component: labelPrinterList, name: '标签打印机列表' },
-      ]
-    },
-    {
-      path: '/',
-      component: Home,
-      name: '财务报表',
-      iconCls: 'el-icon-user',
-      children: [
-          { path: '/revenueList', component: revenueList, name: '营收统计' },
-          { path: '/accountInfo', component: accountInfo, name: '账户信息' },          
-          { path: '/merchantBillingRecord', component: merchantBillingRecord, name: '账单记录' },//交易明细          
-          { path: '/merchantWithdrawRecord', component: merchantWithdrawRecord, name: '提现记录' },
-          { path: '/vipRechargeRecord', component: vipRechargeRecord, name: '会员充值记录' },
-          { path: '/memberWithdrawRecord', component: memberWithdrawRecord, name: '奖励金提现记录' },
-      ]
-    },        
     {
         path: '*',
         hidden: true,

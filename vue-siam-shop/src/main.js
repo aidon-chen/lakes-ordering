@@ -58,7 +58,8 @@ router.beforeEach((to, from, next) => {
     sessionStorage.removeItem('user');
     next({ path: '/login' })
   } else if(to.path == '/') {
-    next({path: '/statisticGraph'})
+    // 原默认落地页 /statisticGraph（数据中心）已下线，改为落地「营收统计」
+    next({path: '/revenueList'})
   } else {
     next()
   }

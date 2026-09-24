@@ -1,7 +1,7 @@
-# 暹罗点餐_单品牌门店版本_调度后台
+# 湖里Lakes_单品牌门店版本_调度后台
 
 #### Description
-暹罗点餐_单品牌门店版本_调度后台
+湖里Lakes_单品牌门店版本_调度后台
 
 #### Software Architecture
 Software architecture description

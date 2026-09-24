@@ -128,7 +128,7 @@
                 }
             };
 			return {
-				sysName:'暹罗点餐-调度中心',
+				sysName:'湖里Lakes-调度中心',
 				collapsed:false,
 				sysUserName: '',
 				sysUserAvatar: 'https://siam-hangzhou.oss-cn-hangzhou.aliyuncs.com/data/images/system/logo.png',
