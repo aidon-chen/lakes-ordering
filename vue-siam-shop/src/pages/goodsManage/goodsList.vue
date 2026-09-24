@@ -26,6 +26,15 @@
 				<!-- <el-form-item>
           <el-button type="primary" @click="printOrderLabel">打印</el-button>          
 				</el-form-item> -->
+				<!-- 营业时段（叠加设计）：切换＝筛选列表 —— 切到哪一档，就查看/编辑/上下架那一档的商品。
+				     服务端按「单品覆盖优先、否则看所属分类」判定；「全部」不筛选。 -->
+				<el-form-item label="售卖时段">
+					<el-radio-group v-model="searchMsg.salePeriod" @change="getList(1)">
+						<el-radio-button label="">全部</el-radio-button>
+						<el-radio-button label="day">白天</el-radio-button>
+						<el-radio-button label="night">夜晚</el-radio-button>
+					</el-radio-group>
+				</el-form-item>
 			</el-form>
 		</el-col>
 		<!--列表-->
@@ -146,7 +155,9 @@
 			return {
 				searchMsg: {
 					pageNo: 1,
-					pageSize: 20
+					pageSize: 20,
+					// 营业时段筛选：''=全部（默认，行为与改造前一致）/ 'day'=白天 / 'night'=夜晚
+					salePeriod: ''
 				},
 				list: [],
 				total: 0,
