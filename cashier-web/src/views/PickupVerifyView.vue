@@ -87,7 +87,7 @@
             }"
           >
             <span class="text-[15px] font-bold" style="color: var(--tc-title)">{{ o.pickupCode || '—' }}</span>
-            <span class="text-[12px]" style="color: var(--txt)">{{ o.description || '—' }}</span>
+            <span class="text-[12px]" style="color: var(--txt)">{{ decodeEntities(o.description) || '—' }}</span>
             <div class="flex items-center" style="height: 28px">
               <span class="text-[12px]" style="color: var(--tc-sub)">
                 ¥{{ money(o.actualPrice) }} · {{ hhmm(o.createTime) }} 下单<template v-if="phoneTail(o.contactPhone)">
@@ -125,6 +125,7 @@ import {
   phoneTail,
   type PickupOrderRow
 } from '@/api/pickup'
+import { decodeEntities } from '@/utils/text'
 
 const rows = ref<PickupOrderRow[]>([])
 const loading = ref(true)

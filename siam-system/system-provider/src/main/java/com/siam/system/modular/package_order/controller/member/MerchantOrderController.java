@@ -59,6 +59,11 @@ import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.Set;
+import java.util.HashSet;
+import com.siam.system.modular.package_order.model.param.OrderRemarkParam;
+import com.siam.system.modular.package_order.entity.OrderDetail;
+import com.siam.system.modular.package_order.service.OrderDetailService;
 
 @RestController
 @RequestMapping(value = "/rest/merchant/order")
@@ -91,6 +96,9 @@ public class MerchantOrderController {
 
     @Autowired
     private MemberService memberService;
+
+    @Autowired
+    private OrderDetailService orderDetailService;
 
     @Autowired
     private WxPayService wxPayService;
@@ -253,14 +261,11 @@ public class MerchantOrderController {
         }
         orderService.updateById(updateOrder);
 
-        //发送短信提醒自提
-        if(status==Quantity.INT_3){
-            // 发送短信提醒自提
-            aliyunSms.sendPickUpOrderCompleteMessage(dbOrder.getContactPhone(), String.valueOf(dbOrder.getQueueNo()), dbOrder.getShopName());
-            //发送微信服务通知
-            wxNotifyService.sendPickUpOrderCompleteMessage(orderMember.getOpenId(), String.valueOf(dbOrder.getQueueNo()), dbOrder.getShopName(), dbOrder.getShopAddress(), dbOrder.getDescription());
-
-        }else if(status==Quantity.INT_5){
+        // 自取提醒：已移至「出品完成」时发送（业务方 2026-09-23 拍板）——
+        // 原实现接在此处（status=3 待自取 = 商家刚接单）时点偏早：酒还没调好就告知"可以取了"；
+        // 且与「出品完成」处的通知重复（顾客会收 2 条微信 + 1 条短信）。
+        // 现只在 production_status 跃迁到 3（已出品）时发一条微信，不再发短信（见 updateProductionStatus）。
+        if(status==Quantity.INT_5){
             // 发送短信提醒正在配送中
             aliyunSms.sendTakeOutOrderDeliveryMessage(dbOrder.getContactPhone());
             //发送微信服务通知
@@ -349,10 +354,91 @@ public class MerchantOrderController {
             throw new StoneCustomerException("您没有权限操作该订单");
         }
         // 仅改出品状态一个字段（MP 非空更新，不动订单其它资料）
+        // 项5（2026-09-23）：记录改之前的值，用于「只在真正跃迁到已出品时通知一次」
+        Integer beforeProduction = dbOrder.getProductionStatus();
         Order upd = new Order();
         upd.setId(dbOrder.getId());
         upd.setProductionStatus(target);
         orderService.updateById(upd);
+        // 出品完成 → 复用现成的「自取订单制作完成」订阅消息（模板 eF29ugG7…「自取消息提醒」）。
+        // · 仅在跃迁到 3 且是自提单时发；堂食单按桌送、不出取餐码，不发；
+        // · 订单无会员/会员无 openId（散客单）时由下游自行短路，**不影响出品推进**。
+        if (target == 3 && (beforeProduction == null || beforeProduction != 3)
+                && (dbOrder.getTableName() == null || dbOrder.getTableName().trim().isEmpty())) {
+            Member notifyMember = memberService.selectByPrimaryKey(dbOrder.getMemberId());
+            if (notifyMember != null && notifyMember.getOpenId() != null && !notifyMember.getOpenId().trim().isEmpty()) {
+                // 取餐号格式化为顾客端一致的 A-001 形态（与 pages/order/detail 的 pickupCode 同口径）
+                Integer qn = dbOrder.getQueueNo();
+                String pickupNo = qn == null ? "—"
+                        : ("A-" + (qn < 10 ? "00" + qn : (qn < 100 ? "0" + qn : String.valueOf(qn))));
+                // 参数顺序：openId, 订单号(填「订单号码」), 取餐号(填「取餐号码」), 门店名称
+                wxNotifyService.sendPickUpOrderCompleteMessage(notifyMember.getOpenId(),
+                        dbOrder.getOrderNo(), pickupNo, dbOrder.getShopName());
+            }
+        }
+
+
+        basicResult.setSuccess(true);
+        basicResult.setCode(BasicResultCode.SUCCESS);
+        basicResult.setMessage("修改成功");
+        return basicResult;
+    }
+
+    /**
+     * 改单备注（2026-09-23 新增）：出品看板「待制作 / 出品中」两列可当场改**整单备注 + 单品备注**。
+     *
+     * <p>为什么放在商户端订单控制器：与 updateProductionStatus 同源（都是出品作业中的就地修改），
+     * 复用同一套「登录商户 → 订单属于本店 → 状态可改」校验。
+     *
+     * <p>约束：① 仅本店订单；② **已出品（productionStatus=3）不再允许改**（与看板入口口径一致）；
+     * ③ 单品备注逐行校验**确属该订单**，避免越权改他单明细。
+     */
+    @ApiOperation(value = "改单备注（整单 + 单品）")
+    @PostMapping(value = "/updateRemark")
+    public BasicResult updateRemark(@RequestBody @Validated(value = {}) OrderRemarkParam param) {
+        BasicResult basicResult = new BasicResult();
+        Merchant loginMerchant = merchantSessionManager.getSession(TokenUtil.getToken());
+        if (param.getId() == null) {
+            throw new StoneCustomerException("订单id不能为空");
+        }
+        Order dbOrder = orderService.getById(param.getId());
+        if (dbOrder == null) {
+            throw new StoneCustomerException("该订单不存在");
+        } else if (loginMerchant.getShopId() != dbOrder.getShopId()) {
+            throw new StoneCustomerException("您没有权限操作该订单");
+        }
+        // 已出品不再允许改备注（看板已出品列不提供入口；接口层再兜一道）
+        int productionStatus = dbOrder.getProductionStatus() == null ? 1 : dbOrder.getProductionStatus();
+        if (productionStatus >= 3) {
+            throw new StoneCustomerException("该单已出品，不能再改备注");
+        }
+
+        // 整单备注（tb_order.remark，列可空）
+        Order upd = new Order();
+        upd.setId(dbOrder.getId());
+        upd.setRemark(param.getRemark() == null ? "" : param.getRemark());
+        orderService.updateById(upd);
+
+        // 单品备注（tb_order_detail.remark）：逐行校验归属后更新，只动 remark 一个字段
+        if (param.getDetails() != null && !param.getDetails().isEmpty()) {
+            Set<Integer> ownedIds = new HashSet<>();
+            for (OrderDetail d : orderDetailService.selectByOrderId(dbOrder.getId())) {
+                ownedIds.add(d.getId());
+            }
+            for (OrderRemarkParam.DetailRemark dr : param.getDetails()) {
+                if (dr == null || dr.getId() == null) {
+                    continue;
+                }
+                if (!ownedIds.contains(dr.getId())) {
+                    // 不属于本单的明细直接跳过，不报错中断整次保存
+                    continue;
+                }
+                OrderDetail detailUpd = new OrderDetail();
+                detailUpd.setId(dr.getId());
+                detailUpd.setRemark(dr.getRemark() == null ? "" : dr.getRemark());
+                orderDetailService.updateByPrimaryKeySelective(detailUpd);
+            }
+        }
 
         basicResult.setSuccess(true);
         basicResult.setCode(BasicResultCode.SUCCESS);

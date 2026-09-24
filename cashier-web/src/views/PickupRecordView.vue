@@ -72,7 +72,7 @@
           style="height: 44px; border-top: 1px solid var(--tc-line)"
         >
           <span class="px-2 truncate" style="width: 180px; color: var(--p)">{{ r.pickupCode || '—' }}</span>
-          <span class="px-2 truncate" style="width: 410px; color: var(--txt)">{{ r.description || '—' }}</span>
+          <span class="px-2 truncate" style="width: 410px; color: var(--txt)">{{ decodeEntities(r.description) || '—' }}</span>
           <span class="px-2 truncate" style="width: 120px; color: var(--txt)">¥{{ money(r.actualPrice) }}</span>
           <span class="px-2 truncate" style="width: 130px; color: var(--txt)">{{ r.verifierName || '—' }}</span>
           <span class="px-2 truncate" style="width: 180px; color: var(--tc-sub)">{{ fmtTime(r.verifyTime) }}</span>
@@ -123,6 +123,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { fetchVerifyRecordList, type PickupOrderRow } from '@/api/pickup'
+import { decodeEntities } from '@/utils/text'
 
 /** 去掉画板的「核销方式」列后，按 1170 重新分配（180+410+120+130+180+150） */
 const COLS = [
@@ -185,7 +186,7 @@ const detailPairs = computed(() => {
   return [
     ['自提码', r.pickupCode || '—'],
     ['订单号', r.orderNo || '—'],
-    ['订单摘要', r.description || '—'],
+    ['订单摘要', decodeEntities(r.description) || '—'],
     ['金额', `¥${money(r.actualPrice)}`],
     ['核销人', r.verifierName || '—'],
     ['核销时间', fmtTime(r.verifyTime)],
@@ -198,7 +199,7 @@ const detailPairs = computed(() => {
 function exportCsv() {
   const head = ['自提码', '订单摘要', '金额', '核销人', '核销时间']
   const lines = filtered.value.map(r =>
-    [r.pickupCode ?? '', (r.description ?? '').replace(/,/g, '，'), money(r.actualPrice), r.verifierName ?? '', fmtTime(r.verifyTime)]
+    [r.pickupCode ?? '', decodeEntities(r.description).replace(/,/g, '，'), money(r.actualPrice), r.verifierName ?? '', fmtTime(r.verifyTime)]
       .map(v => `"${String(v).replace(/"/g, '""')}"`)
       .join(',')
   )

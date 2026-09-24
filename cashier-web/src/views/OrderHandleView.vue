@@ -112,6 +112,7 @@ import {
   updateProductionStatus,
   type MerchantOrderRow
 } from '@/api/order'
+import { decodeEntities } from '@/utils/text'
 
 const COLS = [
   { key: 'queueNo', label: '取餐号', w: 110 },
@@ -252,22 +253,12 @@ function hhmm(v: string | null): string {
   return m ? `${m[1].padStart(2, '0')}:${m[2]}` : '—'
 }
 
+/** 订单描述（description 带 HTML 实体，统一走 @/utils/text 解码） */
 function descText(o: MerchantOrderRow): string {
   const n = o.goodsTotalQuantity ?? 0
   const d = decodeEntities(o.description ?? '').trim()
   if (!d) return n ? `${n} 件` : '—'
   return /件/.test(d) || !n ? d : `${d} · ${n} 件`
-}
-
-function decodeEntities(s: string): string {
-  return s
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/&amp;/gi, '&')
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>')
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\s+/g, ' ')
 }
 
 function money(v: number | null): string {

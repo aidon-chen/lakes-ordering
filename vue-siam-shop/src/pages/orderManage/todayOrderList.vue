@@ -60,7 +60,7 @@
 					<span>{{scope.row.tableNo || '-'}}</span>
 				</template>
       </el-table-column>
-      <el-table-column prop="description" label="订单描述"></el-table-column>
+      <el-table-column prop="description" label="订单描述" :formatter="formatDescription"></el-table-column>
       <el-table-column prop="goodsTotalPrice" label="订单总额">
 				<template scope="scope">
 					<span>{{(scope.row.goodsTotalPrice + scope.row.packingCharges).toFixed(2)}}元</span>

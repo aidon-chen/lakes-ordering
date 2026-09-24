@@ -533,7 +533,8 @@ public class PointsMallOrderServiceImpl extends ServiceImpl<PointsMallOrderMappe
 
         //订单描述信息
         String description = param.getOrderDetailList().get(0).getGoodsName();
-        description += (goodsTotalQuantity > 1) ? ("&nbsp;&nbsp;等" + goodsTotalQuantity + "件") : "";
+        // 分隔符用全角空格（U+3000），勿用 HTML 实体：小程序 <text> 默认不解码、Vue 文本插值也不解码，会原样显示。
+        description += (goodsTotalQuantity > 1) ? ("\u3000等" + goodsTotalQuantity + "件") : "";
         //填充订单信息
         param.setDescription(description);
         param.setGoodsTotalQuantity(goodsTotalQuantity);

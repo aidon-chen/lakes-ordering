@@ -54,7 +54,7 @@
       <el-table-column prop="orderNo" label="订单号" width="190"></el-table-column>
       <el-table-column prop="orderScene" label="订单类型" :formatter="formatOrderScene"></el-table-column>
       <el-table-column prop="queueNo" label="取餐号"></el-table-column>
-      <el-table-column prop="description" label="订单描述"></el-table-column>
+      <el-table-column prop="description" label="订单描述" :formatter="formatDescription"></el-table-column>
       <el-table-column prop="goodsTotalPrice" label="订单总额">
 				<template scope="scope">
 					<span>{{(scope.row.goodsTotalPrice + scope.row.packingCharges).toFixed(2)}}元</span>

@@ -131,6 +131,7 @@ import {
   paymentModeText,
   type MerchantOrderRow
 } from '@/api/order'
+import { decodeEntities } from '@/utils/text'
 
 /** 列宽严格对齐画板 2:750~2:758（合计 1170） */
 const COLS = [
@@ -212,7 +213,7 @@ watch([queueKeyword, dateFrom, dateTo], () => {
  * ⚠️ 两个实测坑：
  *  ① 后端 description 里带 **HTML 实体**（如「布丁奶酒特调&nbsp;&nbsp;等2件」），
  *     而 Vue 的 `{{ }}` 会转义 → 不处理就会在页面上原样看到 `&nbsp;`。
- *     只做实体解码，**不使用 v-html**（避免 XSS）。
+ *     解码统一走 `@/utils/text` 的 decodeEntities（只解实体，**不使用 v-html**，避免 XSS）。
  *  ② description 本身可能已含件数（如「…等2件」）→ 此时不再追加「· N 件」，避免「等2件 · 2 件」这类重复。
  */
 function descText(o: MerchantOrderRow): string {
@@ -221,18 +222,6 @@ function descText(o: MerchantOrderRow): string {
   if (!d) return n ? `${n} 件` : '—'
   // 描述里已表达件数就原样展示；否则补上件数（对齐画板「…等 3 件」的信息量）
   return /件/.test(d) || !n ? d : `${d} · ${n} 件`
-}
-
-/** 仅解码常见实体 + 折叠连续空白；不引入任何 HTML 解析 */
-function decodeEntities(s: string): string {
-  return s
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/&amp;/gi, '&')
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>')
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\s+/g, ' ')
 }
 
 /** 状态色：2=待处理用警示色、6=已完成为绿、10/11 取消为灰 */

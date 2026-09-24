@@ -28,7 +28,7 @@
 					<span>{{ scope.row.orderScene == 2 ? '-' : (scope.row.diningNum || '-') }}</span>
 				</template>
 			</el-table-column>
-			<el-table-column prop="description" label="订单描述"></el-table-column>
+			<el-table-column prop="description" label="订单描述" :formatter="formatDescription"></el-table-column>
 			<el-table-column prop="goodsTotalPrice" label="订单总额">
 				<template scope="scope">
 					<span>{{ (scope.row.goodsTotalPrice + scope.row.packingCharges).toFixed(2) }}元</span>
@@ -137,7 +137,7 @@ const qs = require('qs');
 import $ from 'jquery'
 
 //全局音频变量
-var url = "https://siam.oss-cn-hangzhou.aliyuncs.com/data/file/order_tip.mp3";
+var url = "https://lakes-public.oss-cn-chengdu.aliyuncs.com/data/file/order_tip.mp3";
 var audio = new Audio(url);
 
 var count = 1;
@@ -307,21 +307,21 @@ export default {
 			this.$router.go(-1);//返回上一层
 		},
 		speckText(str) {
-			// 你有新的暹罗点餐订单，请注意查收！
+			// 你有新的湖里Lakes订单，请注意查收！
 			// var url= "http://tts.baidu.com/text2audio?lan=zh&ie=UTF-8&spd=6&text=" + encodeURI(str); 
 			// var url = "order_tip.mp3";
-			// var url = "https://siam.oss-cn-hangzhou.aliyuncs.com/data/file/order_tip.mp3";
+			// var url = "https://lakes-public.oss-cn-chengdu.aliyuncs.com/data/file/order_tip.mp3";
 			// var audio = new Audio(url);
 			// audio.play();
 
 			//如何解决音频播放声音重叠问题？
 			//每次自动检测订单，无论有多少订单量，只播放一次音频 => 使用全局的audio变量，这样即使你N个audio.play()方法要执行，audio也只会继续播放当前音频，其他的直接忽略掉不会处理;
 			//每次自动检测订单，有N个订单量，就播放N次音频 => 使用全局的audio变量，用计数器代替循环，在回调中进行递归执行audio.play()方法，然后计数器+1，这样就可以达到音频一个一个的有序播放了；
-			audio.src = "https://siam.oss-cn-hangzhou.aliyuncs.com/data/file/order_tip.mp3";
+			audio.src = "https://lakes-public.oss-cn-chengdu.aliyuncs.com/data/file/order_tip.mp3";
 			audio.play();
 		},
 		speckTextChangeToDelivery(str) {
-			audio.src = "https://siam.oss-cn-hangzhou.aliyuncs.com/data/file/order_change_to_delivery_tip.mp3";
+			audio.src = "https://lakes-public.oss-cn-chengdu.aliyuncs.com/data/file/order_change_to_delivery_tip.mp3";
 			audio.play();
 		},
 		testPlayAudio() {
@@ -429,7 +429,7 @@ export default {
 						'"shoppingWay": "配送方式：' + shoppingWayText + '", ' +
 						'"nickname": "' + order.contactRealname + (order.contactSex == 0 ? '' : (order.contactSex == 1 ? '(先生)' : '(女士)')) + '", ' +
 						'"mobile": "' + order.contactPhone + '", ' +
-						'"logo": "' + 'https://siam.oss-cn-hangzhou.aliyuncs.com/data/images/business/logo.jpg' + '", ' +
+						'"logo": "' + 'https://lakes-public.oss-cn-chengdu.aliyuncs.com/data/images/business/logo.jpg' + '", ' +
 						'"actualPrice": "' + order.actualPrice + '", ' +
 						'"contactStreet": "' + address + '", ' +
 						'"contactStreet": " ' + (order.shoppingWay == 1 ? '' : ('配送地址：' + address)) + '", ' +
