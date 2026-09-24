@@ -49,7 +49,10 @@
           >
             <div class="flex items-baseline">
               <span class="text-[20px] font-bold" style="color: #404A21">{{ headText(it) }}</span>
-              <span class="ml-auto text-[12px] font-medium" :style="{ color: waitedColor(it.order) }">{{ waitedText(it.order) }}</span>
+              <span
+                class="ml-auto text-[12px] font-medium"
+                :style="{ color: col.key === 'done' ? '#6B7A5A' : waitedColor(it.order) }"
+              >{{ col.key === 'done' ? doneTimeText(it.order) : waitedText(it.order) }}</span>
             </div>
             <span class="shrink-0 text-[13px] leading-snug line-clamp-2" style="color: #616166">{{ itemsText(it) }}</span>
             <div class="flex justify-end" style="margin-top: 8px; gap: 6px">
@@ -217,7 +220,8 @@ async function load() {
     typeByTableNo.value = map
 
     // 明细（品项）按需拉取：只为看板会显示的订单取，避免全量 N+1
-    const needDetail = orders.value.filter(o => (o.productionStatus ?? 1) === 1 || o.productionStatus === 2)
+    // 2026-09-24：已出品(3)也拉明细 —— 否则已出品卡的品项串回落成「N 件」，出品员没法对单
+    const needDetail = orders.value.filter(o => [1, 2, 3].includes(o.productionStatus ?? 1))
     const results = await Promise.all(
       needDetail.map(async o => {
         try {
@@ -312,6 +316,20 @@ function specText(specList: string | null): string {
 }
 
 /** 已等：从下单至今（画板口径 2m10s） */
+/**
+ * 已出品卡片的「出品时间」（2026-09-24 新增，业务方要求已出品卡带时间信息）。
+ *
+ * ⚠️ 口径：`tb_order` **没有专门的出品时间字段**（实测列清单只有
+ * create_time / payment_success_time / order_completion_time / update_time），
+ * 这里用 **update_time 近似** —— 已出品单在出品后可被更新的操作极少
+ * （出品状态不能再改、改备注接口已禁止已出品单 ⇒ 大多就是出品那次写入），
+ * 误差可接受；若要求精确，后续加列 production_time。
+ */
+function doneTimeText(o: MerchantOrderRow): string {
+  if (!parseTime(o.updateTime)) return ''
+  return `出品 ${hhmm(o.updateTime)}`
+}
+
 function waitedText(o: MerchantOrderRow): string {
   const t = parseTime(o.createTime)
   if (!t) return ''
