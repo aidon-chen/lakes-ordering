@@ -122,6 +122,10 @@ wxpay:
   signType: MD5
   tradeType: JSAPI
   payUrl: https://api.mch.weixin.qq.com/pay/unifiedorder
+  #付款码支付（被扫）—— 收银台扫顾客付款码，同步返回结果
+  micropayUrl: https://api.mch.weixin.qq.com/pay/micropay
+  #查单—— micropay 返回 USERPAYING（顾客还在输密码）时兜底轮询
+  orderQueryUrl: https://api.mch.weixin.qq.com/pay/orderquery
   notifyUrl: ${WXPAY_NOTIFY_URL:}
   refundUrl: https://api.mch.weixin.qq.com/secapi/pay/refund
   refundSuccessNotifyUrl: ${WXPAY_REFUND_NOTIFY_URL:}

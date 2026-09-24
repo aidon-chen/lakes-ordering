@@ -205,6 +205,10 @@ wxpay:
   tradeType: JSAPI
   #微信统一下单接口地址
   payUrl: https://api.mch.weixin.qq.com/pay/unifiedorder
+  #付款码支付（被扫）—— 收银台扫顾客付款码，同步返回结果
+  micropayUrl: https://api.mch.weixin.qq.com/pay/micropay
+  #查单—— micropay 返回 USERPAYING（顾客还在输密码）时兜底轮询
+  orderQueryUrl: https://api.mch.weixin.qq.com/pay/orderquery
   #支付成功后的服务器回调url
   #  notifyUrl: https://deerspotapi.siam.cn/rest/member/wxPay/notify
   notifyUrl: https://test-api.siam.shop/siam-server/rest/member/wxPay/notify
