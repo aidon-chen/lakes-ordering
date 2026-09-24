@@ -439,11 +439,11 @@ export default {
 
           //特殊处理
           param.subImages = param.subImages.replace(
-            /https:\/\/siam.oss-cn-hangzhou.aliyuncs.com\//g,
+            /https:\/\/lakes-public.oss-cn-chengdu.aliyuncs.com\//g,
             ""
           );
           param.detailImages = param.detailImages.replace(
-            /https:\/\/siam.oss-cn-hangzhou.aliyuncs.com\//g,
+            /https:\/\/lakes-public.oss-cn-chengdu.aliyuncs.com\//g,
             ""
           );
 

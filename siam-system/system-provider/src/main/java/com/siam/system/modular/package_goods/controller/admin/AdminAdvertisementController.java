@@ -1,7 +1,6 @@
 package com.siam.system.modular.package_goods.controller.admin;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.siam.package_common.annoation.AdminPermission;
 import com.siam.package_common.entity.BasicResult;
 import com.siam.system.modular.package_goods.entity.Advertisement;
 import com.siam.system.modular.package_goods.model.param.AdvertisementParam;
@@ -37,7 +36,9 @@ public class AdminAdvertisementController {
     }
 
 
-    @AdminPermission
+    // 商家端「营销中心 → 首页活动弹窗」需要能编辑弹窗内容，
+    // 故此处不再要求超管身份（@AdminPermission 只放过 username==admin）。
+    // 安全性由 /rest/admin/** 的全局登录拦截保证：未登录仍返回 code 2。
     @ApiOperation(value = "修改广告轮播图")
     @PutMapping(value = "/update")
     public BasicResult update(@RequestBody @Validated(value = {}) AdvertisementParam param) {
@@ -45,7 +46,6 @@ public class AdminAdvertisementController {
         return BasicResult.success();
     }
 
-    @AdminPermission
     @ApiOperation(value = "删除广告轮播图")
     @DeleteMapping(value = "/delete")
     public BasicResult delete(@RequestBody @Validated(value = {}) AdvertisementParam param) {
