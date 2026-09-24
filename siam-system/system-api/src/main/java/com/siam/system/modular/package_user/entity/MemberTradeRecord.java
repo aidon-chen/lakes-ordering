@@ -38,6 +38,14 @@ public class MemberTradeRecord {
     private Integer type;
 
     @ApiModelProperty(notes = "支付方式 1=微信 2=支付宝 3=平台余额 4=网银 5=银行转账")
+    /**
+     * 支付方式-现金（=5，收银端线下现金充值新增）
+     *
+     * <p>⚠️ 仅在本枚举内生效：tb_order.payment_mode 是另一套口径（1=微信 2=平台余额），
+     * 两张表同名不同义，禁止跨表套用。
+     */
+    public static final int PAYMENT_MODE_OF_CASH = 5;
+
     private Integer paymentMode;
 
     @ApiModelProperty(notes = "金额")

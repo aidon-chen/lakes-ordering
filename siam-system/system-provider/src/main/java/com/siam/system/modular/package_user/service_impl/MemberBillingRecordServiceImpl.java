@@ -71,6 +71,14 @@ public class MemberBillingRecordServiceImpl implements MemberBillingRecordServic
     }
 
     @Override
+    public Page getListByPageForAdmin(MemberBillingRecordParam param) {
+        // 管理端入口：不覆盖 memberId（用入参过滤，可空 = 查全量），也不依赖会员会话。
+        // 上面的 getListByPage 是会员端专用（会用会员 session 覆盖 memberId），管理端调它会 NPE。
+        return memberBillingRecordMapper.getListByPage(
+                new Page(param.getPageNo(), param.getPageSize()), param);
+    }
+
+    @Override
     public BigDecimal selectSumNumber(MemberBillingRecordDto memberBillingRecordDto, Date startTime, Date endTime) {
         return memberBillingRecordMapper.selectSumNumber(memberBillingRecordDto, startTime, endTime);
     }
