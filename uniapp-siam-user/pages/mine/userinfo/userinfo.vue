@@ -37,14 +37,24 @@
 				<van-icon name="arrow" />
 			</view>
 		</view>
-		<!-- 认证身份行：画板 21:191 于本日新增（节点 298:158~167），取代原来的「真实姓名」行。
-		     ⚠️ 画板此行只有「标签 + 箭头」，本页右侧额外给出 已认证/未认证（与 C-03 画板同概念行的写法一致）。
-		     点击进入实名认证弹窗 —— 保留 realName 写入口（/rest/member/update 与提现前置校验仍在用）。 -->
-		<view class="userinfo-item" @tap="openRealName">
+		<!-- 认证身份行（画板 21:191 / 节点 298:158~167）：点击进入 C-17 身份认证中心。
+		     ⚠️ 画板此行只有「标签 + 箭头」，本页右侧额外给出认证状态。
+		     状态口径改为读 /rest/member/identityAuth/detail 的两阶段真实状态 ——
+		     原先用 realName 判断是错的：realName 只是提现前置校验用的姓名（/rest/member/update），
+		     与本功能「实名认证 + 身份认证」两阶段无关。 -->
+		<view class="userinfo-item" @tap="goIdentityAuth">
 			<text class="title-text">认证身份</text>
 			<view class="input-image">
-				<text
-					:class="data.realName ? 'c02-verified' : 'c02-unverified'">{{ data.realName ? '已认证' : '未认证' }}</text>
+				<text :class="authStatusClass">{{ authStatusText }}</text>
+				<van-icon name="arrow" />
+			</view>
+		</view>
+
+		<!-- 发票申请：由「我的」页「常用服务」移入本页（2026-09-23 用户要求）。
+		     目标页未变，仍是 pages/mine/invoice/apply/apply -->
+		<view class="userinfo-item" @tap="goInvoiceApply">
+			<text class="title-text">发票申请</text>
+			<view class="input-image">
 				<van-icon name="arrow" />
 			</view>
 		</view>
@@ -123,11 +133,22 @@
 				dialogShow: false,
 				dialogShowEmail: false,
 				dialogShowRealName: false,
+				authStatusText: '未认证',
+				authPassed: false,
 				email: '',
 				realName: '',
 				sex: '',
 				modeList: []
 			};
+		},
+		computed: {
+			// 认证状态色：已认证=绿，未认证=橙，审核中/已驳回=警示橙
+			authStatusClass() {
+				if (this.authPassed) {
+					return 'c02-verified';
+				}
+				return this.authStatusText === '未认证' ? 'c02-unverified' : 'c02-auditing';
+			}
 		},
 		onLoad: function(options) {
 			app = getApp();
@@ -135,6 +156,7 @@
 		onReady: function() {},
 		onShow: function() {
 			this.getUserInfo();
+			this.loadAuthStatus();
 		},
 		onHide: function() {},
 		onUnload: function() {},
@@ -142,6 +164,40 @@
 		onReachBottom: function() {},
 		onShareAppMessage: function() {},
 		methods: {
+			// C-17 身份认证状态：stage1Status/stage2Status 0=未提交 1=待审核 2=通过 3=驳回
+			loadAuthStatus() {
+				https.request('/rest/member/identityAuth/detail', {}).then((result) => {
+					if (result && result.success && result.data) {
+						const d = result.data;
+						const s1 = Number(d.stage1Status) || 0;
+						const s2 = Number(d.stage2Status) || 0;
+						this.authPassed = s2 === 2;
+						if (this.authPassed) {
+							this.authStatusText = '已认证';
+						} else if (s1 === 3 || s2 === 3) {
+							this.authStatusText = '已驳回';
+						} else if (s1 === 1 || s2 === 1) {
+							this.authStatusText = '审核中';
+						} else {
+							this.authStatusText = '未认证';
+						}
+					}
+				});
+			},
+
+			goIdentityAuth() {
+				uni.navigateTo({
+					url: '/pages/mine/identityAuth/index'
+				});
+			},
+
+			// 发票申请（由「我的」页常用服务移入本页）
+			goInvoiceApply() {
+				uni.navigateTo({
+					url: '/pages/mine/invoice/apply/apply'
+				});
+			},
+
 			getUserInfo() {
 				https.request('/rest/member/getLoginMemberInfo', {}).then((result) => {
 					if (result && result.success && result.data) {
@@ -359,6 +415,13 @@
 		font-size: 28rpx;
 		font-weight: bold;
 		color: #E6A23C;
+	}
+
+	/* 审核中 / 已驳回：警示橙（与未认证区分靠文案） */
+	.c02-auditing {
+		font-size: 28rpx;
+		font-weight: bold;
+		color: #E25A2B;
 	}
 
 	.radio-group-label {

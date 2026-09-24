@@ -15,6 +15,10 @@ import com.siam.system.modular.package_goods.entity.Coupons;
 import com.siam.system.modular.package_goods.entity.CouponsMemberRelation;
 import com.siam.system.modular.package_goods.entity.Setting;
 import com.siam.system.modular.package_goods.entity.SmsLog;
+import com.siam.system.modular.package_points.entity.MemberPointsLog;
+import com.siam.system.modular.package_points.entity.MemberPointsSetting;
+import com.siam.system.modular.package_points.service.MemberPointsService;
+import com.siam.system.modular.package_points.service.MemberPointsSettingService;
 import com.siam.system.modular.package_user.auth.cache.MemberSessionManager;
 import com.siam.system.modular.package_user.controller.member.WxLoginController;
 import com.siam.system.modular.package_user.entity.Member;
@@ -58,6 +62,12 @@ public class MemberServiceImpl implements MemberService {
 
     @Autowired
     private MemberSessionManager memberSessionManager;
+
+    @Autowired
+    private MemberPointsService memberPointsService;
+
+    @Autowired
+    private MemberPointsSettingService memberPointsSettingService;
 
     @Value("${wxPublicPlatform.appId}")
     private String wxPublicPlatformAppId;
@@ -863,6 +873,13 @@ public class MemberServiceImpl implements MemberService {
                 updateMember.setRegisterWay(Member.REGISTER_WAY_OF_INVITE);
                 memberMapper.updateByPrimaryKeySelective(updateMember);
             }
+        }
+
+        //积分体系：新用户注册赠送积分（分值走积分规则配置表，活动类 biz_type=2）
+        Integer registerPoints = memberPointsSettingService.getInt(MemberPointsSetting.KEY_REGISTER_POINTS, 50);
+        if (registerPoints != null && registerPoints > 0) {
+            memberPointsService.earn(insertMember.getId(), MemberPointsLog.BIZ_TYPE_ACTIVITY,
+                    "register:" + insertMember.getId(), registerPoints, "新用户注册赠送积分");
         }
 
         return dbMember;
