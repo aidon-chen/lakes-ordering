@@ -28,6 +28,9 @@ import com.siam.system.modular.package_goods.model.example.internal.VipRechargeD
 import com.siam.system.modular.package_goods.service.internal.VipRechargeDenominationCouponsRelationService;
 import com.siam.system.modular.package_goods.service.internal.VipRechargeDenominationService;
 import com.siam.system.modular.package_goods.service.internal.VipRechargeRecordService;
+import com.siam.system.modular.package_points.entity.MemberPointsLog;
+import com.siam.system.modular.package_points.entity.MemberPointsSetting;
+import com.siam.system.modular.package_points.service.MemberPointsService;
 import com.siam.system.modular.package_user.entity.Member;
 import com.siam.system.modular.package_user.entity.MemberBillingRecord;
 import lombok.extern.slf4j.Slf4j;
@@ -49,6 +52,9 @@ public class VipRechargeRecordServiceImpl implements VipRechargeRecordService {
 
     @Autowired
     private MemberService memberService;
+
+    @Autowired
+    private MemberPointsService memberPointsService;
 
     @Autowired
     private MemberBillingRecordService memberBillingRecordService;
@@ -228,6 +234,11 @@ public class VipRechargeRecordServiceImpl implements VipRechargeRecordService {
         updateVipRechargeRecord.setDenominationGiveCouponsJson(denominationGiveCouponsJson);
         updateVipRechargeRecord.setStatus(Quantity.INT_2);
         vipRechargeRecordMapper.updateByPrimaryKeySelective(updateVipRechargeRecord);
+
+        //积分体系：充值成功按面额原价入账充值积分（¥1=X分，比例走积分规则配置表）
+        memberPointsService.earnByAmount(dbMember.getId(), MemberPointsLog.BIZ_TYPE_RECHARGE,
+                dbVipRechargeRecord.getOrderNo(), dbVipRechargeDenomination.getPrice(),
+                MemberPointsSetting.KEY_RECHARGE_RATE);
     }
 
     @Override

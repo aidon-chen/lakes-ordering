@@ -4,9 +4,15 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.siam.system.modular.package_goods.model.dto.CouponsDto;
 import com.siam.system.modular.package_goods.entity.Coupons;
 
+import java.util.List;
 import java.util.Map;
 
 public interface CouponsService {
+
+    /**
+     * 领券中心券池：未删除且发行方式=自行领取(2)的券列表（member 侧，2026-09-24）
+     */
+    List<Coupons> listIssuable();
 
     void deleteByPrimaryKey(Integer id);
 

@@ -38,8 +38,25 @@ public class CouponsMemberRelationController {
 
     @ApiOperation(value = "新增优惠卷用户关系")
     @PostMapping(value = "/insert")
-    public BasicResult insert(@RequestBody @Validated(value = {}) CouponsMemberRelation couponsMemberRelation) {
+    public BasicResult insert(@RequestBody @Validated(value = {}) CouponsMemberRelation couponsMemberRelation, HttpServletRequest request) {
         BasicResult basicResult = new BasicResult();
+
+        //memberId 以后端登录态为准（2026-09-24 加固）：原实现依赖前端传值且不校验，
+        //是历史"member_id 全 NULL/替他人领取"问题的根源；群发/单发走 merchant 侧接口不受此影响
+        Member loginMember = memberSessionManager.getSession(TokenUtil.getToken());
+        couponsMemberRelation.setMemberId(loginMember.getId());
+
+        //按券+会员查重：已有未使用的同券记录则拒绝（is_expired 不占名额，用完可再领）
+        CouponsMemberRelation query = new CouponsMemberRelation();
+        query.setPageNo(1);
+        query.setPageSize(1);
+        query.setCouponsId(couponsMemberRelation.getCouponsId());
+        query.setMemberId(loginMember.getId());
+        query.setIsUsed(false);
+        Page<Map<String, Object>> existed = couponsMemberRelationService.getListByPage(query.getPageNo(), query.getPageSize(), query);
+        if (existed.getRecords() != null && !existed.getRecords().isEmpty()) {
+            throw new com.siam.package_common.exception.StoneCustomerException("已领取过该券，请勿重复领取");
+        }
 
         couponsMemberRelationService.insertSelective(couponsMemberRelation);
 

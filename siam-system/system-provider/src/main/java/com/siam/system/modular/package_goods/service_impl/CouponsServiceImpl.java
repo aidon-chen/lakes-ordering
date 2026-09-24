@@ -1,13 +1,13 @@
 package com.siam.system.modular.package_goods.service_impl;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.siam.system.modular.package_goods.entity.Coupons;
 import com.siam.system.modular.package_goods.entity.Goods;
 import com.siam.system.modular.package_goods.entity.Shop;
 import com.siam.system.modular.package_goods.mapper.*;
 import com.siam.system.modular.package_goods.model.dto.CouponsDto;
 import com.siam.system.modular.package_goods.service.CouponsService;
-import com.siam.system.modular.package_goods.mapper.*;
 import com.siam.package_common.constant.BusinessType;
 import com.siam.package_common.exception.StoneCustomerException;
 import com.siam.system.modular.package_goods.model.dto.CouponsDto;
@@ -184,5 +184,15 @@ public class CouponsServiceImpl implements CouponsService {
         }
 
 
+    }
+
+    @Override
+    public List<Coupons> listIssuable() {
+        // 领券中心券池：未删除 + 发行方式=自行领取(2)，新券排前
+        LambdaQueryWrapper<Coupons> wrapper = new LambdaQueryWrapper<Coupons>()
+                .eq(Coupons::getIsDelete, false)
+                .eq(Coupons::getIssueType, 2)
+                .orderByDesc(Coupons::getId);
+        return couponsMapper.selectList(wrapper);
     }
 }
