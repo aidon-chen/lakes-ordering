@@ -1,8 +1,8 @@
 <template>
-  <!-- W-01 商家登录（Ardot `2:218`）：品牌字「乐章点餐 · 收银端」+ 登录卡 380×410
+  <!-- W-01 商家登录（Ardot `2:218`）：品牌字「湖里Lakes · 收银端」+ 登录卡 380×410
        三种模式复用同一卡片：账号密码 / 手机验证登录 / 忘记密码（两步） -->
   <div class="h-screen flex flex-col items-center justify-center" style="background: var(--dark)">
-    <div class="text-[20px] font-medium text-white mb-7 tracking-wide">乐章点餐 · 收银端</div>
+    <div class="text-[20px] font-medium text-white mb-7 tracking-wide">湖里Lakes · 收银端</div>
 
     <div class="rounded-xl bg-white p-8 shadow-xl" style="width: min(380px, calc(100vw - 32px))">
       <div class="text-[20px] font-medium mb-6" style="color: var(--txt)">{{ title }}</div>

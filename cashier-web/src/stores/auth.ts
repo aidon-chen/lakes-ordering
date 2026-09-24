@@ -22,7 +22,7 @@ export const useAuthStore = defineStore('auth', {
     accountName(s): string {
       return s.merchant?.nickname || s.merchant?.username || '商家'
     },
-    /** 头部展示的门店名（画板：声呐 SONAR · 音乐酒馆） */
+    /** 头部展示的门店名（画板：湖里Lakes · 音乐酒馆） */
     shopName(s): string {
       return s.shop?.name || (s.merchant?.shopId ? `门店 #${s.merchant.shopId}` : '—')
     },

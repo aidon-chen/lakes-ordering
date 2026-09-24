@@ -190,13 +190,16 @@ import {
   type PrintTaskRow,
   type PrintTemplateRow
 } from '@/api/print'
+import { useAuthStore } from '@/stores/auth'
 
 const reprints = ref<PrintTaskRow[]>([])
 const templates = ref<PrintTemplateRow[]>([])
 const saving = ref(false)
 const err = ref('')
 const status = ref('')
-const shopName = ref('本店')
+const auth = useAuthStore()
+// 门店名取登录门店真实名称（App.vue 启动时已 auth.load()），不再恒显占位「本店」
+const shopName = computed(() => auth.shopName)
 
 const form = ref({
   id: null as number | null,

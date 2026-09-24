@@ -7,7 +7,7 @@
       style="background: var(--dark2); border-color: #2a3120"
     >
       <div class="w-6 h-6 rounded flex items-center justify-center text-[13px] text-white" style="background: var(--p)">♪</div>
-      <span class="text-[15px] font-medium tracking-wide whitespace-nowrap">乐章点餐 · 收银端</span>
+      <span class="text-[15px] font-medium tracking-wide whitespace-nowrap">湖里Lakes · 收银端</span>
     </div>
 
     <!-- 折叠钮 2:57 -->
