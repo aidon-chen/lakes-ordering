@@ -55,4 +55,9 @@ public class MemberTokenServiceImpl implements MemberTokenService {
     public MemberToken getLoginMemberInfo(String token){
         return memberTokenMapper.getLoginMemberInfo(token);
     }
+
+    @Override
+    public void upsertSession(MemberToken record) {
+        memberTokenMapper.upsertSession(record);
+    }
 }

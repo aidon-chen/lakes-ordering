@@ -9,6 +9,7 @@ import com.siam.system.modular.package_user.service.MemberTokenService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.stereotype.Component;
 
 import java.util.Date;
@@ -25,6 +26,7 @@ public class MemberDbSessionManager implements MemberSessionManager {
 
     private static final long EXPIRE_MILLIS = 7 * 24 * 60 * 60 * 1000L;
 
+
     @Autowired
     private MemberTokenService memberTokenService;
 
@@ -33,23 +35,40 @@ public class MemberDbSessionManager implements MemberSessionManager {
 
     @Override
     public void createSession(String token, Member member) {
-        //同一用户的历史会话全部作废（与 Redis 版单 key 语义等价）
-        MemberTokenExample deleteExample = new MemberTokenExample();
-        deleteExample.createCriteria().andMemberIdEqualTo(member.getId());
-        List<MemberToken> oldList = memberTokenService.selectByExample(deleteExample);
-        if (oldList != null) {
-            for (MemberToken old : oldList) {
-                memberTokenService.deleteByToken(old.getToken());
+        doCreateSessionWithRetry(token, member);
+    }
+
+    private void doCreateSessionWithRetry(String token, Member member) {
+        //残余死锁兜底：跨账号偶发死锁时 InnoDB 回滚牺牲者（MySQL 建议 restart transaction）→ 有界重试
+        int maxAttempts = 4;
+        for (int attempt = 1; ; attempt++) {
+            try {
+                doCreateSession(token, member);
+                return;
+            } catch (CannotAcquireLockException e) {
+                if (attempt >= maxAttempts) {
+                    throw e;
+                }
+                try {
+                    Thread.sleep(20L * attempt + (long) (Math.random() * 30));
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw e;
+                }
             }
         }
+    }
 
+    private void doCreateSession(String token, Member member) {
+        //单语句 upsert：依赖 member_id 唯一索引，落库即「踢旧会话」，与 Redis 版单 key 语义等价；
+        //无 select+delete+insert 多语句交叉 → 从根上消除并发同账号登录的 InnoDB 死锁环（L4 压测实证）
         MemberToken record = new MemberToken();
         record.setMemberId(member.getId());
         record.setUsername(member.getUsername());
         record.setToken(token);
         record.setType("mvp");
         record.setCreateTime(new Date());
-        memberTokenService.insertSelective(record);
+        memberTokenService.upsertSession(record);
     }
 
     @Override

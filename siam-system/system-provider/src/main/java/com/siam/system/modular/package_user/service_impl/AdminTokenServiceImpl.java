@@ -55,4 +55,9 @@ public class AdminTokenServiceImpl implements AdminTokenService {
     public AdminToken getLoginAdminInfo(String token){
         return adminTokenMapper.getLoginAdminInfo(token);
     }
+
+    @Override
+    public void upsertSession(AdminToken record) {
+        adminTokenMapper.upsertSession(record);
+    }
 }

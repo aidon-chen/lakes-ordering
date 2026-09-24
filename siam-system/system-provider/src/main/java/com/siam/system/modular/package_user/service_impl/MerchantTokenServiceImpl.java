@@ -55,4 +55,9 @@ public class MerchantTokenServiceImpl implements MerchantTokenService {
     public MerchantToken getLoginMerchantInfo(String token){
         return merchantTokenMapper.getLoginMerchantInfo(token);
     }
+
+    @Override
+    public void upsertSession(MerchantToken record) {
+        merchantTokenMapper.upsertSession(record);
+    }
 }

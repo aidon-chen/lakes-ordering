@@ -20,6 +20,9 @@ public interface MemberTokenService {
 
     void deleteByToken(String token);
 
+    /** 会话单语句 upsert（依赖账号唯一索引），见 MemberTokenMapper#upsertSession */
+    void upsertSession(MemberToken record);
+
     /**
      * 获取当前登录用户信息
      * @return

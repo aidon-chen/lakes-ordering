@@ -9,6 +9,7 @@ import com.siam.system.modular.package_user.service.MerchantTokenService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.stereotype.Component;
 
 import java.util.Date;
@@ -25,6 +26,7 @@ public class MerchantDbSessionManager implements MerchantSessionManager {
 
     private static final long EXPIRE_MILLIS = 7 * 24 * 60 * 60 * 1000L;
 
+
     @Autowired
     private MerchantTokenService merchantTokenService;
 
@@ -33,23 +35,40 @@ public class MerchantDbSessionManager implements MerchantSessionManager {
 
     @Override
     public void createSession(String token, Merchant merchant) {
-        //同一商家的历史会话全部作废（与 Redis 版单 key 语义等价）
-        MerchantTokenExample deleteExample = new MerchantTokenExample();
-        deleteExample.createCriteria().andMerchantIdEqualTo(merchant.getId());
-        List<MerchantToken> oldList = merchantTokenService.selectByExample(deleteExample);
-        if (oldList != null) {
-            for (MerchantToken old : oldList) {
-                merchantTokenService.deleteByToken(old.getToken());
+        doCreateSessionWithRetry(token, merchant);
+    }
+
+    private void doCreateSessionWithRetry(String token, Merchant merchant) {
+        //残余死锁兜底：跨账号偶发死锁时 InnoDB 回滚牺牲者（MySQL 建议 restart transaction）→ 有界重试
+        int maxAttempts = 4;
+        for (int attempt = 1; ; attempt++) {
+            try {
+                doCreateSession(token, merchant);
+                return;
+            } catch (CannotAcquireLockException e) {
+                if (attempt >= maxAttempts) {
+                    throw e;
+                }
+                try {
+                    Thread.sleep(20L * attempt + (long) (Math.random() * 30));
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw e;
+                }
             }
         }
+    }
 
+    private void doCreateSession(String token, Merchant merchant) {
+        //单语句 upsert：依赖 merchant_id 唯一索引，落库即「踢旧会话」，与 Redis 版单 key 语义等价；
+        //无 select+delete+insert 多语句交叉 → 从根上消除并发同账号登录的 InnoDB 死锁环（L4 压测实证）
         MerchantToken record = new MerchantToken();
         record.setMerchantId(merchant.getId());
         record.setUsername(merchant.getUsername());
         record.setToken(token);
         record.setType("mvp");
         record.setCreateTime(new Date());
-        merchantTokenService.insertSelective(record);
+        merchantTokenService.upsertSession(record);
     }
 
     @Override

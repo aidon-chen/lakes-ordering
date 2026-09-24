@@ -20,6 +20,9 @@ public interface AdminTokenService {
 
     void deleteByToken(String token);
 
+    /** 会话单语句 upsert（依赖账号唯一索引），见 AdminTokenMapper#upsertSession */
+    void upsertSession(AdminToken record);
+
     /**
      * 获取当前登录管理员信息
      * @return

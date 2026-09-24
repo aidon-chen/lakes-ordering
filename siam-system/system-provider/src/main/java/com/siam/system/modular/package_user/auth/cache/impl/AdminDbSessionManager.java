@@ -9,6 +9,7 @@ import com.siam.system.modular.package_user.service.AdminTokenService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.stereotype.Component;
 
 import java.util.Date;
@@ -25,6 +26,7 @@ public class AdminDbSessionManager implements AdminSessionManager {
 
     private static final long EXPIRE_MILLIS = 7 * 24 * 60 * 60 * 1000L;
 
+
     @Autowired
     private AdminTokenService adminTokenService;
 
@@ -33,23 +35,40 @@ public class AdminDbSessionManager implements AdminSessionManager {
 
     @Override
     public void createSession(String token, Admin admin) {
-        //同一管理员的历史会话全部作废（与 Redis 版单 key 语义等价）
-        AdminTokenExample deleteExample = new AdminTokenExample();
-        deleteExample.createCriteria().andAdminIdEqualTo(admin.getId());
-        List<AdminToken> oldList = adminTokenService.selectByExample(deleteExample);
-        if (oldList != null) {
-            for (AdminToken old : oldList) {
-                adminTokenService.deleteByToken(old.getToken());
+        doCreateSessionWithRetry(token, admin);
+    }
+
+    private void doCreateSessionWithRetry(String token, Admin admin) {
+        //残余死锁兜底：跨账号偶发死锁时 InnoDB 回滚牺牲者（MySQL 建议 restart transaction）→ 有界重试
+        int maxAttempts = 4;
+        for (int attempt = 1; ; attempt++) {
+            try {
+                doCreateSession(token, admin);
+                return;
+            } catch (CannotAcquireLockException e) {
+                if (attempt >= maxAttempts) {
+                    throw e;
+                }
+                try {
+                    Thread.sleep(20L * attempt + (long) (Math.random() * 30));
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw e;
+                }
             }
         }
+    }
 
+    private void doCreateSession(String token, Admin admin) {
+        //单语句 upsert：依赖 admin_id 唯一索引，落库即「踢旧会话」，与 Redis 版单 key 语义等价；
+        //无 select+delete+insert 多语句交叉 → 从根上消除并发同账号登录的 InnoDB 死锁环（L4 压测实证）
         AdminToken record = new AdminToken();
         record.setAdminId(admin.getId());
         record.setUsername(admin.getUsername());
         record.setToken(token);
         record.setType("mvp");
         record.setCreateTime(new Date());
-        adminTokenService.insertSelective(record);
+        adminTokenService.upsertSession(record);
     }
 
     @Override

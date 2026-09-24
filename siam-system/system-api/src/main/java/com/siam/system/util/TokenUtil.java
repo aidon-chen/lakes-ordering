@@ -15,6 +15,7 @@ import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.util.Date;
+import java.util.UUID;
 
 /**
  * Token工具类
@@ -49,7 +50,9 @@ public class TokenUtil {
      */
     public static String generateToken(Merchant merchant) {
         String token = "";
+        //n=每次登录随机数：保证 token 唯一，避免 DB 会话表同一 token 行的锁热点（并发登录自锁，见 test-suite/l4-concurrency）
         token = JWT.create().withAudience(merchant.getId().toString())
+                .withClaim("n", UUID.randomUUID().toString())
                 .sign(Algorithm.HMAC256(merchant.getPassword()));
         return token;
     }
@@ -61,7 +64,9 @@ public class TokenUtil {
      */
     public static String generateToken(Admin admin) {
         String token = "";
+        //n=每次登录随机数：保证 token 唯一，避免 DB 会话表同一 token 行的锁热点（并发登录自锁，见 test-suite/l4-concurrency）
         token = JWT.create().withAudience(admin.getId().toString())
+                .withClaim("n", UUID.randomUUID().toString())
                 .sign(Algorithm.HMAC256(admin.getPassword()));
         return token;
     }
