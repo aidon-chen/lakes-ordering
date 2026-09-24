@@ -47,14 +47,16 @@
             :title="col.nextLabel"
             @click="openDetail(it)"
           >
-            <div class="flex items-baseline" style="gap: 8px">
+            <div class="flex items-baseline" style="gap: 8px; justify-content: space-between">
               <span class="text-[20px] font-bold" style="color: #404A21">{{ headText(it) }}</span>
-              <!-- 下单时间（2026-09-24 业务方要求：每张卡都要有；计时器保留在最右） -->
-              <span class="text-[12px]" style="color: #8F9499">下单 {{ hhmm(it.order.createTime) }}</span>
-              <span
-                class="ml-auto text-[12px] font-medium"
-                :style="{ color: col.key === 'done' ? '#6B7A5A' : waitedColor(it.order) }"
-              >{{ col.key === 'done' ? doneTimeText(it.order) : waitedText(it.order) }}</span>
+              <!-- 右侧组：下单时间 + 计时器/出品时间（space-between 保证靠右，不依赖容器自由空间） -->
+              <span class="flex items-baseline" style="gap: 8px">
+                <span class="text-[12px]" style="color: #8F9499">下单 {{ hhmm(it.order.createTime) }}</span>
+                <span
+                  class="text-[12px] font-medium"
+                  :style="{ color: col.key === 'done' ? '#6B7A5A' : waitedColor(it.order) }"
+                >{{ col.key === 'done' ? doneTimeText(it.order) : waitedText(it.order) }}</span>
+              </span>
             </div>
             <span class="shrink-0 text-[13px] leading-snug line-clamp-2" style="color: #616166">{{ itemsText(it) }}</span>
             <div class="flex justify-end" style="margin-top: 8px; gap: 6px">
