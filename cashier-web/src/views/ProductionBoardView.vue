@@ -47,8 +47,10 @@
             :title="col.nextLabel"
             @click="openDetail(it)"
           >
-            <div class="flex items-baseline">
+            <div class="flex items-baseline" style="gap: 8px">
               <span class="text-[20px] font-bold" style="color: #404A21">{{ headText(it) }}</span>
+              <!-- 下单时间（2026-09-24 业务方要求：每张卡都要有；计时器保留在最右） -->
+              <span class="text-[12px]" style="color: #8F9499">下单 {{ hhmm(it.order.createTime) }}</span>
               <span
                 class="ml-auto text-[12px] font-medium"
                 :style="{ color: col.key === 'done' ? '#6B7A5A' : waitedColor(it.order) }"
