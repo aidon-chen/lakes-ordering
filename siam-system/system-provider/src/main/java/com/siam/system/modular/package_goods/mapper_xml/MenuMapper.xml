@@ -8,6 +8,7 @@
     <result column="description" property="description" jdbcType="VARCHAR" />
     <result column="sort_number" property="sortNumber" jdbcType="INTEGER" />
     <result column="is_can_order" property="isCanOrder" jdbcType="INTEGER" />
+    <result column="sale_period" property="salePeriod" jdbcType="VARCHAR" />
     <result column="create_time" property="createTime" jdbcType="TIMESTAMP" />
     <result column="update_time" property="updateTime" jdbcType="TIMESTAMP" />
   </resultMap>
@@ -18,6 +19,7 @@
     <result column="description" property="description" jdbcType="VARCHAR" />
     <result column="sort_number" property="sortNumber" jdbcType="INTEGER" />
     <result column="is_can_order" property="isCanOrder" jdbcType="INTEGER" />
+    <result column="sale_period" property="salePeriod" jdbcType="VARCHAR" />
     <result column="create_time" property="createTime" jdbcType="TIMESTAMP" />
     <result column="update_time" property="updateTime" jdbcType="TIMESTAMP" />
   </resultMap>
@@ -80,7 +82,7 @@
     </where>
   </sql>
   <sql id="Base_Column_List" >
-    id, shop_id, name, description, sort_number, is_can_order, create_time, update_time
+    id, shop_id, name, description, sort_number, is_can_order, sale_period, create_time, update_time
   </sql>
   <select id="selectByExample" resultMap="BaseResultMap" parameterType="com.siam.system.modular.package_goods.model.example.MenuExample" >
     select
@@ -140,6 +142,9 @@
       <if test="record.isCanOrder != null" >
         is_can_order = #{record.isCanOrder,jdbcType=INTEGER},
       </if>
+      <if test="record.salePeriod != null" >
+        sale_period = #{record.salePeriod,jdbcType=VARCHAR},
+      </if>
       <if test="record.createTime != null" >
         create_time = #{record.createTime,jdbcType=TIMESTAMP},
       </if>
@@ -159,6 +164,7 @@
     description = #{record.description,jdbcType=VARCHAR},
     sort_number = #{record.sortNumber,jdbcType=INTEGER},
     is_can_order = #{record.isCanOrder,jdbcType=INTEGER},
+      sale_period = #{record.salePeriod,jdbcType=VARCHAR},
     create_time = #{record.createTime,jdbcType=TIMESTAMP},
     update_time = #{record.updateTime,jdbcType=TIMESTAMP}
     <if test="_parameter != null" >
@@ -183,6 +189,9 @@
       <if test="isCanOrder != null" >
         is_can_order = #{isCanOrder,jdbcType=INTEGER},
       </if>
+      <if test="salePeriod != null" >
+        sale_period = #{salePeriod,jdbcType=VARCHAR},
+      </if>
       <if test="createTime != null" >
         create_time = #{createTime,jdbcType=TIMESTAMP},
       </if>
@@ -199,6 +208,7 @@
       description = #{description,jdbcType=VARCHAR},
       sort_number = #{sortNumber,jdbcType=INTEGER},
       is_can_order = #{isCanOrder,jdbcType=INTEGER},
+      sale_period = #{salePeriod,jdbcType=VARCHAR},
       create_time = #{createTime,jdbcType=TIMESTAMP},
       update_time = #{updateTime,jdbcType=TIMESTAMP}
     where id = #{id,jdbcType=INTEGER}

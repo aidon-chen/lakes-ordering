@@ -19,8 +19,12 @@ import com.siam.system.modular.package_goods.entity.*;
 import com.siam.system.modular.package_goods.entity.internal.Printer;
 import com.siam.system.modular.package_goods.service.*;
 import com.siam.system.modular.package_goods.service.internal.PrinterService;
+import com.siam.system.modular.package_goods.service.internal.SalePeriodService;
 import com.siam.system.modular.package_order.controller.member.WxPayService;
 import com.siam.system.modular.package_order.entity.*;
+import com.siam.system.modular.package_points.entity.MemberPointsLog;
+import com.siam.system.modular.package_points.entity.MemberPointsSetting;
+import com.siam.system.modular.package_points.service.MemberPointsService;
 import com.siam.system.modular.package_order.mapper.OrderMapper;
 import com.siam.system.modular.package_order.model.param.OrderParam;
 import com.siam.system.modular.package_order.model.vo.OrderVo;
@@ -75,6 +79,9 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     private CouponsMemberRelationService couponsMemberRelationService;
 
     @Autowired
+    private MemberPointsService memberPointsService;
+
+    @Autowired
     private MemberTradeRecordService memberTradeRecordService;
 
     @Autowired
@@ -82,6 +89,10 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
 
     @Autowired
     private ShopService shopService;
+
+    /** 营业时段（叠加设计）：下单时校验商品是否属于当前时段 */
+    @Autowired
+    private SalePeriodService salePeriodService;
 
     @Autowired
     private MerchantBillingRecordService merchantBillingRecordService;
@@ -250,6 +261,13 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
                 throw new StoneCustomerException(dbGoods.getName() + "已售罄，请重新选择");
             }
 
+            //营业时段（叠加设计）：非当前时段的商品不可下单。
+            //菜单接口已按当前时段过滤（展示口径），这里是强制口径 —— 挡住"页面没打开/没刷新就下单"。
+            //注意：商家端/收银端下单走 insertByMerchant，不在此处受限（门店内部作业与顾客端时段解耦）。
+            if (!salePeriodService.isGoodsSellable(param.getShopId(), orderDetail.getGoodsId())) {
+                throw new StoneCustomerException(dbGoods.getName() + "当前时段不售卖，请重新选择");
+            }
+
             //商品规格选项值列表
             List<String> nameList = new ArrayList<>();
             //计算单品对应规格的价格
@@ -354,18 +372,14 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
                 couponsDiscountOrderDetail.setCouponsDiscountPrice(subtractPrice);
 
             } else if (Coupons.TYPE_FULL_REDUCTION.equals(dbCoupons.getPreferentialType())) {
-                //TODO-满减优惠券的使用逻辑待定，初步探讨是满减规则或满减优惠券两者选其一，像奶茶这种产品下单金额比较小，所以估计用不着满减优惠券；
-                //优惠券为满减卷类型
-                //这里要依据使用满减规则后的最终价格来进行判断
-                /*if(finalPrice.compareTo((BigDecimal) couponsMap.get("limitedPrice"))>=0){
-                    subtractPrice = (BigDecimal) couponsMap.get("reducedPrice");
+                //满减优惠券：按券的 limitedPrice/reducedPrice 计算（2026-09-24 恢复，原为 TODO 注释导致"减券不减钱但核销"）。
+                //口径：门槛按"商品总价+包装费"判断（此时还未叠满减规则）；券与满减规则的叠加顺序维持现状（先券后规则）。
+                if (finalPrice.compareTo(dbCoupons.getLimitedPrice()) >= 0) {
+                    subtractPrice = dbCoupons.getReducedPrice();
                     finalPrice = finalPrice.subtract(subtractPrice);
-                }else{
-                    basicResult.setSuccess(false);
-                    basicResult.setCode(BasicResultCode.ERR);
-                    basicResult.setMessage("优惠卷使用错误");
-                    return basicResult;
-                }*/
+                } else {
+                    throw new StoneCustomerException("所选优惠券未达使用门槛，请重新下单");
+                }
             }
             param.setCouponsId(couponsId);
             param.setCouponsMemberRelationId(couponsMemberRelationId);
@@ -468,7 +482,8 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
 
         //订单描述信息
         String description = orderDetailList.get(0).getGoodsName();
-        description += (goodsTotalQuantity > 1) ? ("&nbsp;&nbsp;等" + goodsTotalQuantity + "件") : "";
+        // 分隔符用全角空格（U+3000），勿用 HTML 实体：小程序 <text> 默认不解码、Vue 文本插值也不解码，会原样显示。
+        description += (goodsTotalQuantity > 1) ? ("\u3000等" + goodsTotalQuantity + "件") : "";
 
         //订单取餐号
         Integer queueNo = this.getNextQueueNo();
@@ -774,7 +789,8 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
 
         //订单描述信息
         String description = orderDetailList.get(0).getGoodsName();
-        description += (goodsTotalQuantity > 1) ? ("&nbsp;&nbsp;等" + goodsTotalQuantity + "件") : "";
+        // 分隔符用全角空格（U+3000），勿用 HTML 实体：小程序 <text> 默认不解码、Vue 文本插值也不解码，会原样显示。
+        description += (goodsTotalQuantity > 1) ? ("\u3000等" + goodsTotalQuantity + "件") : "";
 
         //订单取餐号
         Integer queueNo = this.getNextQueueNo();
@@ -996,6 +1012,10 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         if (couponsMemberRelationId != null) {
             couponsMemberRelationService.updateCouponsUsed(couponsMemberRelationId, false);
         }
+
+        //积分体系：取消订单红冲消费积分（幂等，同单只冲一次）
+        memberPointsService.redeemByBiz(MemberPointsLog.BIZ_TYPE_CONSUME,
+                String.valueOf(dbOrder.getId()), "订单取消红冲积分");
     }
 
     @Override
@@ -1041,6 +1061,10 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         if (couponsMemberRelationId != null) {
             couponsMemberRelationService.updateCouponsUsed(couponsMemberRelationId, false);
         }
+
+        //积分体系：取消订单红冲消费积分（幂等，同单只冲一次）
+        memberPointsService.redeemByBiz(MemberPointsLog.BIZ_TYPE_CONSUME,
+                String.valueOf(dbOrder.getId()), "订单取消红冲积分");
 
         //查找该订单对应的交易记录
         MemberTradeRecord memberTradeRecord = memberTradeRecordService.selectByPrimaryKey(dbOrder.getTradeId());
@@ -1782,6 +1806,10 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         updateOrder.setIsPayment(true);
         updateOrder.setUpdateTime(new Date());
         orderMapper.updateById(updateOrder);
+
+        //积分体系：支付成功按实付金额入账消费积分（¥1=X分，比例走积分规则配置表）
+        memberPointsService.earnByAmount(dbOrder.getMemberId(), MemberPointsLog.BIZ_TYPE_CONSUME,
+                String.valueOf(dbOrder.getId()), dbOrder.getActualPrice(), MemberPointsSetting.KEY_CONSUME_RATE);
 
         //减去使用的原料
         List<OrderDetail> orderDetailList = orderDetailService.selectByOrderId(dbOrder.getId());
@@ -2874,6 +2902,10 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
                     couponsMemberRelationService.updateCouponsUsed(couponsMemberRelationId, false);
                 }
             }
+
+            //积分体系：退款成功红冲消费积分（幂等，同单只冲一次）
+            memberPointsService.redeemByBiz(MemberPointsLog.BIZ_TYPE_CONSUME,
+                    String.valueOf(dbOrder.getId()), "订单退款红冲积分");
 
             //修改退款状态 -- 退款成功
             OrderRefund updateOrderRefund = new OrderRefund();

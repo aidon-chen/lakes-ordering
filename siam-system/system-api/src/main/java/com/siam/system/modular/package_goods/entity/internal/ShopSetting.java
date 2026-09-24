@@ -36,6 +36,12 @@ public class ShopSetting {
     /** 存酒临期提醒：到期前 N 天提醒（W-19） */
     public static final String KEY_WINE_REMIND_AHEAD_DAYS = "wineRemindAheadDays";
 
+    /* 营业时段（叠加设计 · 白天咖啡/夜间酒水） */
+    /** 时段总开关：true=按 salePeriodRules 过滤分类与商品；false/缺省=退回现状（不按时段过滤） */
+    public static final String KEY_SALE_PERIOD_ENABLED = "salePeriodEnabled";
+    /** 时段窗口：HH:mm-HH:mm=code，多段用【英文逗号】分隔（值内禁用分号，会被脚本/控制台语句切分截断） */
+    public static final String KEY_SALE_PERIOD_RULES = "salePeriodRules";
+
     @TableId(type = IdType.AUTO)
     private Integer id;
 

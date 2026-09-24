@@ -68,6 +68,8 @@ public interface MenuMapper extends BaseMapper<Menu> {
             "<if test=\"menu.name != null and menu.name !=''\"> AND m.name like '%${menu.name}%' </if>" +
             "<if test=\"menu.sortNumber != null\"> AND m.sort_number = #{menu.sortNumber} </if>" +
             "<if test=\"menu.description != null and menu.description != ''\"> AND m.description like '%${menu.description}' </if>" +
+            //营业时段（叠加设计）：管理端「白天/夜晚」切换按时段筛选（NULL/all 视为全天可售，与 C 端 matchPeriod 同义）
+            "<if test=\"menu.salePeriod != null and menu.salePeriod != ''\"> AND (m.sale_period IS NULL OR m.sale_period = 'all' OR m.sale_period = #{menu.salePeriod}) </if>" +
             "</where> order by m.id desc" +
             "</script>")
     Page<Menu> getListByAdmin(@Param("page") Page page, @Param("menu") Menu menu);

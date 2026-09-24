@@ -23,6 +23,9 @@ public class GoodsMenuDto extends Goods {
     @ApiModelProperty(notes = "结束时间")
     private Date endTime;
 
+    @ApiModelProperty(notes = "营业时段筛选（叠加设计）：day=白天/night=夜间；空=不筛选。语义与 C 端一致——单品覆盖优先，否则看所属分类")
+    private String salePeriod;
+
     public Integer getMenuId() {
         return menuId;
     }
@@ -61,5 +64,13 @@ public class GoodsMenuDto extends Goods {
 
     public void setEndTime(Date endTime) {
         this.endTime = endTime;
+    }
+
+    public String getSalePeriod() {
+        return salePeriod;
+    }
+
+    public void setSalePeriod(String salePeriod) {
+        this.salePeriod = salePeriod;
     }
 }

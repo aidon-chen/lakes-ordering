@@ -11,6 +11,7 @@ import com.siam.system.modular.package_goods.service.MenuService;
 import com.siam.system.modular.package_goods.entity.Menu;
 import com.siam.system.modular.package_goods.mapper.MenuMapper;
 import com.siam.system.modular.package_goods.service.MenuService;
+import com.siam.system.modular.package_goods.service.internal.SalePeriodService;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
@@ -28,6 +29,10 @@ public class MenuServiceImpl implements MenuService {
 
     @Autowired
     private MenuMapper menuMapper;
+
+    /** 营业时段（叠加设计）：C 端菜单按当前时段过滤（分类级 sale_period + 单品级覆盖） */
+    @Autowired
+    private SalePeriodService salePeriodService;
 
     @Autowired
     private RedisUtils redisUtils;
@@ -189,7 +194,27 @@ public class MenuServiceImpl implements MenuService {
 
         //过滤数据
         List<Map<String, Object>> list = menuMapper.getListJoinGoods(menu);
+
+        //营业时段（叠加设计）：读时判定，不改库、不改 status（幂等、无并发写、关掉总开关即回现状）
+        //  currentPeriod == null 表示时段功能未启用 → 下面两个 Guard 全部跳过，行为与改造前完全一致
+        final String currentPeriod = salePeriodService.currentPeriod(menu.getShopId());
+        final Map<Integer, String> periodOfMenu = currentPeriod == null ? null : salePeriodService.menuPeriods(menu.getShopId());
+        final Map<Integer, Set<String>> periodOfGoods = currentPeriod == null ? null : salePeriodService.goodsOverrides(menu.getShopId());
+
         list.forEach(map -> {
+            if (currentPeriod != null) {
+                //① 分类不在当前时段 → 整行跳过（该分类下的商品行同样被跳过，分类不会出现在结果里）
+                if (!salePeriodService.matchPeriod(periodOfMenu.get(map.get("id")), currentPeriod)) {
+                    return;
+                }
+                //② 单品级覆盖：配了覆盖且不命中当前时段 → 只跳过这件商品，分类保留
+                if (map.get("goodsId") != null && periodOfGoods != null) {
+                    Set<String> allow = periodOfGoods.get(map.get("goodsId"));
+                    if (allow != null && !allow.isEmpty() && !allow.contains(currentPeriod)) {
+                        return;
+                    }
+                }
+            }
             if(filterMap.containsKey(map.get("id"))){
                 //只查询2=已上架 4=售罄的商品
                 if(map.get("goodsId") != null && (Quantity.INT_2 == (int) map.get("goodsStatus") || Quantity.INT_4 == (int) map.get("goodsStatus"))){

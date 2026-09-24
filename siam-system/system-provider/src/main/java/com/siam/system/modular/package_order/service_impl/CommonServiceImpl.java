@@ -8,6 +8,7 @@ import com.siam.system.modular.package_goods.entity.Setting;
 import com.siam.system.modular.package_goods.service.SettingService;
 import com.siam.system.modular.package_goods.service.ShopService;
 import com.siam.system.modular.package_goods.entity.Shop;
+import com.siam.system.modular.package_goods.service.internal.SalePeriodService;
 import com.siam.system.modular.package_order.entity.TravelingDistanceVo;
 import com.siam.system.modular.package_order.service.CommonService;
 import com.siam.system.modular.package_order.service.DeliveryAddressService;
@@ -34,6 +35,9 @@ public class CommonServiceImpl implements CommonService {
 
     @Autowired
     private SettingService settingService;
+
+    @Autowired
+    private SalePeriodService salePeriodService;
 
     @Override
     public BigDecimal selectDeliveryFee(BigDecimal lngA, BigDecimal latA, Integer shopId) {
@@ -157,6 +161,12 @@ public class CommonServiceImpl implements CommonService {
                 //跨天2-第二天小于结束时间
                 result = true;
             }
+        }
+        //营业时段（叠加设计）：总开关打开时，还必须落在某个时段窗口内；
+        //打烊空档（不在任何窗口内）视为休息中 —— 顾客端据此弹"店铺休息中，目前不能下单"
+        String salePeriod = salePeriodService.currentPeriod(shopId);
+        if (result && salePeriod != null && SalePeriodService.PERIOD_CLOSED.equals(salePeriod)) {
+            result = false;
         }
         return result;
     }

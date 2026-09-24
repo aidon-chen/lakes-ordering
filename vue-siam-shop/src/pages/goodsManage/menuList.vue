@@ -18,6 +18,15 @@
 				<el-form-item>
 					<el-button type="primary" @click="handleEdit">新增</el-button>
 				</el-form-item>
+				<!-- 营业时段（叠加设计）：切换＝筛选列表 —— 切到哪一档，就查看/编辑/上下架那一档的分类。
+				     语义与 C 端一致：「全部」不筛选；「全天」的分类（salePeriod 为空或 all）在两档里都会出现。 -->
+				<el-form-item label="售卖时段">
+					<el-radio-group v-model="searchMsg.salePeriod" @change="getList(1)">
+						<el-radio-button label="">全部</el-radio-button>
+						<el-radio-button label="day">白天</el-radio-button>
+						<el-radio-button label="night">夜晚</el-radio-button>
+					</el-radio-group>
+				</el-form-item>
 			</el-form>
 		</el-col>
 		<!--列表-->
@@ -37,6 +46,12 @@
 			</el-table-column>
 			<!-- <el-table-column prop="isDisabled" label="状态" width="100" :formatter="formatType"></el-table-column> -->
 			<el-table-column prop="detail" label="描述"></el-table-column>
+			<!-- 售卖时段（叠加设计）：全天=不受时段限制；白天/夜晚=只在对应时段出现在 C 端点单页 -->
+			<el-table-column label="售卖时段" width="100">
+				<template slot-scope="scope">
+					<span>{{ formatSalePeriod(scope.row.salePeriod) }}</span>
+				</template>
+			</el-table-column>
 			<el-table-column prop="createTime" label="创建时间" :formatter="formatTime"></el-table-column>
 			<el-table-column prop="updateTime" label="修改时间" :formatter="formatTime"></el-table-column>
 			<el-table-column label="操作" fixed="right" width="150">
@@ -73,6 +88,14 @@
 				<el-form-item label="分类名称" prop="name">
 					<el-input v-model="editForm.name"></el-input>
 				</el-form-item>
+				<!-- 售卖时段（叠加设计）：全天/白天/夜晚；决定该分类在 C 端哪个时段出现 -->
+				<el-form-item label="售卖时段" prop="salePeriod">
+					<el-select v-model="editForm.salePeriod" placeholder="请选择">
+						<el-option label="全天（不受时段限制）" value="all"></el-option>
+						<el-option label="仅白天" value="day"></el-option>
+						<el-option label="仅夜晚" value="night"></el-option>
+					</el-select>
+				</el-form-item>
 				<el-form-item label="描述" prop="detail">
 					<el-input type="textarea" :rows="5" v-model="editForm.detail"></el-input>
 				</el-form-item>
@@ -91,7 +114,9 @@
 			return {
 				searchMsg: {
 					pageNo: 1,
-					pageSize: 20
+					pageSize: 20,
+					// 营业时段筛选：''=全部（默认，行为与改造前一致）/ 'day'=白天 / 'night'=夜晚
+					salePeriod: ''
 				},
 				
 				list: [],
@@ -110,7 +135,8 @@
 				editForm: {
 					isDisabled: false,
 					name: '',
-					detail: ''
+					detail: '',
+					salePeriod: 'all'
 				}
 			}
 		},
@@ -135,6 +161,13 @@
 			},
 			formatType (row, column) { // 0=正常/启用  1=禁用
 				return row.isDisabled ? '禁用' : '正常';
+			},
+			// 售卖时段展示（叠加设计）：空/all=全天限制外
+			formatSalePeriod (v) {
+				if (!v || v === 'all') return '全天';
+				if (v === 'day') return '白天';
+				if (v === 'night') return '夜晚';
+				return v;
 			},
 			handleSizeChange(val) {
 				this.searchMsg.pageSize = val;
@@ -221,13 +254,15 @@
 						id: row.id,
 						isDisabled: row.isDisabled,
 						name: row.name,
-						detail: row.detail
+						detail: row.detail,
+						salePeriod: row.salePeriod || 'all'
 					}
 				}else{
 					this.editForm = {
 						isDisabled: 0,
 						name: '',
-						detail: ''
+						detail: '',
+						salePeriod: 'all'
 					}
         		}
 			},

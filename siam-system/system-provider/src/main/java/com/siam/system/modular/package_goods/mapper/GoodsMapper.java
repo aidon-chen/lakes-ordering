@@ -79,6 +79,12 @@ public interface GoodsMapper extends BaseMapper<Goods> {
             "<if test=\"goodsMenuDto.goodsStatusIn2And4 != null and goodsMenuDto.goodsStatusIn2And4 == true\"> AND g.status in (2, 4) </if>" +
             "<if test=\"goodsMenuDto.preferentialName != null and goodsMenuDto.preferentialName !=''\"> AND g.preferential_name like '%${goodsMenuDto.preferentialName}%' </if>" +
             "<if test=\"goodsMenuDto.packingCharges != null\"> AND g.packing_charges = #{goodsMenuDto.packingCharges} </if>" +
+            //营业时段（叠加设计）：管理端「白天/夜晚」切换按时段筛选 —— 单品覆盖优先，否则看所属分类；语义与 C 端 SalePeriodService 完全一致
+            "<if test=\"goodsMenuDto.salePeriod != null and goodsMenuDto.salePeriod != ''\"> AND (" +
+            "  exists (select 1 from tb_goods_sale_period p where p.goods_id = g.id and p.period_code = #{goodsMenuDto.salePeriod})" +
+            "  or ( not exists (select 1 from tb_goods_sale_period p2 where p2.goods_id = g.id)" +
+            "       and (m.sale_period IS NULL OR m.sale_period = 'all' OR m.sale_period = #{goodsMenuDto.salePeriod}) )" +
+            ") </if>" +
             "</where> order by g.id desc" +
             "</script>")
     Page<Map<String, Object>> getListByPageJoinMenu(@Param("page") Page page, @Param("goodsMenuDto") GoodsMenuDto goodsMenuDto);
@@ -112,6 +118,12 @@ public interface GoodsMapper extends BaseMapper<Goods> {
             "<if test=\"goodsMenuDto.goodsStatusIn2And4 != null and goodsMenuDto.goodsStatusIn2And4 == true\"> AND g.status in (2, 4) </if>" +
             "<if test=\"goodsMenuDto.preferentialName != null and goodsMenuDto.preferentialName !=''\"> AND g.preferential_name like '%${goodsMenuDto.preferentialName}%' </if>" +
             "<if test=\"goodsMenuDto.packingCharges != null\"> AND g.packing_charges = #{goodsMenuDto.packingCharges} </if>" +
+            //营业时段（叠加设计）：同上，与管理端「白天/夜晚」切换一致
+            "<if test=\"goodsMenuDto.salePeriod != null and goodsMenuDto.salePeriod != ''\"> AND (" +
+            "  exists (select 1 from tb_goods_sale_period p where p.goods_id = g.id and p.period_code = #{goodsMenuDto.salePeriod})" +
+            "  or ( not exists (select 1 from tb_goods_sale_period p2 where p2.goods_id = g.id)" +
+            "       and (m.sale_period IS NULL OR m.sale_period = 'all' OR m.sale_period = #{goodsMenuDto.salePeriod}) )" +
+            ") </if>" +
             "</where> order by latelyMonthlySales desc" +
             "</script>")
     Page<Map<String, Object>> getListByPageJoinMenuOrderByLatelyMonthlySales(@Param("page") Page page, @Param("goodsMenuDto") GoodsMenuDto goodsMenuDto);

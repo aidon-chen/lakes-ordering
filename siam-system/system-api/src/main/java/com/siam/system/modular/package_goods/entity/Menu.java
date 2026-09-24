@@ -45,6 +45,9 @@ public class Menu {
     @ApiModelProperty(notes = "分类是否可点单（A-05：1=可点单 0=不可点单；C 端菜单接口按此过滤）")
     private Integer isCanOrder;
 
+    @ApiModelProperty(notes = "售卖时段（叠加设计：day=白天(咖啡)/night=夜间(酒水)/all=全天/NULL=全天；C 端菜单按当前时段过滤）")
+    private String salePeriod;
+
     @ApiModelProperty(notes = "创建时间")
     private Date createTime;
 
@@ -105,6 +108,14 @@ public class Menu {
 
     public void setIsCanOrder(Integer isCanOrder) {
         this.isCanOrder = isCanOrder;
+    }
+
+    public String getSalePeriod() {
+        return salePeriod;
+    }
+
+    public void setSalePeriod(String salePeriod) {
+        this.salePeriod = salePeriod;
     }
 
     public Date getCreateTime() {
