@@ -9,6 +9,9 @@
 			<text class="success-desc">已自动识别桌台，确认人数后即可点餐</text>
 		</view>
 
+		<!-- 校验失败提示（C-04：停用/作废桌码） -->
+		<view class="invalid-banner" v-if="qrInvalid">{{ qrInvalid }}</view>
+
 		<!-- 台位卡 -->
 		<view class="card">
 			<text class="card-title">桌台信息</text>
@@ -41,6 +44,9 @@
 <script>
 	let app = null;
 	import https from '../../../utils/http';
+	// C-04 台位校验开关：/rest/shop/diningTable/detail 后端未实现（M-07 待拍板）前保持 false，
+	// 跳过校验直接放行，避免接口 404 把流程卡死在「桌台信息加载中」；后端落地后置 true 恢复真校验。
+	const TABLE_VERIFY_ENABLED = false;
 	export default {
 		data() {
 			return {
@@ -50,10 +56,12 @@
 				personCount: 4,
 				minPerson: 2,
 				maxPerson: 12,
-				// 扫码校验状态（C-04：作废码/停用台位禁止进入点单）
-				qrInvalid: '',
-				verified: false
-			};
+			// 扫码校验状态（C-04：作废码/停用台位禁止进入点单）
+			qrInvalid: '',
+			verified: false,
+			// 来源页：pay=结算页补录桌位（确认人数后返回结算页继续支付）
+			fromPage: ''
+		};
 		},
 		computed: {
 			tableLabel() {
@@ -95,6 +103,7 @@
 			this.tableId = params.tid || params.tableId || params.tableNo || (options && options.tableNo) || '';
 			this.area = params.area || (options && options.area) || '';
 			this.tableType = params.type || (options && options.type) || '散台';
+			this.fromPage = (options && options.from) || '';
 			// 扫码校验（C-04）：停用台位/失效桌码禁止进入点单；成功则拉取容量/类型/区域
 			this.verifyTable(scene);
 		},
@@ -103,6 +112,11 @@
 			verifyTable(scene) {
 				if (!this.tableId) {
 					return; // 无桌号，点单时兜底拦截
+				}
+				// 校验开关关闭：直接放行（人数/桌号照常可用），下单时后端兜底
+				if (!TABLE_VERIFY_ENABLED) {
+					this.verified = true;
+					return;
 				}
 				https.request('/rest/shop/diningTable/detail', { tableNo: this.tableId }).then((res) => {
 					const d = res.data;
@@ -134,7 +148,8 @@
 					}
 					this.verified = true;
 				}).catch(() => {
-					// 接口异常不阻塞流程，点单时由后端兜底校验
+					// 接口异常不阻塞流程：放行进入点单，下单时由后端兜底校验
+					this.verified = true;
 				});
 			},
 			decrease() {
@@ -178,6 +193,11 @@
 				};
 				// 通过 globalData 传递桌号（menu/index 为 tabBar 页，switchTab 不能带参）
 				app.globalData.deliveryAndSelfTaking.dineInfo = dineInfo;
+				if (this.fromPage === 'pay') {
+					// 结算页补录桌位：确认人数后返回结算页继续支付
+					uni.navigateBack();
+					return;
+				}
 				uni.switchTab({
 					url: '/pages/menu/index/index'
 				});
@@ -319,5 +339,15 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
+	}
+
+	/* 校验失败提示 */
+	.invalid-banner {
+		margin: 24rpx 32rpx 0 32rpx;
+		padding: 20rpx 24rpx;
+		border-radius: 12rpx;
+		background: #FCEBEB;
+		color: #A32D2D;
+		font-size: 26rpx;
 	}
 </style>

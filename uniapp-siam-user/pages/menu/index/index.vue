@@ -11,10 +11,10 @@
 						<block v-if="!isLoading">
 							<view>
 								<view class="flex_start shop-name-row">
-									<view class="out_of_range one_row shop-name-text">{{ brandName }}</view>
+									<view class="out_of_range one_row shop-name-text">{{ shopDisplayName }}</view>
 									<view class="dine-table-tag" v-if="dineInfo">堂食·{{ dineInfo.tableNo }}</view>
 								</view>
-								<view class="distance_m">{{ shopAddressLine }}</view>
+								<view class="distance_m">{{ shopDisplayAddress }}</view>
 							</view>
 						</block>
 						<block v-else>
@@ -449,10 +449,7 @@
 				img: '',
 				evt: '',
 				// 点餐方式：本项目仅「堂食 / 到店自提」两档（不做外送）→ 模板内直写，不再维护 selfOutItems 数组
-				// 门店信息占位文案（与首页 A-01 的 shopName / shopInfoLine 完全一致，暂不接定位）
-				// 接真实数据见模板内注释；改文案请两处一起改
-				brandName: '乐章 LIVE 酒馆',
-				shopAddressLine: '***市 **区 **路 **号 · 营业中至 02:00',
+				// 门店名与地址改为读当前门店真实数据（tb_shop.name），见 computed.shopDisplayName / shopDisplayAddress
 				selfOutActiveIndex: 0,
 				dineInfo: null,
 				winHeight: 0,
@@ -473,6 +470,23 @@
 
 				}
 			};
+		},
+		computed: {
+			// 门店名：取当前门店真实名称（tb_shop.name，来自 /rest/shop/detail 的 shopInfo.shop）
+			shopDisplayName() {
+				return (this.shopInfo && this.shopInfo.shop && this.shopInfo.shop.name) || '湖里Lakes';
+			},
+			// 门店地址：street + houseNumber；营业态用 shop.isOperating / endTime
+			// 注意：没拿到门店数据（shop.id 为空）≠ 打烊，此时不显示「暂停营业」误导用户
+			shopDisplayAddress() {
+				var shop = (this.shopInfo && this.shopInfo.shop) || {};
+				if (!shop.id) {
+					return '';
+				}
+				var address = [shop.street, shop.houseNumber].filter(Boolean).join('');
+				var operating = shop.isOperating ? ('营业中至 ' + (shop.endTime || '')) : '暂停营业';
+				return [address, operating].filter(Boolean).join(' · ');
+			}
 		},
 		/**
 		 * 生命周期函数--监听页面加载
@@ -503,6 +517,8 @@
 			app.globalData.deliveryAndSelfTaking.ifIndexSwitchTab = false;
 			app.globalData.deliveryAndSelfTaking.selfOutActiveIndex = selfOutActiveIndex;
 			app.globalData.deliveryAndSelfTaking.chooseIndex = selfOutActiveIndex;
+			// 桌位信息以 globalData 为唯一数据源：台位确认页（C-04）写入后此处同步点亮「堂食·XX桌」
+			this.dineInfo = app.globalData.deliveryAndSelfTaking.dineInfo || null;
 			console.log("selfOutActiveIndex=", selfOutActiveIndex);
 			console.log("query=", 1);
 			// this.setData({
@@ -868,25 +884,46 @@
 				}
 			},
 			getShopList() {
-				if (app.globalData.deliveryAndSelfTaking.location) {
-					var _this = this;
-					https.request('/rest/shop/list', {
-						pageNo: -1,
-						pageSize: 1,
-						position: app.globalData.deliveryAndSelfTaking.location
-					}).then((result) => {
-						if (result.success) {
-							setTimeout(function timeout() {
-								_this.isLoading = false;
-							}, 2000);
-							if (result.data.records.length > 0) {
-								_this.getShopInfo(result.data.records[0]);
-							}
-						}
-					});
+				var _this = this;
+				// 按定位取最近一家；定位缺失或列表查空（定位距门店超出配送距离等）都走回退，
+				// 不再静默什么都不做（曾导致菜单页一直显示「暂停营业＋暂无商品」）
+				if (!app.globalData.deliveryAndSelfTaking.location) {
+					this.loadFallbackShop();
+					return;
 				}
+				https.request('/rest/shop/list', {
+					pageNo: -1,
+					pageSize: 1,
+					position: app.globalData.deliveryAndSelfTaking.location
+				}).then((result) => {
+					if (result.success) {
+						setTimeout(function timeout() {
+							_this.isLoading = false;
+						}, 2000);
+						if (result.data.records.length > 0) {
+							_this.getShopInfo(result.data.records[0]);
+							return;
+						}
+					}
+					_this.loadFallbackShop();
+				});
+			},
+			// 回退：优先用用户在门店列表/详情选过的 currentShopId（与首页同源），再没有才提示
+			loadFallbackShop() {
+				var currentShopId = uni.getStorageSync('currentShopId');
+				if (currentShopId) {
+					this.getShopInfo({ id: currentShopId });
+					return;
+				}
+				uni.showToast({ title: '当前定位附近没有可用门店', icon: 'none' });
+				this.isLoading = false;
 			},
 			getShopInfo(initShopInfo) {
+				if (!initShopInfo || !initShopInfo.id) {
+					// 入参缺失（如选店返回路径 initShopInfo 未初始化）→ 走回退，避免 TypeError 静默卡死
+					this.loadFallbackShop();
+					return;
+				}
 				var shopId = initShopInfo.id;
 				https.request('/rest/shop/detail', {
 					id: shopId,
@@ -1624,17 +1661,12 @@
 								toastService.showToast('桌台码无效，请扫描桌台二维码');
 								return;
 							}
-							const area = (text.match(/[?&]area=(\w+)/i) || [])[1] || '';
-							const tableId = match[2];
-							const dineInfo = {
-								tableId: tableId,
-								area: area,
-								tableNo: (area ? area + '区' : '') + tableId + '桌',
-								tableLabel: tableId,
-								personCount: 4
-							};
-							app.globalData.deliveryAndSelfTaking.dineInfo = dineInfo;
-							this.dineInfo = dineInfo;
+							// 进台位确认页（C-04）确认人数后回本页（scene=查询串，URL 取 ? 后部分）
+							const qIdx = text.indexOf('?');
+							const scene = qIdx > -1 ? text.substring(qIdx + 1) : text;
+							uni.navigateTo({
+								url: '/pages/menu/scan-table/scan-table?scene=' + encodeURIComponent(scene)
+							});
 						},
 						fail: () => {}
 					});
@@ -3035,7 +3067,7 @@
 
 	.menu_left_scorll {
 		width: 25vh;
-		background: #f6f6f6;
+		background: #ffffff;
 	}
 
 	.menu_right_scorll {
@@ -3058,7 +3090,8 @@
 		text-align: center;
 		font-size: 26rpx;
 		padding: 0 20rpx;
-		box-shadow: 0 -1px #f6f6f6;
+		/* 白底下的分类分隔线（原 #f6f6f6 在白底上几乎不可见） */
+		box-shadow: 0 -1px #ededed;
 	}
 
 	.left_active {
