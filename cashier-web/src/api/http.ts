@@ -2,7 +2,7 @@ import axios from 'axios'
 
 /**
  * siam-server 接口层
- * - 本地开发（vite dev）：/rest 经 vite proxy 转发到 localhost:9200
+ * - 本地开发（vite dev）：/rest 经 vite proxy 转发到 localhost:9411
  * - 生产构建（vite build）：直连云托管后端 bar-mvp 公网域名（静态托管无 proxy）
  * 响应信封：{ code: 0, msg, data }（BasicResult）
  */

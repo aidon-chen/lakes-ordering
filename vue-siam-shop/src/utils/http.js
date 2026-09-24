@@ -363,8 +363,25 @@ function dealDataNoVue(data, success,fail,params) {
     }
   }
 }
+/**
+ * 图片前缀（与 axios baseURL 同源判定，见文件顶部 NODE_ENV 分支）
+ *   - production / production_test → 云端 OSS 公网域名
+ *   - 其它（本地 npm run dev）      → 后端本地存储端点（落盘优先，本地无图自动回源 OSS）
+ * 库里的图片字段存的是相对路径（data/images/...），两种模式同构，只换前缀。
+ */
+function getOssPrefix() {
+  var oss = config.appConfig.oss;
+  if (process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'production_test') {
+    return oss.domain;
+  }
+  return oss.developmentDomain || oss.domain;
+}
 function publicUrl(path) {
-  return config.appConfig.oss.domain+path;
+  // 已经是绝对地址（后台直传返回全量 URL）的原样返回，避免二次拼前缀
+  if (path && String(path).indexOf('http') === 0) {
+    return path;
+  }
+  return getOssPrefix() + path;
 }
 
 export default {

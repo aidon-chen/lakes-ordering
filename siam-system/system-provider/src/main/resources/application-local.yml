@@ -156,6 +156,15 @@ aliyun:
     secret: siam1026@163.com
     endpoint: http://oss-cn-hangzhou.aliyuncs.com
     bucketName: siam-hangzhou
+    # ★ 本地联调：目录非空 ⇒ 上传的图片写本机磁盘、完全不连 OSS（无需 AccessKey）
+    #   访问前缀 = http://localhost:9411/siam-server/upload/ ，与 OSS 的相对路径同构，
+    #   本地没有的图（存量商品图）会自动回源到 OSS，所以两种图都能显示。
+    #   云端 application-mvp.yml 不配此项 ⇒ 仍走 OSS，行为不变。
+    #   ⚠ 注意：本文件只在 --spring.profiles.active=local 时加载；
+    #     而本地一键套件（local-run/scripts/start-backend.sh）实际用 **mvp** profile 启动，
+    #     所以那一路径是由启动脚本以命令行参数 --aliyun.oss.localStorageDir=<同值> 注入的。
+    #     两处保持一致即可（改目录时两处都要改）。
+    localStorageDir: /Volumes/app/project/wechat/siam-server/upload
 
   #全国快递物流查询
   express:

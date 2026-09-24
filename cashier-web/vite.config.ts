@@ -4,7 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 import { fileURLToPath, URL } from 'node:url'
 
 // 收银端前端：Vue3 + Vite + Pinia + Tailwind
-// 后端代理：本地 siam-server system-provider 端口 9200（application-local.yml）
+// 后端代理：本地 siam-server system-provider 端口 9411（由 local-run 的 env.sh PORT_BACKEND 注入）
 export default defineConfig(({ mode }) => ({
   /*
    * base 必须是「带子路径的绝对路径」，三种取值实测：
@@ -23,7 +23,7 @@ export default defineConfig(({ mode }) => ({
     port: 5270,
     proxy: {
       // 后端 context-path = /siam-server，vite 的 /rest 需加前缀
-      '/rest': { target: 'http://localhost:9200', changeOrigin: true, rewrite: p => '/siam-server' + p }
+      '/rest': { target: 'http://localhost:9411', changeOrigin: true, rewrite: p => '/siam-server' + p }
     }
   }
 }))

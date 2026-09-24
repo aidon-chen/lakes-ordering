@@ -8,5 +8,5 @@ export default class GlabalConfig {
 	// #endif
     
     // static baseUrl = 'http://localhost:9020';
-    static ossUrl = 'https://siam-hangzhou.oss-cn-hangzhou.aliyuncs.com/';
+    static ossUrl = 'https://lakes-public.oss-cn-chengdu.aliyuncs.com/';
 }

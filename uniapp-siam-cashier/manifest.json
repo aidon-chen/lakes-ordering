@@ -1,5 +1,5 @@
 {
-    "name" : "暹罗收银台点餐",
+    "name" : "湖里Lakes",
     "appid" : "__UNI__9FE3288",
     "description" : "",
     "versionName" : "1.0.0",
@@ -62,7 +62,7 @@
             "proxy" : {
                 "/siam-server" : {
                     //"target" : "https://api.show.siamit.cn", //数据请求的接口网址
-                    "target" : "http://localhost:9200", //数据请求的接口网址
+                    "target" : "http://localhost:9411", //数据请求的接口网址
                     "changeOrigin" : true, //是否开启跨域
                     "secure" : false,
                     "pathRewrite" : {

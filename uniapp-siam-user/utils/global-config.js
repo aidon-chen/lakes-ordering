@@ -8,7 +8,11 @@ export default class GlabalConfig {
 	// #endif
 
     // static baseUrl = 'http://localhost:9020';
-    static ossUrl = 'https://siam-hangzhou.oss-cn-hangzhou.aliyuncs.com/';
+    static ossUrl = 'https://lakes-public.oss-cn-chengdu.aliyuncs.com/';
+    // ★ 本地联调时的图片前缀（指向本地后端存储端点，落盘优先 + 本地无图自动回源 OSS）：
+    //   走 customer-cli 编译时无需手改——sync-src.sh 检测到接口是 localhost 会自动改写 src 副本；
+    //   仅在 HBuilderX 里直接跑本正本调试时，才把上面那行换成下面这行。
+    // static ossUrl = 'http://localhost:9411/siam-server/upload/';
 
 	/**
 	 * 微信云托管通道（04-deploy-cost/mvp-migration/05）

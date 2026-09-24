@@ -104,7 +104,7 @@
 		<van-overlay :show="isVipDialogShow" z-index="1">
 			<view class="flex_column_center content_box" style="margin-top: 50px;">
 				<image
-					:src="'https://siam-hangzhou.oss-cn-hangzhou.aliyuncs.com/data/images/business/vip_recharge_guide.png?v=' + timestamp"
+					:src="'https://lakes-public.oss-cn-chengdu.aliyuncs.com/data/images/business/vip_recharge_guide.png?v=' + timestamp"
 					mode="widthFix" class="now-order-image" @tap="goToRecharge"></image>
 				<van-icon name="clear" @tap="close" style="font-size: 40px;color: wheat;" />
 			</view>
