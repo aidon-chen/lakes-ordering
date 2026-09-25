@@ -359,14 +359,24 @@ public class MerchantServiceImpl implements MerchantService {
     public MerchantResult getLoginMerchantInfo(MerchantParam param) {
         BasicData basicResult = new BasicData();
         Merchant loginMerchant = merchantSessionManager.getSession(TokenUtil.getToken());
-
+        // 2026-09-25 修复：token 失效/无会话时 getSession 返回 null，原代码直接 .getId() 抛 NPE，
+        // 被全局兜底成「系统异常」⇒ 前端拿不到「未登录」信号，只能弹「查不到商户信息」的误导兜底。
+        // 现改为明确的业务异常（前端可据此引导重新登录）。
+        if (loginMerchant == null) {
+            throw new StoneCustomerException("登录已过期，请重新登录");
+        }
         Merchant dbMerchant = merchantMapper.selectByPrimaryKey(loginMerchant.getId());
+        if (dbMerchant == null) {
+            throw new StoneCustomerException("登录商户不存在，请重新登录");
+        }
 
         //需要返回关联的店铺信息，返回是否营业
         Map<String, Object> resultMap = com.siam.package_common.util.BeanUtils.beanToMap(dbMerchant);
         Shop shop = shopService.getById(dbMerchant.getShopId());
-        resultMap.put("shopName", shop.getName());
-        resultMap.put("shopLogoImg", shop.getShopLogoImg());
+        if (shop != null) {
+            resultMap.put("shopName", shop.getName());
+            resultMap.put("shopLogoImg", shop.getShopLogoImg());
+        }
 
         basicResult.setData(resultMap);
 
