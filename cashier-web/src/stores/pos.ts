@@ -334,6 +334,12 @@ export const usePosStore = defineStore('pos', {
       const t = this.tables.find(x => x.id === tableId)
       this.currentTableId = tableId
       this.currentSessionId = t?.session?.sessionId ?? null
+      // 2026-09-25 诊断：台位有会话但列表接口没下发 session 时，会走到这里且 sessionId=null
+      // ⇒ 顶栏显示已选桌、收款却报"需先点桌"。此处显式提示，便于定位是数据问题还是操作问题。
+      if (this.currentSessionId == null) {
+        console.warn('[pos] resumeOrder：该台位无 session 数据', { tableId, table: t })
+        alert(`台位 ${t?.tableNo ?? tableId} 当前没有开台会话数据——若它在台位图上显示「占用中」，请截图反馈（可能是会话数据未下发）；空闲台请先点「开台」`)
+      }
       if (!this.allGoods.length) void this.loadOrderData()
       this.setView('order')
     },
@@ -491,8 +497,14 @@ export const usePosStore = defineStore('pos', {
       const table = this.currentTable
       const sessionId = this.currentSessionId
       // 堂食单仍必须绑台位；**外带自提单免台位**（散客入口，2026-09-23）
-      if (!takeaway && (!table || sessionId == null)) {
+      // 2026-09-25 修复：原来把「没选桌」和「选了桌但没有开台会话」混成一句，
+      // 导致"明明已选桌还被提示去选桌"（误导）。现分两种情况给出准确指引。
+      if (!takeaway && !table) {
         alert('堂食单需先在台位图点桌；如需免台位下单，请切到「外带自提」模式')
+        return { ok: false }
+      }
+      if (!takeaway && sessionId == null) {
+        alert(`台位 ${table!.tableNo} 当前没有进行中的开台会话——请回「台位图」对该桌点「开台」（选人数）后再来点单；若它显示占用中，请截图反馈（会话数据可能未下发）`)
         return { ok: false }
       }
       const lines = this.cart.filter(l => l.added)
