@@ -43,7 +43,9 @@ public interface AdvertisementMapper extends BaseMapper<Advertisement> {
             "<if test=\"advertisement.imageLinkUrl != null and advertisement.imageLinkUrl !=''\"> AND a.image_link_url like '%${advertisement.imageLinkUrl}%' </if>" +
             "<if test=\"advertisement.startCreateTime != null\"> AND DATE_FORMAT(a.create_time, '%Y/%m/%d') &gt;= #{advertisement.startCreateTime} </if>" +
             "<if test=\"advertisement.endCreateTime != null\"> AND DATE_FORMAT(a.create_time, '%Y/%m/%d') &lt;= #{advertisement.endCreateTime} </if>" +
-            "</where> order by a.id desc" +
+            // A-10 生效时间窗过滤（开关 onlyValid，仅客户端读取接口开启）：空 start/end 视为不限
+            "<if test=\"advertisement.onlyValid != null and advertisement.onlyValid\"> AND (a.start_time is null or a.start_time &lt;= now()) AND (a.end_time is null or a.end_time &gt;= now()) </if>" +
+            "</where> order by ifnull(a.sort_number, 999999) asc, a.id desc" +
             "</script>")
     Page<Map<String, Object>> getListByPage(@Param("page") Page page, @Param("advertisement") Advertisement advertisement);
 }

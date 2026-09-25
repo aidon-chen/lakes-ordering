@@ -60,7 +60,11 @@ public class AdvertisementServiceImpl extends ServiceImpl<AdvertisementMapper, A
 
     @Override
     public Page getListByPage(AdvertisementParam param) {
-        Page<Map<String, Object>> page = advertisementMapper.getListByPage(new Page(param.getPageNo(), param.getPageSize()), param);
-        return page;
+        // 约定 pageNo<=0 表示不分页（Swagger 注释口径）：MyBatis-Plus 在 size<0 时不拼 LIMIT。
+        // 此前直接把 -1 传进 Page，current 被钳成 1、pageSize 生效，导致客户端固定 pageSize:20 成为隐形上限。
+        long pageNo = param.getPageNo() == null ? 1L : param.getPageNo();
+        long pageSize = param.getPageSize() == null ? 20L : param.getPageSize();
+        Page page = pageNo <= 0 ? new Page(1, -1) : new Page(pageNo, pageSize);
+        return advertisementMapper.getListByPage(page, param);
     }
 }
