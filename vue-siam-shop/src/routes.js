@@ -51,8 +51,9 @@ const appraiseList = () => import( './pages/orderManage/appraiseList.vue')
 const fullReductionRuleList = () => import( './pages/promotionManage/fullReductionRuleList.vue')
 const couponsList = () => import( './pages/promotionManage/couponsList.vue')
 
-//营销中心（M-01~M-04）
+//营销中心（M-01~M-04 / A-10 首页海报）
 const activityPopupList = () => import( './pages/marketing/activityPopupList.vue')
+const homePosterList = () => import( './pages/marketing/homePosterList.vue')
 
 //门店管理
 const shopList = () => import( './pages/shopManage/shopList.vue')   // A-01 门店信息（含启停）
@@ -86,6 +87,8 @@ const mallEditGoods = () => import( './pages/mallManage/goodsManage/editGoods.vu
 const mallStockList = () => import( './pages/mallManage/goodsManage/stockList.vue')
 const mallOrderList = () => import( './pages/mallManage/orderManage/orderList.vue')
 const mallFullReductionRuleList = () => import( './pages/mallManage/promotionManage/fullReductionRuleList.vue')
+//商城轮播（2026-09-25）：tb_advertisement type=3，顾客端商城首页顶部轮播
+const mallCarouselList = () => import( './pages/mallManage/advertisementManage/mallCarouselList.vue')
 
 //数据中心（2026-09-22：菜单项与路由已下线，页面文件 pages/basicModule/statisticGraph.vue 保留未删）
 const statisticGraph = () => import( './pages/basicModule/statisticGraph.vue')
@@ -213,6 +216,7 @@ let routes = [
           { path: '/pointsMall_stockList', component: mallStockList, name: '商城库存' },
           { path: '/pointsMall_orderList', component: mallOrderList, name: '商城订单' },
           { path: '/pointsMall_fullReductionRuleList', component: mallFullReductionRuleList, name: '满减规则' },
+          { path: '/pointsMall_carouselList', component: mallCarouselList, name: '商城轮播' },//商城首页顶部轮播（type=3）
           // 隐藏路由（弹层外置页）：路径名沿用 admin 源页内的跳转目标，保证页面内导航零改动
           { path: '/pointsMall_addMenu', component: mallAddMenu, name: '新增分类', hidden: true },
           { path: '/pointsMall_editMenu', component: mallEditMenu, name: '编辑分类', hidden: true },
@@ -227,6 +231,7 @@ let routes = [
       iconCls: 'el-icon-s-order',
       children: [
           { path: '/activityPopupList', component: activityPopupList, name: '首页活动弹窗' },//M-01/M-02
+          { path: '/homePosterList', component: homePosterList, name: '首页海报' },//A-10 首页海报（type=1，R3 迁移单一入口）
           { path: '/couponsList', component: couponsList, name: '优惠券管理' },
           { path: '/fullReductionRuleList', component: fullReductionRuleList, name: '满减' },
       ]

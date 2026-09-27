@@ -12,13 +12,14 @@
 			</view>
 		</view>
 
-		<!-- A-01 海报区（全幅无圆角） -->
+		<!-- A-01 海报区（全幅无圆角）：后台 type=1 海报优先，无数据时回落设计稿占位渐变 -->
 		<view class="hero">
-			<!-- 海报图占位：暂用 2 张深绿渐变，不接真实广告图（接回方式见 data.posterSlides 注释） -->
-			<swiper class="hero-swiper" :autoplay="true" :interval="5000" :duration="500" :circular="true"
-				@change="swiperChange">
-				<swiper-item v-for="(slide, index) in posterSlides" :key="index">
-					<view class="hero-slide"></view>
+			<swiper class="hero-swiper" :autoplay="heroSlides.length > 1" :interval="5000" :duration="500"
+				:circular="heroSlides.length > 1" @change="swiperChange">
+				<swiper-item v-for="(slide, index) in heroSlides" :key="index">
+					<image v-if="!slide.isPlaceholder" class="hero-image" :src="slide.imagePath" mode="aspectFill"
+						:data-link="slide.imageLinkUrl" @tap="posterTap" />
+					<view v-else class="hero-slide"></view>
 				</swiper-item>
 			</swiper>
 
@@ -35,9 +36,9 @@
 			<!-- 底部渐变遮罩 -->
 			<view class="hero-mask"></view>
 
-			<!-- 海报文案 + 轮播指示点 -->
-			<view class="hero-title">{{ posterTitle }}</view>
-			<view class="hero-subtitle">{{ posterSubtitle }}</view>
+			<!-- 海报文案（随当前张切换）+ 轮播指示点 -->
+			<view class="hero-title" v-if="posterTitle">{{ posterTitle }}</view>
+			<view class="hero-subtitle" v-if="posterSubtitle">{{ posterSubtitle }}</view>
 			<view class="hero-dots">
 				<view class="hero-dot" :class="{ 'is-active': swiperCurrent === index }"
 					v-for="(item, index) in dotCount" :key="index"></view>
@@ -92,17 +93,9 @@
 			return {
 				statusBarHeight: 0,
 				swiperCurrent: 0,
-				// 海报区占位：固定 2 张深绿渐变（不接真实广告图）。
-				// 接回真实轮播：把本数组换成 /rest/advertisement/list?type=1 返回的 records
-				// （含 imagePath / imageLinkUrl），并把模板中的 .hero-slide 换回 image 节点、恢复点击跳转。
-				posterSlides: [{
-					name: '海报占位一'
-				}, {
-					name: '海报占位二'
-				}],
-				// 海报区文案（设计稿文案池；后端 tb_advertisement 无标题字段，故为静态配置项）
-				posterTitle: '中秋主题夜',
-				posterSubtitle: '9/25 乐队现场 · 双款特调首发',
+				// 海报区：后台配置的首页海报（type=1）。imageName=主标题，description=副标题（R7）
+				// 上传入口：管理端 / 营销中心 / 首页海报
+				posterList: [],
 				// 门店信息：优先取用户在「门店列表」选过的 currentShopId，其次按定位取最近可自提门店；
 				// 取不到时保留下面的兜底文案，不阻塞首页渲染。取数见 loadShopInfo()。
 				shopName: '湖里Lakes',
@@ -119,9 +112,41 @@
 			};
 		},
 		computed: {
-			// 指示点数量跟随海报占位张数（当前 2 张）
+			// 海报区数据源：后台 type=1 海报优先；无数据时回落设计稿占位渐变（带默认文案，保证视觉不空）
+			heroSlides() {
+				if (this.posterList.length > 0) {
+					return this.posterList.map(function(item) {
+						return {
+							isPlaceholder: false,
+							imagePath: item.imagePath,
+							imageLinkUrl: item.imageLinkUrl,
+							imageName: item.imageName,
+							description: item.description
+						};
+					});
+				}
+				return [{
+					isPlaceholder: true,
+					imageName: '中秋主题夜',
+					description: '9/25 乐队现场 · 双款特调首发'
+				}, {
+					isPlaceholder: true,
+					imageName: '中秋主题夜',
+					description: '9/25 乐队现场 · 双款特调首发'
+				}];
+			},
+			// 指示点数量跟随海报张数
 			dotCount() {
-				return this.posterSlides.length;
+				return this.heroSlides.length;
+			},
+			// 当前张的主标题 / 副标题（R7：imageName=主标题，description=副标题）
+			posterTitle() {
+				const slide = this.heroSlides[this.swiperCurrent];
+				return (slide && slide.imageName) || '';
+			},
+			posterSubtitle() {
+				const slide = this.heroSlides[this.swiperCurrent];
+				return (slide && slide.description) || '';
 			},
 			// 是否已拿到会员数据：决定「余额」段是否渲染（避免未加载时显示 ¥0.00 造成误读）
 			hasMember() {
@@ -149,6 +174,7 @@
 			app = getApp();
 			this.statusBarHeight = app.globalData.systemInfoSync.statusBarHeight;
 			this.getMemberInfo();
+			this.getPosterList();
 		},
 		onShow: function() {
 			if (!app) {
@@ -171,6 +197,7 @@
 		},
 		onPullDownRefresh() {
 			this.getMemberInfo();
+			this.getPosterList();
 			setTimeout(() => {
 				uni.stopPullDownRefresh();
 			}, 1000);
@@ -238,12 +265,54 @@
 				}).catch(() => {});
 			},
 
-			// C-02 首页活动弹窗：取弹窗广告（type=2），无数据则不展示
+			// A-01 海报区：后台配置的首页海报（type=1）。
+			// onlyValid=true 由后端按生效时间窗过滤（start/end 为空视为不限）；
+			// 无数据时 computed.heroSlides 回落设计稿占位渐变。
+			getPosterList() {
+				https.request('/rest/advertisement/list', {
+					type: 1,
+					pageNo: -1,
+					pageSize: 20,
+					onlyValid: true
+				}).then((result) => {
+					if (result && result.success && result.data && result.data.records) {
+						this.posterList = result.data.records.map(function(item) {
+							return {
+								imagePath: GlobalConfig.ossUrl + item.imagePath,
+								imageLinkUrl: item.imageLinkUrl || '',
+								imageName: item.imageName || '',
+								description: item.description || ''
+							};
+						}).filter(function(item) {
+							return !!item.imagePath;
+						});
+						this.swiperCurrent = 0;
+					}
+				}).catch(() => {});
+			},
+
+			// 点击海报跳转（沿用原轮播图的登录校验口径）
+			posterTap(e) {
+				const url = e.currentTarget.dataset.link;
+				if (!url) return;
+				let _this = this;
+				authService.checkIsLogin().then((result) => {
+					if (result) {
+						_this.navigateToAd(url);
+						return;
+					}
+					app.globalData.checkIsAuth('scope.userInfo');
+				});
+			},
+
+			// C-02 首页活动弹窗：取弹窗广告（type=2），无数据则不展示。
+			// onlyValid=true：由后端按生效时间窗过滤（此前客户端不判时间，过期弹窗照常弹出）
 			getActivityDialog() {
 				https.request('/rest/advertisement/list', {
 					type: 2,
 					pageNo: -1,
-					pageSize: 1
+					pageSize: 1,
+					onlyValid: true
 				}).then((result) => {
 					if (result.success && result.data && result.data.records && result.data.records
 						.length > 0) {
@@ -372,12 +441,18 @@
 	}
 
 	.hero-swiper,
-	.hero-slide {
+	.hero-slide,
+	.hero-image {
 		width: 100%;
 		height: 1140rpx;
 	}
 
-	/* 海报图占位渐变（同 .hero 底色；接回真实广告图后可删本类） */
+	/* 真实海报图（后台配置，规格 750×1140，aspectFill 填满 hero） */
+	.hero-image {
+		display: block;
+	}
+
+	/* 占位渐变（无后台数据时的设计稿兜底，同 .hero 底色） */
 	.hero-slide {
 		background: linear-gradient(180deg, #253730 0%, #4F6B5E 55%, #739B8D 100%);
 	}
