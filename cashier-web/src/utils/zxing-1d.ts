@@ -12,14 +12,14 @@
  *    （BYTES_PER_ELEMENT === 1）时会**当成单通道灰度**直接用，而不是 RGBA。
  *    传入 ImageData.data 会被按 4 倍步长误读 → 永远解不出来。
  *
- * ★★ 2026-09-25：**只解一维码，不要加 QR_CODE**（三条实测依据，别改回去）：
+ * ★★ 2026-09-24：**只解一维码，不要加 QR_CODE**（三条实测依据，别改回去）：
  *
  *   ① 付款码支付（被扫）要的是**条形码**里的 18 位 `auth_code`；二维码里那段 URL
  *      后端根本不认（`isPaymentCode` 只收 `\d{10,24}`）。加 QR 对业务零收益。
  *   ② `POSSIBLE_FORMATS` 里只要同时含 `QR_CODE`，@zxing/library 就会把
  *      `QRCodeReader` 插到 1D reader **前面**（`setHints()` 里 1D 在 tryHarder 时被 push 到最后），
  *      于是每帧都要先白跑一次二维码检测才轮到条形码 —— 平板上纯属浪费帧预算。
- *   ③ 更要命的是 JS 版 `QRCodeReader` **基本不可用**（2026-09-25 实测）：
+ *   ③ 更要命的是 JS 版 `QRCodeReader` **基本不可用**（2026-09-24 实测）：
  *      · 直接 `new QRCodeReader().decodeWithState(bitmap)` → **抛 TypeError**
  *      · 经 `MultiFormatReader(POSSIBLE_FORMATS=[QR_CODE])` → 普通取景下恒 **NotFoundException**
  *        （只有再加 `PURE_BARCODE`、把整幅当"纯码"才解得出来）

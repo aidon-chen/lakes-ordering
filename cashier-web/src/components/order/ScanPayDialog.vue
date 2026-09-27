@@ -133,13 +133,16 @@
             </button>
           </div>
 
-          <!-- 实时诊断行（★ 2026-09-25 加）：把「扫了没反应」变成看得见的三种原因，
-               否则收银员/远程协作都只能靠猜。刻意放在画面正下方、不遮视频 -->
+          <!-- 实时诊断行（★ 2026-09-25 强化）：帧计数 + 三档原因。字号/字重刻意加大 ——
+               上一版 11px 灰字在收银现场根本没人看，等于白加 -->
           <span
-            class="text-[11px] text-center"
-            style="line-height: 1.6; padding: 0 10px; color: var(--tc-sub)"
+            class="text-[12px] font-medium text-center"
+            style="line-height: 1.6; padding: 0 10px; color: var(--tc-title)"
           >
             {{ diagText }}
+          </span>
+          <span class="text-[10px] text-center" style="color: var(--tc-sub); padding: 0 10px">
+            ↑ 有这行且帧数在涨 = 新版已生效；连「识别引擎」一行都没有 = 浏览器缓存了旧版，请强制刷新页面（下拉刷新/清缓存）
           </span>
         </template>
 
@@ -272,6 +275,17 @@ let resumeAfterBusy = false
  *   · `decodedFrames === 0` ⇒ 解码器一帧都没解出 ⇒ **物理原因**：太远/虚焦/反光/码太小
  */
 const decodedFrames = ref(0)
+/** 已尝试解码的帧数（每完成一次 detectOnce +1）：「解码循环在跑」的直接证明 —— 界面上恒 0 = 循环死了/视频没就绪 */
+const triedFrames = ref(0)
+/**
+ * 原生引擎连续空结果的帧数。
+ * ★ 09-25 加：国产安卓 ROM/WebView 的 BarcodeDetector 对一维码经常「存在但检测不出」
+ *   （detect 恒返回空数组、不报错、也没有任何异常）——界面表现恰好就是「帧在走、永远没反应」。
+ *   连续 NATIVE_FALLBACK_HITS 帧无任何命中 ⇒ 不再相信它，自动降级 ZXing。
+ */
+const nativeZeroHits = ref(0)
+/** 降级阈值：30 帧 × 120ms ≈ 3.6s（画面里真没码时多等这 3.6s 无害；引擎真坏时 3.6s 后必得救） */
+const NATIVE_FALLBACK_HITS = 30
 /** 最近一帧「解出了但不是付款码」的内容长度（⚠️ 只存长度不存原文：付款码是支付凭据） */
 const lastOtherLen = ref(0)
 /** 上一帧解出的是哪类码：'qr' 时提示「对准条形码」，'1d'/'native' 时提示「内容不是付款码」 */
@@ -319,15 +333,16 @@ const engineLabel = computed(() =>
  */
 const diagText = computed(() => {
   if (!scanning.value) return ''
+  const head = `已扫 ${triedFrames.value} 帧`
   if (lastOtherLen.value > 0) {
     const tail =
       lastOtherSrc.value === 'qr'
         ? '扫到的是二维码 → 请对准付款码上方的「条形码」'
         : `扫到的内容不是付款码（长度 ${lastOtherLen.value}，非纯数字）→ 请对准付款码上方的「条形码」`
-    return `解码器工作正常（已解出 ${decodedFrames.value} 帧内容）· ${tail}`
+    return `${head} · 解码器工作正常（解出 ${decodedFrames.value} 帧）· ${tail}`
   }
   if (decodedFrames.value > 0) {
-    return `已解出 ${decodedFrames.value} 帧内容 · 尚未命中付款码`
+    return `${head} · 已解出 ${decodedFrames.value} 帧内容 · 尚未命中付款码`
   }
   // 一帧没解出：把「画面是否真的进来了」一并显示 —— 黑白纯色说明取帧失败，不是编码问题
   let luma = ''
@@ -335,7 +350,12 @@ const diagText = computed(() => {
     const [lo, hi] = frameLuma.value.split('~').map(Number)
     luma = hi - lo < 8 ? `｜⚠ 画面亮度 ${frameLuma.value}（纯色，取帧可能失败）` : `｜画面亮度 ${frameLuma.value}`
   }
-  return `一帧都没解出${luma} → ① 对准付款码的「条形码」而非二维码 ② 凑近到 15~20cm ③ 顾客手机屏幕调到最亮`
+  // 原生引擎接近降级阈值时提前告知（切引擎那一刻「识别引擎」标签会变，但提前说更不吓人）
+  const engineNote =
+    engine.value === 'native' && nativeZeroHits.value >= 10
+      ? `｜原生引擎已连续 ${nativeZeroHits.value} 帧无结果，稍后自动切换 ZXing 引擎重试`
+      : ''
+  return `${head}，一帧都没解出${engineNote}${luma} → ① 对准付款码的「条形码」而非二维码 ② 凑近到 15~20cm ③ 顾客手机屏幕调到最亮`
 })
 
 /**
@@ -350,8 +370,15 @@ const diagText = computed(() => {
  *   → 只有当摄像头 > 1280 宽（高分辨率平板）时才降采样，用于兜住 CPU。
  */
 const SCAN_MAX_WIDTH = 1280
-/** 只把画面中间这条横带送进解码：1D 条码只需一条横带，裁掉上下纯赚（像素少 ~56%） */
-const SCAN_BAND = 0.44
+/**
+ * 送进解码器的画面（09-25 复盘后改为**全帧**）。
+ *
+ * ★ 曾经取 0.44 只解「中间横带」省 CPU —— 已被 y4m 假摄像头实验证伪为**事故源**：
+ *   码偏出中间带（画面上下各 ~28%）⇒ 永远解不出且界面上毫无提示
+ *   （复现：600px 宽小码放在画面 12% 高度处，62 帧零命中，解码 canvas 纯色 246~246）。
+ *   全帧 1280 宽解码实测 23.5ms（Node），8fps 的 120ms 预算绰绰有余 —— 不省这个 CPU。
+ */
+const SCAN_BAND = 1
 
 /** 付款码只认纯数字（微信 18 位 / 支付宝 16~24 位）——避免扫到商品条码就误提交 */
 function isPaymentCode(raw: string): boolean {
@@ -428,18 +455,21 @@ async function prepareDecoder() {
     engine.value = 'native'
     return
   }
-  // iPad/Safari/Firefox 没有 BarcodeDetector → 上 ZXing 纯 JS 解码（动态 import，不进主包）
+  await ensureZxing()
+  engine.value = 'zxing'
+}
+
+/** 建立 ZXing 解码器（lazy：原生引擎连续无结果自动降级时也走这里） */
+async function ensureZxing() {
+  // iPad/Safari/Firefox 没有 BarcodeDetector（或原生引擎实测坏了）→ 上 ZXing 纯 JS 解码（动态 import，不进主包）
   const { createZxDecoder } = await import('@/utils/zxing-1d')
   decoder = createZxDecoder()
   canvas = document.createElement('canvas')
   cvsCtx = canvas.getContext('2d', { willReadFrequently: true })
   if (cvsCtx) {
-    // 只有摄像头 > SCAN_MAX_WIDTH 真要降采样时才起作用。本机实测 BILINEAR 与 LANCZOS
-    // 结果一致（都不是关键项），设 high 只是让降采样场景更稳妥。
     cvsCtx.imageSmoothingEnabled = true
     cvsCtx.imageSmoothingQuality = 'high'
   }
-  engine.value = 'zxing'
 }
 
 /**
@@ -461,7 +491,18 @@ async function detectOnce(): Promise<FrameHit> {
 
   if (nativeDetector) {
     const list = await nativeDetector.detect(video)
-    if (!list.length) return { kind: 'none' }
+    if (!list.length) {
+      // 原生引擎连续无结果 → 可能画面里真没码，也可能引擎坏（见 nativeZeroHits 注释）
+      nativeZeroHits.value++
+      if (nativeZeroHits.value >= NATIVE_FALLBACK_HITS) {
+        nativeDetector = null
+        nativeZeroHits.value = 0
+        await ensureZxing()
+        engine.value = 'zxing' // 诊断行的「识别引擎」会随之变化，收银员可感知
+      }
+      return { kind: 'none' }
+    }
+    nativeZeroHits.value = 0 // 有结果（哪怕是别的码）说明引擎活着，不降级
     // 原生引擎会一次性返回画面里**所有**码 → 遍历找出付款码即可，没有「谁先谁后」问题
     let other: { len: number; src: '1d' | 'qr' | 'native' } | null = null
     for (const b of list) {
@@ -522,6 +563,7 @@ function tick() {
         /* 单帧异常忽略，继续 */
       } finally {
         decoding = false
+        triedFrames.value++
       }
       if (scanning.value) loopTimer = window.setTimeout(tick, DECODE_INTERVAL)
     })()
@@ -542,6 +584,8 @@ function accept(text: string) {
 async function startScan() {
   scanMsg.value = ''
   decodedFrames.value = 0
+  triedFrames.value = 0
+  nativeZeroHits.value = 0
   lastOtherLen.value = 0
   lastOtherSrc.value = ''
   frameLuma.value = ''
