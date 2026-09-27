@@ -254,8 +254,7 @@
 				packingCharges: '',
 				fullReductionRuleList: '',
 				specListString: '',
-				collectInfo: '',
-				isCollect: '',
+				// 2026-09-27：collectInfo / isCollect 已随「收藏」入口一并删除
 				specLoading: false
 			};
 		},
@@ -267,7 +266,6 @@
 			this.userInfo = app.globalData.loginUserInfo;
 			this.getShopInfo(options.shopId);
 			this.getCommodityDetails(options.id);
-			this.getGoodsCollect(options.id);
 			console.log("options=", options)
 			this.shopId = options.shopId;
 			this.userInfo = app.globalData.loginUserInfo;
@@ -829,40 +827,7 @@
 				});
 			},
 
-			getGoodsCollect(goodsId) {
-				https.request('/rest/member/goodsCollect/selectByGoodsId', {
-					goodsId: goodsId
-				}).then((result) => {
-					if (result.success) {
-						this.setData({
-							collectInfo: result.data,
-							isCollect: result.data ? true : false
-						});
-					}
-				});
-			},
-
-			bindInsertCollect(e) {
-				https.request('/rest/member/goodsCollect/insert', {
-					goodsId: e.currentTarget.dataset.goodsid
-				}).then((result) => {
-					if (result.success) {
-						this.isCollect = true;
-						toastService.showSuccess('收藏成功');
-					}
-				});
-			},
-
-			bindDeleteCollect(e) {
-				https.request('/rest/member/goodsCollect/delete', {
-					goodsId: e.currentTarget.dataset.goodsid
-				}).then((result) => {
-					if (result.success) {
-						this.isCollect = false;
-						toastService.showSuccess('取消成功');
-					}
-				});
-			},
+			// 2026-09-27：getGoodsCollect / bindInsertCollect / bindDeleteCollect（收藏三方法，走 /rest/member/goodsCollect/*）已随「收藏」入口一并删除
 
 			uploadImage() {
 				console.log('占位：函数 uploadImage 未声明');
@@ -1797,28 +1762,7 @@
 		font-size: 40rpx;
 	}
 
-	.collect-in {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-	}
-
-	.iconshoucang1 {
-		color: #c3c3c3;
-		font-size: 45rpx;
-	}
-
-	.is-collect {
-		color: #fc7a7c;
-	}
-
-	.shoucang-text {
-		font-size: 26rpx;
-	}
-
-	.not-collect {
-		color: #c3c3c3;
-	}
+	/* 2026-09-27：.collect-in / .iconshoucang1 / .is-collect / .shoucang-text / .not-collect（收藏图标与状态样式）已随「收藏」入口一并删除 */
 
 	.score-money {
 		font-size: 30rpx;
