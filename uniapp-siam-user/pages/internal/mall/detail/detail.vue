@@ -1,6 +1,8 @@
 <template>
 	<view>
-		<view class="wodejl-view" @tap="bindShare">分享商品>></view>
+		<!-- 2026-09-25：「分享商品」悬浮入口已删（分享/邀请体系废弃，不在设计需求）。
+		     原为 <view class="wodejl-view">分享商品&gt;&gt;</view>（源码裸写 >> 被编译转义成 &gt;&gt; 字面显示），
+		     bindShare 点击后跳 pages/mine/share/index/index?inviterId=xx 邀请海报页，随入口一并移除 -->
 
 		<swiper :indicator-dots="indicatorDots" :autoplay="autoplay" class="carousel-swiper" :interval="interval"
 			:duration="duration" :indicator-active-color="afterColor">
@@ -19,12 +21,8 @@
 						<text class="score-money" :decode="true">&nbsp;&nbsp;(可用积分等额兑换)</text>
 					</text>
 				</view>
-				<view class="flex_column collect-in">
-					<van-icon name="like-o" :class="'iconfont iconshoucang1 ' + (isCollect ? 'is-collect' : '')"
-						@tap="parseEventDynamicCode($event, isCollect ? 'bindDeleteCollect' : 'bindInsertCollect')"
-						:data-goodsid="data.id" />
-					<text :class="'shoucang-text ' + (isCollect ? 'is-collect' : 'not-collect')">收藏</text>
-				</view>
+				<!-- 2026-09-27：「收藏」入口已删（用户拍板没什么用；「我的收藏」列表页 mine/collect 本就无可达入口，
+				     收藏体系就此不可达。后端 /rest/member/pointsMall/goodsCollect/* 接口保留未动） -->
 			</view>
 		</view>
 		<view class="commodity-detail-view">
@@ -196,9 +194,8 @@
 				},
 				detailImages: '',
 				goodsId: '',
-				repData: '',
-				collectInfo: '',
-				isCollect: ''
+				repData: ''
+				// 2026-09-27：collectInfo / isCollect 已随「收藏」入口一并删除
 			};
 		},
 		/**
@@ -208,7 +205,6 @@
 			app = getApp();
 			this.userInfo = app.globalData.loginUserInfo;
 			this.getCommodityDetails(options.id);
-			this.getGoodsCollect(options.id);
 			this.autoHeigth();
 			//console.log(app.globalData.loginUserInfo)
 			this.setData({
@@ -695,64 +691,9 @@
 				});
 			},
 
-			getGoodsCollect(goodsId) {
-				https.request('/rest/member/pointsMall/goodsCollect/selectByGoodsId', {
-						goodsId: goodsId
-					}).then((result) => {
-						if (result.success) {
-							this.setData({
-								collectInfo: result.data,
-								isCollect: result.data ? true : false
-							});
-						}
-					});
-			},
+			// 2026-09-27：getGoodsCollect / bindInsertCollect / bindDeleteCollect（收藏三方法）已随「收藏」入口一并删除
 
-			bindInsertCollect(e) {
-				authService.checkIsLogin().then((result) => {
-					if (result) {
-						https.request('/rest/member/pointsMall/goodsCollect/insert', {
-							goodsId: e.currentTarget.dataset.goodsid
-						}).then((result) => {
-							if (result.success) {
-								this.isCollect = true;
-								toastService.showSuccess('收藏成功');
-							}
-						});
-						return;
-					}
-					app.globalData.checkIsAuth('scope.userInfo');
-				});
-			},
-
-			bindDeleteCollect(e) {
-				authService.checkIsLogin().then((result) => {
-					if (result) {
-						https.request('/rest/member/pointsMall/goodsCollect/delete', {
-							goodsId: e.currentTarget.dataset.goodsid
-						}).then((result) => {
-							if (result.success) {
-								this.isCollect = false;
-								toastService.showSuccess('取消成功');
-							}
-						});
-						return;
-					}
-					app.globalData.checkIsAuth('scope.userInfo');
-				});
-			},
-
-			bindShare(e) {
-				authService.checkIsLogin().then((result) => {
-					if (result) {
-						uni.navigateTo({
-							url: '../../../mine/share/index/index?inviterId=' + this.userInfo.id
-						});
-					} else {
-						app.globalData.checkIsAuth('scope.userInfo');
-					}
-				});
-			},
+			// 2026-09-25：bindShare 已随「分享商品」入口一并删除（跳 mine/share 邀请页，体系废弃）
 
 			uploadImage() {
 				console.log('占位：函数 uploadImage 未声明');
@@ -1170,9 +1111,7 @@
 		font-weight: bold;
 	}
 
-	.collect-in {
-		width: 15%;
-	}
+	/* 2026-09-27：.collect-in（收藏列宽）已随「收藏」入口一并删除 */
 
 	.commdity-engname {
 		font-size: 28rpx;
@@ -1444,20 +1383,7 @@
 		color: #9b9b9b;
 	}
 
-	.navigator-class {
-		padding: 15rpx;
-		background: white;
-	}
-
-	.invite-wrapper {
-		padding: 10rpx;
-		height: 200rpx;
-	}
-
-	.invite-image {
-		width: 100%;
-		height: 100%;
-	}
+	/* 2026-09-25：.navigator-class / .invite-wrapper / .invite-image（邀请横幅遗留死样式，模板无引用）一并删除 */
 
 	.view-line {
 		height: 20rpx;
@@ -1489,22 +1415,7 @@
 		justify-content: space-between;
 	}
 
-	.iconshoucang1 {
-		color: #c3c3c3;
-		font-size: 45rpx;
-	}
-
-	.is-collect {
-		color: #fc7a7c;
-	}
-
-	.shoucang-text {
-		font-size: 28rpx;
-	}
-
-	.not-collect {
-		color: #c3c3c3;
-	}
+	/* 2026-09-27：.iconshoucang1 / .is-collect / .shoucang-text / .not-collect（收藏图标与状态样式）已随「收藏」入口一并删除 */
 
 	.commdity-image-list {
 		padding: 20rpx;
@@ -1519,17 +1430,7 @@
 		height: auto;
 	}
 
-	.wodejl-view {
-		position: fixed;
-		margin-top: 6%;
-		right: 0;
-		background: linear-gradient(to right, #ff5c57, #fe4646);
-		padding: 10rpx 20rpx;
-		border-radius: 40rpx 0 0 40rpx;
-		color: white;
-		font-size: 30rpx;
-		z-index: 1;
-	}
+	/* 2026-09-25：.wodejl-view（右上角红色「分享商品」悬浮胶囊）样式已随入口一并删除 */
 
 	.guige-view {
 		padding: 20rpx 0;

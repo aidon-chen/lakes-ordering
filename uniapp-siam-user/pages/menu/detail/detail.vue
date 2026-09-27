@@ -16,14 +16,7 @@
 						<text :decode="true" class="price">￥{{ data.price }}</text>
 					</view>
 
-					<view class="collect-in">
-						<view class="flex_column">
-							<van-icon name="like-o" :class="'iconfont iconshoucang1 ' + (isCollect ? 'is-collect' : '')"
-								@tap="parseEventDynamicCode($event, isCollect ? 'bindDeleteCollect' : 'bindInsertCollect')"
-								:data-goodsid="data.id" />
-							<text :class="'shoucang-text ' + (isCollect ? 'is-collect' : 'not-collect')">收藏</text>
-						</view>
-					</view>
+					<!-- 2026-09-27：「收藏」入口已删（与商城详情同步；「我的收藏」列表页本就无可达入口） -->
 				</view>
 				<view class="commdity-name-type-view commdity-name-specList">
 					<view class="commdity-type-item" v-for="(item, key) in specList" :key="key">
@@ -75,13 +68,8 @@
 					{{ data.detail }}
 				</view>
 			</view>
-			<navigator class="navigator-class" :url="'../../mine/share/index/index?inviterId=' + userInfo.id">
-				<view class="invite-wrapper">
-					<image
-						:src="'https://lakes-public.oss-cn-chengdu.aliyuncs.com/data/images/business/share-invite/share_mine.png?v=' + timestamp"
-						mode="aspectFill" class="invite-image"></image>
-				</view>
-			</navigator>
+			<!-- 2026-09-25：「邀请好友」横幅入口已删（分享/邀请体系废弃，不在设计需求；项目口径不做分销/返现）。
+			     原为 <navigator> 跳 pages/mine/share/index/index?inviterId=xx，横幅图 share-invite/share_mine.png -->
 		</scroll-view>
 		<view class="shopping-cart-detail">
 			<view class="content-fullReductionRuleName">
@@ -116,13 +104,15 @@
 						<!-- <view class="shopping-cart-desc">另需配送费￥{{deliveryPrice}}元</view> -->
 					</view>
 				</view>
-				<view :class="(isStartDeliveryPrice ? 'theme-bg' : 'shopping-cart-bg') + ' shopping-cart-right'" @tap="
+				<!-- 2026-09-25 拍板：取消「差 ￥X 起送」提示（与菜单页同口径），按钮恒为「去结算」；
+				     保留空购物车/超出配送范围/打烊守卫 -->
+				<view class="theme-bg shopping-cart-right" @tap="
                         parseEventDynamicCode(
                             $event,
-                            shoppingCartList.length <= 0 || !isStartDeliveryPrice || shopInfo.isOutofDeliveryRange || !shopInfo.isOperatingOfShop ? '' : 'goToPay'
+                            shoppingCartList.length <= 0 || shopInfo.isOutofDeliveryRange || !shopInfo.isOperatingOfShop ? '' : 'goToPay'
                         )
                     ">
-					{{ isStartDeliveryPrice ? '去结算' : '差 ￥' + priceDifference + ' 起送' }}
+					去结算
 				</view>
 			</view>
 			<van-action-sheet :show="shoppingCartDialog" @close="closeShoppingCart" @cancel="closeShoppingCart"
@@ -705,6 +695,8 @@
 								packingCharges);
 							_this.data = _this.data;
 							_this.totalNum = totalNum;
+							// 「点餐」tab（index 2）角标同步（09-25 拍板，与菜单页同口径）
+							getApp().globalData.setDiningTabBarBadge(totalNum);
 							_this.priceDifference = utilHelper.toFixed(priceDifference, 2);
 							_this.isStartDeliveryPrice = isStartDeliveryPrice;
 							_this.shoppingCartList = result.data.records;
@@ -1791,22 +1783,7 @@
 		color: #9b9b9b;
 	}
 
-	.navigator-class {
-		padding: 15rpx;
-		background: white;
-		margin: 0 20rpx;
-		border-radius: 20rpx;
-	}
-
-	.invite-wrapper {
-		padding: 10rpx;
-		height: 200rpx;
-	}
-
-	.invite-image {
-		width: 100%;
-		height: 100%;
-	}
+	/* 2026-09-25：.navigator-class / .invite-wrapper / .invite-image 已随「邀请好友」横幅一并删除 */
 
 	.view-line {
 		height: 20rpx;

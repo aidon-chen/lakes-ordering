@@ -48,7 +48,9 @@
 		onLoad(options) {
 			this.orderId = (options && options.id) || '';
 			this.amount = parseFloat((options && options.amount) || 0) || 0;
-			this.payChannel = (options && options.channel) || '微信支付';
+			// 09-25 修复：channel 与 shop/mode 同样经 encodeURIComponent 编码传入（pay.vue:1156），
+			// 此前漏了解码 → 支付成功页把「微信支付」显示成 %E5%BE%AE... 乱码
+			this.payChannel = (options && options.channel) ? decodeURIComponent(options.channel) : '微信支付';
 			this.shopName = (options && options.shop) ? decodeURIComponent(options.shop) : '';
 			this.orderMode = (options && options.mode) ? decodeURIComponent(options.mode) : '';
 		},

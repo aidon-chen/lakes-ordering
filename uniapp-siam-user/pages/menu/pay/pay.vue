@@ -201,14 +201,8 @@
 			// #endif
 			
 		</van-dialog>
-		<van-overlay :show="isVipDialogShow" z-index="1">
-			<view class="flex_column content_box" style="margin-top: 50px;">
-				<image
-					:src="'https://lakes-public.oss-cn-chengdu.aliyuncs.com/data/images/business/vip_recharge_guide.png?v=' + timestamp"
-					mode="widthFix" class="now-order-image" @tap="goToRecharge"></image>
-				<van-icon name="clear" @tap="close" style="font-size: 40px;color: wheat;" />
-			</view>
-		</van-overlay>
+		<!-- 会员引导弹窗（加入会员/获好友返利，vip_recharge_guide.png）已删除（09-25 用户拍板，对齐 C-10 批次6 商城结算页口径）：
+		     非会员点「去支付」不再弹窗引导，与会员一致直接下单进支付 -->
 		// #ifdef APP-PLUS||H5
 		<van-number-keyboard :show="payFocus" @blur="payFocus = false" @input="inputPwd" @delete="deletePwd" />
 		// #endif
@@ -269,7 +263,6 @@
 				//文本框焦点
 				adjustPosition: false,
 				holdKeyboard: true,
-				isVipDialogShow: false,
 				deliveryAndSelfTaking: {
 					isReducedDeliveryPrice: false,
 					deliveryAddress: {
@@ -300,7 +293,6 @@
 				payType: '',
 				initData: '',
 				isJs: false,
-				timestamp: '',
 				userInfo: '',
 				dialogShow: false,
 				shopAddress: {
@@ -317,7 +309,6 @@
 					price: ''
 				},
 				tipReward: '',
-				isPayJson: '',
 				balanceId: '',
 				balanceOrderNo: '',
 				balanceActualPrice: '',
@@ -380,7 +371,6 @@
 			if (app.globalData.loginUserInfo.isRequestWxNotify) {
 				this.getWxNotifyTemplate();
 			}
-			this.getTimestamp();
 			var _this = this;
 			setTimeout(function timeout() {
 				_this.onLoadOptions();
@@ -474,11 +464,6 @@
 					});
 				});
 			},
-			getTimestamp() {
-				var timestamp = dateHelper.getTimestamp();
-				console.log(timestamp);
-				this.timestamp = timestamp;
-			},
 			getLoginMemberInfo: function(e) {
 				toastService.showLoading();
 				https.request('/rest/member/getLoginMemberInfo', {}).then((result) => {
@@ -495,20 +480,6 @@
 
 			closeDialog: function() {
 				this.dialogShow = false;
-			},
-
-			close() {
-				this.isVipDialogShow = false;
-				toastService.showLoading();
-				var _this = this;
-				https.request('/rest/member/order/insert', _this.isPayJson).then((result) => {
-					toastService.hideLoading();
-					if (result.success) {
-						// toastService.showLoading("正在支付...", true);
-						//console.log(result.data)
-						_this.toPay4Applet(result.data.id, result.data.orderNo, result.data.actualPrice);
-					}
-				});
 			},
 
 			btnClick(e) {
@@ -1010,20 +981,16 @@
 								data.fullReductionRuleDescription = this.orderDetail
 									.fullReductionRuleName;
 							}
-							var _this = this;
-							if (this.userInfo.type == 1) {
-								this.isVipDialogShow = true;
-								this.isPayJson = data;
-							} else {
-								toastService.showLoading();
-								https.request('/rest/member/order/insert', data).then((result) => {
-									toastService.hideLoading();
-									if (result.success) {
-										_this.toPay4Applet(result.data.id, result.data.orderNo,
-											result.data.actualPrice);
-									}
-								});
+						// 会员引导弹窗已删（09-25 拍板）：不再区分会员/非会员，点「去支付」统一直接下单进支付
+						var _this = this;
+						toastService.showLoading();
+						https.request('/rest/member/order/insert', data).then((result) => {
+							toastService.hideLoading();
+							if (result.success) {
+								_this.toPay4Applet(result.data.id, result.data.orderNo,
+									result.data.actualPrice);
 							}
+						});
 						});
 						return;
 					}
@@ -1418,13 +1385,6 @@
 					this.choosePayModeTap();
 					clearTimeout(time);
 				}, 1000);
-			},
-
-			goToRecharge(e) {
-				this.isVipDialogShow = false;
-				uni.navigateTo({
-					url: '/pages/mine/member/recharge/recharge'
-				});
 			},
 
 			customerServiceWechat() {
@@ -2060,14 +2020,6 @@
 		margin: 20rpx;
 		background-color: white;
 		border-radius: 10rpx;
-	}
-
-	.weui-dialog.extClassIsVip {
-		background-color: rgba(255, 255, 255, 0);
-	}
-
-	.weui-dialog.extClassIsVip .weui-dialog__bd {
-		padding: 0;
 	}
 
 	.close-view-class .iconfont.icon55 {

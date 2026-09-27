@@ -330,7 +330,9 @@
 			console.log(app.globalData.deliveryAndSelfTaking);
 			this.deliveryAndSelfTaking = app.globalData.deliveryAndSelfTaking;
 			var prePageData = JSON.parse(options.orderDetail);
-			prePageData.actualPrice = prePageData.actualPrice + 0;
+			// ⚠️ 上一页传来的 actualPrice 是字符串（如 "108.00"），"+0" 会变成字符串拼接出三位小数 "108.000"；
+			// 统一转数字并固定保留两位小数（确认订单页「总计」划线价展示口径）
+			prePageData.actualPrice = (Number(prePageData.actualPrice) || 0).toFixed(2);
 			let time = dateHelper.formatTime('hms');
 			//this.getFullReductionRule(data);
 			this.getCouponsMemberRelation(prePageData);

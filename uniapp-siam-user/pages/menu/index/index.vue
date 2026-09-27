@@ -145,12 +145,13 @@
 							</view>
 						</view>
 					</view>
-					<view :class="(isStartDeliveryPrice ? 'theme-bg' : 'shopping-cart-bg') + ' shopping-cart-right'"
+				<!-- 2026-09-25 拍板：取消「差 ￥X 起送」提示（纯堂食+自提无起送价概念），
+				     按钮恒为「去结算」并放开起送门槛；保留空购物车/超出配送范围/打烊守卫 -->
+					<view class="theme-bg shopping-cart-right"
 						@tap="
 			                parseEventDynamicCode(
 			                    $event,
 			                    shoppingCartList.length <= 0 ||
-			                        !isStartDeliveryPrice ||
 			                        shopInfo.isOutofDeliveryRange ||
 			                        !shopInfo.isOperatingOfShop ||
 			                        !shopInfo.shop.isOperating
@@ -158,7 +159,7 @@
 			                        : 'goToPay'
 			                )
 			            ">
-						{{ isStartDeliveryPrice ? '去结算' : '差 ￥' + priceDifference + ' 起送' }}
+						去结算
 					</view>
 				</view>
 			</view>
@@ -1026,6 +1027,8 @@
 						priceDifference = this.shopInfo.shop.startDeliveryPrice - (totalPrice + packingCharges);
 						this.menuList = this.menuList;
 						this.totalNum = totalNum;
+						// 「点餐」tab（index 2）角标与购物车数量同步（09-25 拍板，与商城 tab 同口径）
+						getApp().globalData.setDiningTabBarBadge(totalNum);
 						this.priceDifference = utilHelper.toFixed(priceDifference, 2);
 						this.isStartDeliveryPrice = isStartDeliveryPrice;
 						this.shoppingCartList = result.data.records;

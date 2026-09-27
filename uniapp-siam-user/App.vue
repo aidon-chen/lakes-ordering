@@ -77,6 +77,9 @@
 			// });
 
 			this.globalData.getShoppingCarNumber();
+			// 「点餐」tab 角标恢复：数量缓存在 storage（由菜单页/详情页每次购物车刷新时写入），
+			// 冷启动先按缓存值挂角标，进菜单页后会与服务端购物车对齐（09-25 拍板）
+			this.globalData.setDiningTabBarBadge(Number(uni.getStorageSync('diningCartNum')) || 0);
 			// #ifdef H5
 			this.globalData.getH5Location();
 			// #endif
@@ -513,6 +516,23 @@
 				}
 				uni.removeTabBarBadge({
 					index: 1
+				});
+			},
+			// 「点餐」tab（index 2）角标：与购物车数量同步；写 storage 供冷启动恢复（09-25 拍板）
+			setDiningTabBarBadge(num) {
+				num = Number(num) || 0;
+				try {
+					uni.setStorageSync('diningCartNum', num);
+				} catch (e) {}
+				if (num) {
+					uni.setTabBarBadge({
+						index: 2,
+						text: String(num)
+					});
+					return;
+				}
+				uni.removeTabBarBadge({
+					index: 2
 				});
 			},
 			deliveryAndSelfTaking: {
