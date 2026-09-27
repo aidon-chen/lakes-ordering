@@ -57,6 +57,16 @@ parse_args() {
 }
 parse_args "$@"
 
+# ---------- REMARK 必填 + 自动时间前缀（2026-09-25 根治「忘传 -m → run:deploy 交互等输入 → 后台任务假死」） ----------
+if [[ "$ACTION" != "login" && "$ACTION" != "list" ]]; then
+  if [[ -z "$REMARK" ]]; then
+    echo "错误：缺少版本备注（-m）。备注是版本列表里唯一的人类线索，缺失会导致 CLI 交互式等待输入、后台任务假死。"
+    echo "用法：$0 -e <环境ID> -s <服务名> -m \"主题：改动1 + 改动2\" --yes"
+    exit 1
+  fi
+  REMARK="[$(date '+%m-%d %H:%M')] $REMARK"
+fi
+
 if ! command -v wxcloud &>/dev/null; then
   echo "错误：未找到 @wxcloud/cli，请先执行：npm install -g @wxcloud/cli"
   exit 1
