@@ -347,6 +347,9 @@ public class TableManageServiceImpl implements TableManageService {
         // check_path=false：允许 page 页面尚未发布时生成码（联调期必需，否则报 41030）
         // 注意：扫码要真正打开该页面，仍需小程序发布含该页面的版本
         paramJson.put("check_path", false);
+        // env_version：码指向的小程序版本（release/trial/develop）。
+        // 小程序还没发正式版时必须配 trial，否则码能生成但扫了打不开页面；见 WxQrCodeUtils.qrcodeEnvVersion
+        paramJson.put("env_version", wxQrCodeUtils.getQrcodeEnvVersion());
         try (OutputStream os = conn.getOutputStream()) {
             os.write(paramJson.toJSONString().getBytes("UTF-8"));
         }

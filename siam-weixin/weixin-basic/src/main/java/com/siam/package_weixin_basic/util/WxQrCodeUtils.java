@@ -32,6 +32,13 @@ public class WxQrCodeUtils {
 
     private String secret;
 
+    /**
+     * 小程序码指向的版本：release=正式版 / trial=体验版 / develop=开发版
+     * ⚠️ 小程序尚未发布正式版时必须配成 trial，否则扫出来的码打不开页面
+     *    （正式版发布后改回 release；对应环境变量 WXLOGIN_QRCODEENVVERSION，本地/云端均可覆盖）
+     */
+    private String qrcodeEnvVersion = "release";
+
     @Autowired
     private OSSUtils ossUtils;
 

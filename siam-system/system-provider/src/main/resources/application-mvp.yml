@@ -134,6 +134,8 @@ wxpay:
 wxlogin:
   appId: ${WXLOGIN_APPID:}
   secret: ${WXLOGIN_SECRET:}
+  # 小程序码指向的版本：小程序发布正式版之前必须用 trial（体验版），否则码能生成但扫码打不开页面
+  qrcodeEnvVersion: trial
 
 wxPublicPlatform:
   appId: ${WXPUB_APPID:}
