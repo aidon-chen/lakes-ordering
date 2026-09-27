@@ -20,7 +20,7 @@
 					<!-- 徽章行（画板 3:28 红圈「学生」）：等级徽章 + 身份标识并排；
 					     身份标识仅在认证中心有已通过结果时显示（loadIdentityBadge） -->
 					<view class="c01-vip-badges">
-						<view class="c01-vip-badge">{{ vipBadgeText }}</view>
+						<view class="c01-vip-badge" :style="levelBadgeStyle">{{ vipBadgeText }}</view>
 						<view class="c01-vip-badge c01-vip-badge-identity" v-if="identityBadgeText">{{ identityBadgeText }}</view>
 					</view>
 				</view>
@@ -71,7 +71,9 @@
 			</view>
 			<view class="c01-data-card" @tap="goCoupons">
 				<image class="c01-data-icon" src="/static/assets/icons/data-coupon.png" mode="aspectFit"></image>
-				<view class="c01-data-value">{{ member.couponsNumber || 0 }}</view>
+				<!-- 券数自算（09-25）：后端 getLoginMemberInfo 从不赋值 couponsNumber（模型有字段零赋值点），
+				     恒 0 是存量缺陷；改前端按 relation/list 数「待使用」条数，与券包 tab 口径一致 -->
+				<view class="c01-data-value">{{ couponCount }}</view>
 				<view class="c01-data-label">优惠券</view>
 			</view>
 		</view>
@@ -186,6 +188,8 @@
 					}
 				],
 				wineList: [],
+				// 数据二宫格「优惠券」计数（后端 couponsNumber 恒 0 的前端自算值，09-25）
+				couponCount: 0,
 				// 身份标识（画板 3:28 红圈「学生」）：'' = 不显示；
 				// 阶段二通过 → 学生/教师（identityType），仅阶段一通过 → 已实名
 				identityBadgeText: ''
@@ -194,6 +198,16 @@
 		computed: {
 			level() {
 				return memberLevel.levelOf(this.member.growth);
+			},
+			// 等级徽章配色（2026-09-25 等级差异化）：浅底深字 + 细描边，
+			// 色值来自 member-level.js 的 badge 字段（每级一套）。
+			// 未登录分支的「Lakes 会员」徽章不绑此样式，保持原主题绿底白字。
+			levelBadgeStyle() {
+				const b = this.level && this.level.badge;
+				if (!b) {
+					return '';
+				}
+				return 'background:' + b.bg + ';color:' + b.text + ';border:2rpx solid ' + b.border + ';';
 			},
 			hasGrowth() {
 				return Number(this.member.growth) > 0;
@@ -226,6 +240,7 @@
 					this.getMemberInfo();
 					this.loadWineList();
 					this.loadIdentityBadge();
+					this.loadCouponCount();
 					return;
 				}
 				this.member = {
@@ -254,6 +269,38 @@
 						this.wineList = [];
 					}
 				});
+			},
+			// 数据二宫格「优惠券」计数（09-25 修复恒 0）：后端 couponsNumber 从不赋值，
+			// 改前端按 relation/list 自算「待使用」条数——口径与券包页 resolveStatus 对齐
+			// （isUsed=true→已用；endTime 今天以前→已过期；其余=待使用）。与领券中心/券包共用 token 通道。
+			loadCouponCount() {
+				https.request('/rest/member/couponsMemberRelation/list', {
+					pageNo: -1,
+					pageSize: 999
+				}).then((result) => {
+					if (result && result.success && result.data) {
+						const today = this.todayKey();
+						let count = 0;
+						(result.data.records || []).forEach((record) => {
+							const info = record.couponsMemberRelationMap || {};
+							if (info.isUsed) {
+								return;
+							}
+							const end = info.endTime ? String(info.endTime) : '';
+							if (info.isExpired || (end && end.length >= 10 && end.substring(0, 10) < today)) {
+								return;
+							}
+							count = count + 1;
+						});
+						this.couponCount = count;
+					}
+				});
+			},
+			// 当天 YYYY-MM-DD（与券包页 todayKey 计算口径一致）
+			todayKey() {
+				const d = new Date();
+				const pad = (n) => (n < 10 ? '0' + n : '' + n);
+				return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
 			},
 			// 身份标识（画板 3:28 红圈「学生」）：复用认证中心的 detail 接口，与会员信息/存酒并行、
 			// 任一失败互不影响。auditStatus：0=未提交 1=待审核 2=通过 3=驳回。

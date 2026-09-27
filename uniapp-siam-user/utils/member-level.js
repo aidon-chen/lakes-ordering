@@ -11,27 +11,86 @@
 const LEVELS = [{
 		level: 1,
 		name: '青铜会员',
-		min: 0
+		min: 0,
+		// —— 等级差异化配色（2026-09-25 拍板：低饱和清新版，形态不变只换色）——
+		// badge：徽章/胶囊用（浅底深字 + 细描边，与 C-08 原金色胶囊同款形态）
+		// card：C-03 等级卡横渐变（浅→略深）与卡内文字
+		// 品牌绿 #5F7D22 仍是全局主色（导航/按钮/可点元素），等级色只用于等级元素
+		badge: {
+			bg: '#F2EAE1',
+			text: '#7A5C3E',
+			border: '#E3D5C4'
+		},
+		card: {
+			from: '#F7F2EB',
+			to: '#EFE5D8',
+			text: '#7A5C3E',
+			sub: '#A98F73'
+		}
 	},
 	{
 		level: 2,
 		name: '白银会员',
-		min: 300
+		min: 300,
+		badge: {
+			bg: '#EEF0F2',
+			text: '#5F6B76',
+			border: '#DCE0E4'
+		},
+		card: {
+			from: '#F3F5F7',
+			to: '#E8EBEE',
+			text: '#5F6B76',
+			sub: '#8A95A0'
+		}
 	},
 	{
 		level: 3,
 		name: '黄金会员',
-		min: 600
+		min: 600,
+		badge: {
+			bg: '#F6F0DC',
+			text: '#7A6420',
+			border: '#E8DDB4'
+		},
+		card: {
+			from: '#F9F4E3',
+			to: '#F0E7C8',
+			text: '#7A6420',
+			sub: '#A8924E'
+		}
 	},
 	{
 		level: 4,
 		name: '铂金会员',
-		min: 1000
+		min: 1000,
+		badge: {
+			bg: '#EAF0EC',
+			text: '#4E6B5A',
+			border: '#D5E0D8'
+		},
+		card: {
+			from: '#EFF4F1',
+			to: '#E1EBE5',
+			text: '#4E6B5A',
+			sub: '#7C948A'
+		}
 	},
 	{
 		level: 5,
 		name: '钻石会员',
-		min: 2000
+		min: 2000,
+		badge: {
+			bg: '#EBEFF7',
+			text: '#4A5B85',
+			border: '#D8E0EE'
+		},
+		card: {
+			from: '#EFF2F9',
+			to: '#E2E8F4',
+			text: '#4A5B85',
+			sub: '#7B8CB0'
+		}
 	}
 ];
 
@@ -70,6 +129,10 @@ const levelOf = (growth) => {
 		level: current.level,
 		name: current.name,
 		min: current.min,
+		// 等级差异化配色（badge=徽章/胶囊，card=C-03 等级卡）——
+		// ⚠️ 必须在这里带出：本函数是手工挑字段构造返回对象，不在 LEVELS 上原样透传
+		badge: current.badge || null,
+		card: current.card || null,
 		nextLevel: next ? next.level : 0,
 		nextName: next ? next.name : '',
 		nextMin: next ? next.min : 0,

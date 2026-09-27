@@ -24,12 +24,12 @@
 
 			<!-- 等级卡（画板 5:27）：横渐变圆角卡 + 右侧竖排等级名 21pt。
 			     到期胶囊不渲染：vip_end_time 全库无读写（技术说明 §8.9），无字段不造数 -->
-			<view class="c03-level-card">
+			<view class="c03-level-card" :style="levelCardStyle">
 				<view class="c03-level-vertical">
-					<view class="c03-level-char" v-for="(ch, index) in levelChars" :key="index">{{ ch }}</view>
+					<view class="c03-level-char" :style="levelCardTextStyle" v-for="(ch, index) in levelChars" :key="index">{{ ch }}</view>
 				</view>
 				<!-- 工程既成入口：C-08 成长值明细（画板无此链接，功能保留） -->
-				<view class="c03-level-growth-link" @tap="goGrowth">成长值明细 ›</view>
+				<view class="c03-level-growth-link" :style="levelCardTextStyle" @tap="goGrowth">成长值明细 ›</view>
 			</view>
 
 			<!-- 等级说明（画板 5:33）：等级表后端无配置（§4.3），先置灰提示 -->
@@ -44,7 +44,7 @@
 			<view class="c03-axis-row">
 				<view class="c03-axis-col" v-for="(lv, index) in levels" :key="lv.level">
 					<view class="c03-axis-val">{{ lv.min }}</view>
-					<view class="c03-axis-dot" :class="{ 'c03-axis-dot-on': lv.level <= level.level }"></view>
+					<view class="c03-axis-dot" :class="{ 'c03-axis-dot-on': lv.level <= level.level }" :style="axisDotStyle(lv)"></view>
 					<view class="c03-axis-name">V{{ lv.level }}{{ lv.name }}</view>
 				</view>
 			</view>
@@ -163,6 +163,19 @@
 			levels() {
 				return memberLevel.LEVELS;
 			},
+			// 等级卡配色（2026-09-25 等级差异化）：横渐变底（浅→略深）随等级换，
+			// 色值来自 member-level.js 的 card 字段，替换原固定浅绿渐变 #E8F0D9→#C7D9A1。
+			levelCardStyle() {
+				const c = this.level && this.level.card;
+				if (!c) {
+					return '';
+				}
+				return 'background:linear-gradient(90deg, ' + c.from + ' 0%, ' + c.to + ' 100%);';
+			},
+			levelCardTextStyle() {
+				const c = this.level && this.level.card;
+				return c ? 'color:' + c.text + ';' : '';
+			},
 			// 竖排等级名：拆字符逐行渲染（小程序对 writing-mode 支持不稳）
 			levelChars() {
 				return String(this.levelText).split('');
@@ -205,6 +218,14 @@
 		},
 		methods: {
 			// 会员基础信息：未登录/接口异常时保持空态，不阻断页面渲染
+			// 五级刻度轴：已达等级的圆点点亮为「该等级自己」的深色（badge.text），未达保持灰。
+			// ⚠️ 必须放 methods 而非 computed —— 它需要按列传参，vue2 的 computed 不支持带参调用。
+			axisDotStyle(lv) {
+				if (!lv || lv.level > this.level.level) {
+					return '';
+				}
+				return lv.badge ? 'background:' + lv.badge.text + ';' : '';
+			},
 			getMemberInfo() {
 				https.request('/rest/member/getLoginMemberInfo', {}).then((result) => {
 					if (result && result.success && result.data) {

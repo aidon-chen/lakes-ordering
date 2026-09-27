@@ -235,6 +235,7 @@
 			},
 
 			// 券面额：1=折扣（discountAmount 是比率，0.38 → 3.8 折）/ 2=满减
+			// ⚠️ 浮点防御（09-25）：0.68*10=6.800000000000001 会撑爆券面，toFixed(2) 后剥尾零
 			amountText(info) {
 				if (!info) {
 					return '';
@@ -244,7 +245,8 @@
 					if (!isFinite(zhe) || zhe <= 0) {
 						return '折扣券';
 					}
-					return (zhe <= 1 ? zhe * 10 : zhe) + '折';
+					const display = zhe <= 1 ? zhe * 10 : zhe;
+					return parseFloat(display.toFixed(2)) + '折';
 				}
 				return '满' + (info.limitedPrice || 0) + '减' + (info.reducedPrice || 0);
 			},

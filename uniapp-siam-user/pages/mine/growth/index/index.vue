@@ -15,7 +15,7 @@
 				<view class="c08-hero-label">当前成长值</view>
 				<view class="c08-hero-row">
 					<view class="c08-hero-value">{{ growth }}</view>
-					<view class="c08-level-tag">{{ levelTag }}</view>
+					<view class="c08-level-tag" :style="levelTagStyle">{{ levelTag }}</view>
 				</view>
 				<view class="c08-track">
 					<view class="c08-track-bar" :style="'width:' + level.percent + '%'"></view>
@@ -80,6 +80,12 @@
 			},
 			levelTag() {
 				return 'V' + this.level.level;
+			},
+			// 等级胶囊配色（2026-09-25 等级差异化）：随等级换浅底深字，
+			// 替换原固定金色（#F0DCAB 底 / #6E4E1F 字），与 C-01 徽章、C-03 等级卡同一套色源。
+			levelTagStyle() {
+				const b = this.level && this.level.badge;
+				return b ? 'background:' + b.bg + ';color:' + b.text + ';' : '';
 			}
 		},
 		onLoad() {
