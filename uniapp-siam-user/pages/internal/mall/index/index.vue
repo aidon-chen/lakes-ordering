@@ -249,8 +249,10 @@
 				});
 			},
 			getCarouselList() {
+				// 2026-09-25：补 onlyValid，令后台轮播的「生效时间」真正生效（此前商城轮播不传该参数，起止时间形同虚设）
 				https.request('/rest/advertisement/list', {
 					type: 3,
+					onlyValid: true,
 					pageNo: -1,
 					pageSize: 20
 				}).then((result) => {
@@ -276,9 +278,11 @@
 				} else {
 					this.loadingMore = true;
 				}
+				// 2026-09-25：「推荐好物」改由后台「首页推荐」开关驱动（复用沉睡列 tb_points_mall_goods.is_hot）
 				https.request('/rest/pointsMall/goods/recommendGoodsList', {
 					pageNo: pageNo,
-					pageSize: pageSize
+					pageSize: pageSize,
+					isHot: true
 				}).then((result) => {
 					toastService.hideLoading();
 					uni.stopPullDownRefresh();

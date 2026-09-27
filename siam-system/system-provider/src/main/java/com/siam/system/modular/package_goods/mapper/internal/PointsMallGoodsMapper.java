@@ -170,7 +170,8 @@ public interface PointsMallGoodsMapper extends BaseMapper<PointsMallGoods> {
             "<if test=\"goods.isHot != null\"> AND g.is_hot = #{goods.isHot} </if>" +
             "<if test=\"goods.preferentialName != null and goods.preferentialName !=''\"> AND g.preferential_name like '%${goods.preferentialName}%' </if>" +
             "<if test=\"goods.packingCharges != null\"> AND g.packing_charges = #{goods.packingCharges} </if>" +
-            "</where> order by g.id asc" +
+            // 2026-09-25：推荐好物楼层排序改由 sort_number 驱动（复用沉睡列），空值排最后；同序号按 id 兜底，保证分页稳定
+            "</where> order by ifnull(g.sort_number, 999999) asc, g.id asc" +
             "</script>")
     Page<Map<String, Object>> recommendGoodsList(@Param("page") Page page, @Param("goods") PointsMallGoods goods, @Param("startTime") Date startTime, @Param("endTime") Date endTime);
 

@@ -19,6 +19,19 @@
 					</el-select>
 				</el-form-item>
 
+        <!-- 首页推荐（2026-09-25）：复用 tb_points_mall_goods 上原本全链路无消费的沉睡列 is_hot。
+             顾客端商城首页「推荐好物」楼层按 is_hot=1 过滤，故本开关即该楼层的上下架开关。
+             注意：字段名 is_hot 字面是「热门」，此处语义已定为「首页推荐」，勿另作他用。 -->
+        <el-form-item label="首页推荐" prop="isHot">
+          <el-switch v-model="editForm.isHot"></el-switch>
+          <span class="field-tip">开启后该商品进入商城首页「推荐好物」楼层（需状态为已上架）</span>
+        </el-form-item>
+
+        <!-- 推荐排序：复用同为沉睡列的 sort_number，数字越小越靠前 -->
+        <el-form-item label="推荐排序" prop="sortNumber">
+          <el-input v-model="editForm.sortNumber" class="minInput" placeholder="数字越小越靠前，留空按 0 处理"></el-input>
+        </el-form-item>
+
         <el-form-item label="一口价(元)" prop="price">
 					<el-input v-model="editForm.price" class="minInput"></el-input>
 				</el-form-item>
@@ -300,7 +313,10 @@ export default {
       editForm: {
         mainImageFile: [], // 主图
         subImagesFile: [], // 介绍图
-        detailImagesFile: [] // 详情图
+        detailImagesFile: [], // 详情图
+        // 首页推荐（2026-09-25）：is_hot / sort_number 两个沉睡列的默认值，避免提交 null
+        isHot: false,
+        sortNumber: 0
       },
       editFormRules: {
         name: [{ required: true, message: '请输入商品名称', trigger: 'blur' }],
@@ -428,6 +444,20 @@ export default {
           // delete param.mainImageFile
           delete param.subImagesFile
           delete param.detailImagesFile
+
+          // 首页推荐（2026-09-25）：isHot 归一为布尔；sortNumber 归一为数字，空值按 0 提交
+          // （后端 updateById 默认跳过 null 字段，留空会导致排序号改不动）
+          param.isHot = param.isHot === true
+          let sortNumber = param.sortNumber
+          param.sortNumber = (sortNumber === '' || sortNumber === null || sortNumber === undefined) ? 0 : Number(sortNumber)
+          if (isNaN(param.sortNumber)) {
+            vue.$message({
+              showClose: true,
+              message: '推荐排序需为数字',
+              type: 'error'
+            })
+            return false
+          }
           let url = ''
           param.id ? url = '/rest/admin/pointsMall/goods/update' : url = '/rest/admin/pointsMall/goods/insert'
           vue.$http.post( vue, url, param,
@@ -1024,6 +1054,12 @@ export default {
 <style scoped>
 .editForm .el-input {
   width: 420px;
+}
+/* 首页推荐/推荐排序的辅助说明文案（2026-09-25） */
+.field-tip {
+  margin-left: 10px;
+  color: #909399;
+  font-size: 12px;
 }
 .standForm .el-input {
   width: 200px;

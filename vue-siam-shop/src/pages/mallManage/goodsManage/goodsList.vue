@@ -66,6 +66,15 @@
           <span v-else-if="scope.row.status == 4" style="color:red;font-weight:bold;">售罄</span>
         </template>
       </el-table-column> 
+      <!-- 首页推荐（2026-09-25）：复用沉睡列 is_hot，即商城首页「推荐好物」楼层的上下架开关；
+           排序号复用同为沉睡列的 sort_number（数字越小越靠前）。两列仅作核对展示，编辑入口在「修改商品」页 -->
+      <el-table-column label="首页推荐" width="110">
+        <template scope="scope">
+          <span v-if="scope.row.isHot" style="color:#5f7d22;font-weight:bold;">已推荐</span>
+          <span v-else style="color:#999;">未推荐</span>
+          <span v-if="scope.row.isHot" style="color:#999;">（排序 {{scope.row.sortNumber || 0}}）</span>
+        </template>
+      </el-table-column>
       <el-table-column prop="saleqty" label="已售出数量">
         
         <template scope="scope">

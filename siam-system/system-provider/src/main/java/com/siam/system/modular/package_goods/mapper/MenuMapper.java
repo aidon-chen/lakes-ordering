@@ -39,7 +39,7 @@ public interface MenuMapper extends BaseMapper<Menu> {
             "<if test=\"menu.description != null and menu.description != ''\"> AND m.description like '%${menu.description}' </if>" +
             //A-05 分类「可否点单」：C 端菜单仅返回可点单分类（NULL 视为可点单，兼容历史数据）
             " AND (m.is_can_order IS NULL OR m.is_can_order = 1)" +
-            "</where> order by m.id desc" +
+            "</where> order by m.sort_number asc, m.id asc" +
             "</script>")
     List<Map<String, Object>> getList(@Param("menu") Menu menu);
 
@@ -56,7 +56,7 @@ public interface MenuMapper extends BaseMapper<Menu> {
             "<if test=\"menu.description != null and menu.description != ''\"> AND m.description like '%${menu.description}' </if>" +
             //A-05 分类「可否点单」：C 端菜单仅返回可点单分类（NULL 视为可点单，兼容历史数据）
             " AND (m.is_can_order IS NULL OR m.is_can_order = 1)" +
-            "</where> order by m.id desc" +
+            "</where> order by m.sort_number asc, m.id asc" +
             "</script>")
     List<Map<String, Object>> getListJoinGoods(@Param("menu") Menu menu);
 
@@ -70,7 +70,7 @@ public interface MenuMapper extends BaseMapper<Menu> {
             "<if test=\"menu.description != null and menu.description != ''\"> AND m.description like '%${menu.description}' </if>" +
             //营业时段（叠加设计）：管理端「白天/夜晚」切换按时段筛选（NULL/all 视为全天可售，与 C 端 matchPeriod 同义）
             "<if test=\"menu.salePeriod != null and menu.salePeriod != ''\"> AND (m.sale_period IS NULL OR m.sale_period = 'all' OR m.sale_period = #{menu.salePeriod}) </if>" +
-            "</where> order by m.id desc" +
+            "</where> order by m.sort_number asc, m.id asc" +
             "</script>")
     Page<Menu> getListByAdmin(@Param("page") Page page, @Param("menu") Menu menu);
 }

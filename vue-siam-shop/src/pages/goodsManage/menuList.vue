@@ -37,6 +37,8 @@
 				</template>		
 			</el-table-column> -->
 			<el-table-column prop="name" label="分类名称"></el-table-column>
+			<!-- 排序：数字小的分类排在 C 端左侧导航前面（后端按 sort_number asc, id asc 排序） -->
+			<el-table-column prop="sortNumber" label="排序" width="70"></el-table-column>
 			<!-- 可否点单（A-05）：开关即时保存，C 端菜单接口按 is_can_order 过滤，即时生效 -->
 			<el-table-column label="可否点单" width="110">
 				<template slot-scope="scope">
@@ -96,6 +98,10 @@
 						<el-option label="仅夜晚" value="night"></el-option>
 					</el-select>
 				</el-form-item>
+				<!-- 排序：数字小的排在 C 端左侧导航前面 -->
+				<el-form-item label="排序" prop="sortNumber">
+					<el-input-number v-model="editForm.sortNumber" :min="0" :max="999"></el-input-number>
+				</el-form-item>
 				<el-form-item label="描述" prop="detail">
 					<el-input type="textarea" :rows="5" v-model="editForm.detail"></el-input>
 				</el-form-item>
@@ -136,7 +142,8 @@
 					isDisabled: false,
 					name: '',
 					detail: '',
-					salePeriod: 'all'
+					salePeriod: 'all',
+					sortNumber: 99
 				}
 			}
 		},
@@ -255,14 +262,17 @@
 						isDisabled: row.isDisabled,
 						name: row.name,
 						detail: row.detail,
-						salePeriod: row.salePeriod || 'all'
+						salePeriod: row.salePeriod || 'all',
+						sortNumber: row.sortNumber
 					}
 				}else{
+					// 新增默认排最后（99），可在表单里改小
 					this.editForm = {
 						isDisabled: 0,
 						name: '',
 						detail: '',
-						salePeriod: 'all'
+						salePeriod: 'all',
+						sortNumber: 99
 					}
         		}
 			},
