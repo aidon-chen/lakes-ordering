@@ -56,108 +56,162 @@
 				<el-col :span="8">
 					<div class="kv"><span class="k">最近登录</span><span class="v">{{ formatTimeValue(member.lastLoginTime) }}</span></div>
 				</el-col>
-				<el-col :span="8">
-					<div class="kv"><span class="k">最近使用小程序</span><span class="v">{{ formatTimeValue(member.lastUseTime) }}</span></div>
-				</el-col>
-				<el-col :span="8">
-					<div class="kv"><span class="k">邀请码</span><span class="v">{{ member.inviteCode || '-' }}</span></div>
-				</el-col>
 			</el-row>
 			<div v-else class="empty">未获取到会员信息（会员ID：{{ memberId }}）</div>
 		</el-card>
 
-		<!--订单记录-->
+		<!--切换栏卡片：订单记录 / 优惠券 / 存酒 / 余额（Ardot 原型 84:1）-->
 		<el-card shadow="never" class="block">
-			<div slot="header" class="block-title">
-				订单记录
-				<span class="block-tip">共 {{ orderTotal }} 笔</span>
-			</div>
-			<el-table :data="orders" v-loading="orderLoading" style="width: 100%;"
-				:cell-style="cellStyle" :header-cell-style="headerCellStyle">
-				<el-table-column prop="orderNo" label="订单号" width="190"></el-table-column>
-				<el-table-column label="类型" width="80">
-					<template slot-scope="scope">
-						<span>{{ scope.row.orderScene == 2 ? '自提' : '堂食' }}</span>
-					</template>
-				</el-table-column>
-				<el-table-column label="取餐号 / 桌号" width="120">
-					<template slot-scope="scope">
-						<span>{{ scope.row.orderScene == 2 ? (scope.row.queueNo || '-') : (scope.row.tableNo || '-') }}</span>
-					</template>
-				</el-table-column>
-				<el-table-column label="实付款" width="110">
-					<template slot-scope="scope">
-						<span>{{ money(scope.row.actualPrice) }}</span>
-					</template>
-				</el-table-column>
-				<el-table-column label="支付方式" width="110">
-					<template slot-scope="scope">
-						<span v-if="scope.row.paymentMode == 1">微信支付</span>
-						<span v-else-if="scope.row.paymentMode == 2">支付宝支付</span>
-						<span v-else-if="scope.row.paymentMode == 4">到店支付</span>
-						<span v-else-if="scope.row.paymentMode == 3 || scope.row.paymentMode == 0">平台余额</span>
-						<span v-else>-</span>
-					</template>
-				</el-table-column>
-				<el-table-column label="订单状态" width="120">
-					<template slot-scope="scope">
-						<span>{{ orderStatusText(scope.row.status) }}</span>
-					</template>
-				</el-table-column>
-				<el-table-column prop="createTime" label="下单时间" :formatter="formatTime" width="160"></el-table-column>
-			</el-table>
-			<el-col :span="24" class="toolbar">
-				<el-pagination @size-change="handleOrderSizeChange" @current-change="handleOrderCurrentChange"
-					:page-sizes="[10, 20, 50]" :page-size="orderQuery.pageSize"
-					layout="total, sizes, prev, pager, next" :total="orderTotal" style="float:right;">
-				</el-pagination>
-			</el-col>
-		</el-card>
+			<el-tabs v-model="activeTab" @tab-click="handleTabClick">
+				<!--Tab1 订单记录-->
+				<el-tab-pane label="订单记录" name="order">
+					<el-table :data="orders" v-loading="orderLoading" style="width: 100%;"
+						:cell-style="cellStyle" :header-cell-style="headerCellStyle">
+						<el-table-column prop="orderNo" label="订单号" width="190"></el-table-column>
+						<el-table-column label="类型" width="80">
+							<template slot-scope="scope">
+								<span>{{ scope.row.orderScene == 2 ? '自提' : '堂食' }}</span>
+							</template>
+						</el-table-column>
+						<el-table-column label="取餐号 / 桌号" width="130">
+							<template slot-scope="scope">
+								<span>{{ scope.row.orderScene == 2 ? (scope.row.queueNo || '-') : (scope.row.tableNo || '-') }}</span>
+							</template>
+						</el-table-column>
+						<el-table-column label="实付款" width="110">
+							<template slot-scope="scope">
+								<span>{{ money(scope.row.actualPrice) }}</span>
+							</template>
+						</el-table-column>
+						<el-table-column label="支付方式" width="110">
+							<template slot-scope="scope">
+								<span v-if="scope.row.paymentMode == 1">微信支付</span>
+								<span v-else-if="scope.row.paymentMode == 2">支付宝支付</span>
+								<span v-else-if="scope.row.paymentMode == 4">到店支付</span>
+								<span v-else-if="scope.row.paymentMode == 3 || scope.row.paymentMode == 0">平台余额</span>
+								<span v-else>-</span>
+							</template>
+						</el-table-column>
+						<el-table-column label="订单状态" width="120">
+							<template slot-scope="scope">
+								<span>{{ orderStatusText(scope.row.status) }}</span>
+							</template>
+						</el-table-column>
+						<el-table-column prop="createTime" label="下单时间" :formatter="formatTime" width="160"></el-table-column>
+					</el-table>
+					<el-col :span="24" class="toolbar">
+						<el-pagination @size-change="handleOrderSizeChange" @current-change="handleOrderCurrentChange"
+							:page-sizes="[10, 20, 50]" :page-size="orderQuery.pageSize"
+							layout="total, sizes, prev, pager, next" :total="orderTotal" style="float:right;">
+						</el-pagination>
+					</el-col>
+				</el-tab-pane>
 
-		<!--资金流水（2026-09-24 点亮：/rest/admin/memberBillingRecord/list 已启用）-->
-		<el-card shadow="never" class="block">
-			<div slot="header" class="block-title">
-				资金流水
-				<span class="block-tip">共 {{ billingTotal }} 条</span>
-			</div>
-			<el-table :data="billings" v-loading="billingLoading" style="width: 100%;"
-				:cell-style="cellStyle" :header-cell-style="headerCellStyle">
-				<el-table-column label="账户" width="90">
-					<template slot-scope="scope">{{ billingCoinText(scope.row) }}</template>
-				</el-table-column>
-				<el-table-column label="金额" width="130">
-					<template slot-scope="scope">
-						<!-- 进账红 / 出账绿（中文财务习惯），符号与颜色同时给出，避免只看颜色误读 -->
-						<span :style="{ color: scope.row.operateType == 1 ? '#c0392b' : '#27795a' }">
-							{{ scope.row.operateType == 1 ? '+' : '-' }}{{ money(scope.row.number) }}
-						</span>
-					</template>
-				</el-table-column>
-				<el-table-column prop="message" label="说明" min-width="260" show-overflow-tooltip></el-table-column>
-				<el-table-column prop="createTime" label="时间" :formatter="formatTime" width="160"></el-table-column>
-			</el-table>
-			<el-col :span="24" class="toolbar">
-				<el-pagination @size-change="handleBillingSizeChange" @current-change="handleBillingCurrentChange"
-					:page-sizes="[10, 20, 50]" :page-size="billingQuery.pageSize"
-					layout="total, sizes, prev, pager, next" :total="billingTotal" style="float:right;">
-				</el-pagination>
-			</el-col>
-		</el-card>
+				<!--Tab2 优惠券-->
+				<el-tab-pane label="优惠券" name="coupon">
+					<el-table :data="coupons" v-loading="couponLoading" style="width: 100%;"
+						:cell-style="cellStyle" :header-cell-style="headerCellStyle">
+						<el-table-column label="优惠券名称" min-width="160">
+							<template slot-scope="scope">
+								<span>{{ scope.row.couponsName || '-' }}</span>
+							</template>
+						</el-table-column>
+						<el-table-column label="类型" width="90">
+							<template slot-scope="scope">
+								<span>{{ scope.row.preferentialType == 1 ? '折扣' : '满减' }}</span>
+							</template>
+						</el-table-column>
+						<el-table-column label="优惠力度" width="200">
+							<template slot-scope="scope">
+								<span>{{ couponBenefit(scope.row) }}</span>
+							</template>
+						</el-table-column>
+						<el-table-column label="有效期" width="300">
+							<template slot-scope="scope">
+								<span>{{ formatTimeValue(scope.row.startTime) }} ~ {{ formatTimeValue(scope.row.endTime) }}</span>
+							</template>
+						</el-table-column>
+						<el-table-column label="状态" width="100">
+							<template slot-scope="scope">
+								<span :class="couponStatusClass(scope.row)">{{ couponStatusText(scope.row) }}</span>
+							</template>
+						</el-table-column>
+					</el-table>
+					<el-col :span="24" class="toolbar">
+						<el-pagination @size-change="handleCouponSizeChange" @current-change="handleCouponCurrentChange"
+							:page-sizes="[10, 20, 50]" :page-size="couponQuery.pageSize"
+							layout="total, sizes, prev, pager, next" :total="couponTotal" style="float:right;">
+						</el-pagination>
+					</el-col>
+				</el-tab-pane>
 
-		<!--暂未开放的数据块-->
-		<el-card shadow="never" class="block">
-			<div slot="header" class="block-title">优惠券 / 存酒</div>
-			<div class="pending">
-				<div class="pending-lead">以下两项后端尚未提供按会员查询的接口，因此暂不展示（不放置点了没反应的死按钮）：</div>
-				<ul class="pending-list">
-					<li><b>优惠券</b>：<code>/rest/admin/couponsMemberRelation</code> 只有发券接口（giveCoupons / giveSingleCoupons），没有按会员查券的列表接口。</li>
-					<li><b>存酒记录</b>：目前只有收银端接口 <code>/rest/merchant/wineStorage</code>，后台无对应查询接口。</li>
-				</ul>
-				<div class="pending-foot">
-					数据库侧三张表都已存在（tb_coupons_member_relation、tb_wine_storage、tb_member_billing_record），补齐查询接口后可直接点亮。
-					<br><b>余额流水已于 2026-09-24 点亮</b> —— 见上方「资金流水」卡（<code>/rest/admin/memberBillingRecord/list</code> 已重写启用）。
-				</div>
-			</div>
+				<!--Tab3 存酒-->
+				<el-tab-pane label="存酒" name="wine">
+					<el-table :data="wines" v-loading="wineLoading" style="width: 100%;"
+						:cell-style="cellStyle" :header-cell-style="headerCellStyle">
+						<el-table-column label="品名" min-width="150">
+							<template slot-scope="scope">
+								<span>{{ scope.row.goodsName || '-' }}</span>
+							</template>
+						</el-table-column>
+						<el-table-column label="存入瓶数" width="100">
+							<template slot-scope="scope">
+								<span>{{ num(scope.row.bottleCount) }}</span>
+							</template>
+						</el-table-column>
+						<el-table-column label="剩余瓶数" width="100">
+							<template slot-scope="scope">
+								<span>{{ num(scope.row.remainCount) }}</span>
+							</template>
+						</el-table-column>
+						<el-table-column label="存放柜位" width="140">
+							<template slot-scope="scope">
+								<span>{{ scope.row.location || '-' }}</span>
+							</template>
+						</el-table-column>
+						<el-table-column label="存入日期" width="130">
+							<template slot-scope="scope">
+								<span>{{ formatDay(scope.row.storageDate) }}</span>
+							</template>
+						</el-table-column>
+						<el-table-column label="有效期至" width="130">
+							<template slot-scope="scope">
+								<span>{{ formatDay(scope.row.expireDate) }}</span>
+							</template>
+						</el-table-column>
+						<el-table-column label="状态" width="100">
+							<template slot-scope="scope">
+								<span :class="wineStatusClass(scope.row)">{{ wineStatusText(scope.row) }}</span>
+							</template>
+						</el-table-column>
+					</el-table>
+				</el-tab-pane>
+
+				<!--Tab4 余额-->
+				<el-tab-pane label="余额" name="balance">
+					<div class="bal-box" v-if="member">
+						<div class="bal-main">
+							<div class="bl">当前余额</div>
+							<div class="bv">{{ money(member.balance) }}</div>
+						</div>
+						<div class="bal-metrics">
+							<div class="metric">
+								<div class="ml">累计消费</div>
+								<div class="mv">{{ money(member.totalConsumeBalance) }}</div>
+							</div>
+							<div class="metric">
+								<div class="ml">奖励金余额</div>
+								<div class="mv">{{ money(rewardBalance) }}</div>
+							</div>
+							<div class="metric">
+								<div class="ml">待领取奖励金</div>
+								<div class="mv">{{ money(member.unreceivedInviteRewardAmount) }}</div>
+							</div>
+						</div>
+					</div>
+					<div v-else class="empty">未获取到会员信息</div>
+				</el-tab-pane>
+			</el-tabs>
 		</el-card>
 	</section>
 </template>
@@ -197,6 +251,8 @@
 				memberId: '',
 				member: null,
 				memberLoading: false,
+				activeTab: 'order',
+				// 订单
 				orders: [],
 				orderTotal: 0,
 				orderLoading: false,
@@ -204,21 +260,34 @@
 					pageNo: 1,
 					pageSize: 10
 				},
-				// 资金流水（2026-09-24 新增：接口 /rest/admin/memberBillingRecord/list 已启用）
-				billings: [],
-				billingTotal: 0,
-				billingLoading: false,
-				billingQuery: {
+				// 优惠券
+				coupons: [],
+				couponTotal: 0,
+				couponLoading: false,
+				couponQuery: {
 					pageNo: 1,
 					pageSize: 10
-				}
+				},
+				// 存酒（listByMember 返回全量，无分页）
+				wines: [],
+				wineLoading: false
 			};
+		},
+		computed: {
+			// 奖励金余额 = 累计邀请奖励 − 累积已提（两字段均由 member/list 下发）
+			rewardBalance() {
+				if (!this.member) {
+					return 0;
+				}
+				const got = Number(this.member.inviteRewardAmount) || 0;
+				const withdrew = Number(this.member.totalWithdrawInviteRewardAmount) || 0;
+				return got - withdrew;
+			}
 		},
 		mounted() {
 			this.memberId = this.$route.query.id;
 			this.getMember();
-			this.getOrders(1);
-			this.getBillings(1);
+			this.loadTab(this.activeTab);
 		},
 		methods: {
 			cellStyle({
@@ -243,7 +312,18 @@
 					return '-';
 				}
 				let date = new Date(val);
+				if (isNaN(date.getTime())) {
+					return '-';
+				}
 				return this.$utils.formatDate(date, 'yyyy-MM-dd hh:mm:ss');
+			},
+			// 存酒的日期字段是 date 类型，只到天
+			formatDay(val) {
+				if (!val) {
+					return '-';
+				}
+				const s = this.formatTimeValue(val);
+				return s === '-' ? '-' : s.substring(0, 10);
 			},
 			money(val) {
 				const n = Number(val);
@@ -291,6 +371,78 @@
 					11: '已取消(已支付)'
 				};
 				return map[status] || '-';
+			},
+			// 券优惠力度：preferentialType 1=折扣（discountAmount 为比率，0.38 → 3.8折）2=满减
+			couponBenefit(row) {
+				if (row.preferentialType == 1) {
+					const ratio = Number(row.discountAmount);
+					if (!isFinite(ratio) || ratio <= 0) {
+						return '-';
+					}
+					return ratio * 10 + ' 折';
+				}
+				if (row.preferentialType == 2) {
+					return '满' + this.money(row.limitedPrice) + ' 减' + this.money(row.reducedPrice);
+				}
+				return '-';
+			},
+			// 券状态：is_used 优先；未使用再按 endTime 判过期（定时任务不跑，is_expired 不可信，与 C-07 口径一致）
+			couponStatusText(row) {
+				if (row.isUsed) {
+					return '已使用';
+				}
+				const end = new Date(row.endTime);
+				if (!isNaN(end.getTime()) && end.getTime() < Date.now()) {
+					return '已过期';
+				}
+				return '未使用';
+			},
+			couponStatusClass(row) {
+				const text = this.couponStatusText(row);
+				if (text === '未使用') {
+					return 'status-green';
+				}
+				if (text === '已过期') {
+					return 'status-red';
+				}
+				return 'status-gray';
+			},
+			// 存酒状态：1=在存 2=已取完 3=已过期
+			wineStatusCode(row) {
+				return Number(row.statusCode !== undefined ? row.statusCode : row.status);
+			},
+			wineStatusText(row) {
+				const map = {
+					1: '在存',
+					2: '已取完',
+					3: '已过期'
+				};
+				return map[this.wineStatusCode(row)] || '-';
+			},
+			wineStatusClass(row) {
+				const code = this.wineStatusCode(row);
+				if (code == 1) {
+					return 'status-green';
+				}
+				if (code == 3) {
+					return 'status-red';
+				}
+				return 'status-gray';
+			},
+
+			// Tab 懒加载：首次切到才请求；切走再切回重新请求（数据量小，免缓存一致性）
+			handleTabClick(tab) {
+				this.loadTab(tab.name);
+			},
+			loadTab(name) {
+				if (name === 'order') {
+					this.getOrders(1);
+				} else if (name === 'coupon') {
+					this.getCoupons(1);
+				} else if (name === 'wine') {
+					this.getWines();
+				}
+				// balance 直接读 member，无需请求
 			},
 
 			getMember() {
@@ -349,6 +501,58 @@
 					});
 			},
 
+			getCoupons(pageNo) {
+				let vue = this;
+				if (!vue.memberId) {
+					return;
+				}
+				vue.couponLoading = true;
+				if (pageNo) {
+					vue.couponQuery.pageNo = pageNo;
+				}
+				vue.$http.post(vue, '/rest/admin/couponsMemberRelation/list', {
+						pageNo: vue.couponQuery.pageNo,
+						pageSize: vue.couponQuery.pageSize,
+						memberId: Number(vue.memberId)
+					},
+					(vue, data) => {
+						// 返回结构为 { couponsMemberRelationMap, goodsList, shopList }，表格只取 relation 部分
+						const records = (data.data && data.data.records) || [];
+						vue.coupons = records.map(r => Object.assign({}, r.couponsMemberRelationMap || {}));
+						vue.couponTotal = (data.data && data.data.total) || 0;
+						vue.couponLoading = false;
+					}, (error, data) => {
+						vue.couponLoading = false;
+						vue.$message({
+							showClose: true,
+							message: data && data.message ? data.message : '获取优惠券失败',
+							type: 'error'
+						});
+					});
+			},
+
+			getWines() {
+				let vue = this;
+				if (!vue.memberId) {
+					return;
+				}
+				vue.wineLoading = true;
+				vue.$http.post(vue, '/rest/admin/wineStorage/listByMember', {
+						memberId: Number(vue.memberId)
+					},
+					(vue, data) => {
+						vue.wines = data.data || [];
+						vue.wineLoading = false;
+					}, (error, data) => {
+						vue.wineLoading = false;
+						vue.$message({
+							showClose: true,
+							message: data && data.message ? data.message : '获取存酒失败',
+							type: 'error'
+						});
+					});
+			},
+
 			goBack() {
 				this.$router.push({
 					path: '/memberList'
@@ -363,54 +567,13 @@
 				this.orderQuery.pageNo = val;
 				this.getOrders();
 			},
-
-			/* ===== 资金流水（2026-09-24 新增：余额/积分变动明细）===== */
-			getBillings(pageNo) {
-				let vue = this;
-				if (!vue.memberId) {
-					return;
-				}
-				vue.billingLoading = true;
-				if (pageNo) {
-					vue.billingQuery.pageNo = pageNo;
-				}
-				// Param 继承实体，直接按 memberId 过滤；不传 coinType 以便同时看到余额与积分变动
-				vue.$http.post(vue, '/rest/admin/memberBillingRecord/list', {
-						pageNo: vue.billingQuery.pageNo,
-						pageSize: vue.billingQuery.pageSize,
-						memberId: Number(vue.memberId)
-					},
-					(vue, data) => {
-						vue.billings = (data.data && data.data.records) || [];
-						vue.billingTotal = (data.data && data.data.total) || 0;
-						vue.billingLoading = false;
-					}, (error, data) => {
-						vue.billingLoading = false;
-						vue.$message({
-							showClose: true,
-							message: data && data.message ? data.message : '获取资金流水失败',
-							type: 'error'
-						});
-					});
+			handleCouponSizeChange(val) {
+				this.couponQuery.pageSize = val;
+				this.getCoupons(1);
 			},
-			/** 币种：见 MemberBillingRecord.COIN_TYPE_*（1积分 2余额 3奖励金 4待入账积分 5待入账奖励金） */
-			billingCoinText(row) {
-				const map = {
-					1: '积分',
-					2: '余额',
-					3: '奖励金',
-					4: '待入账积分',
-					5: '待入账奖励金'
-				};
-				return map[row.coinType] || '其他';
-			},
-			handleBillingSizeChange(val) {
-				this.billingQuery.pageSize = val;
-				this.getBillings(1);
-			},
-			handleBillingCurrentChange(val) {
-				this.billingQuery.pageNo = val;
-				this.getBillings();
+			handleCouponCurrentChange(val) {
+				this.couponQuery.pageNo = val;
+				this.getCoupons();
 			}
 		}
 	};
@@ -437,12 +600,6 @@
 	.block-title {
 		font-size: 14px;
 		color: #3c4233;
-	}
-
-	.block-tip {
-		margin-left: 10px;
-		font-size: 12px;
-		color: #8a917f;
 	}
 
 	.kv {
@@ -483,37 +640,76 @@
 		font-size: 13px;
 	}
 
-	.pending {
-		font-size: 13px;
-		color: #5a614e;
-		line-height: 1.8;
-	}
-
-	.pending-lead {
-		margin-bottom: 6px;
-	}
-
-	.pending-list {
-		margin: 0;
-		padding-left: 20px;
-	}
-
-	.pending-list b {
-		color: #3c4233;
-		font-weight: 500;
-	}
-
-	.pending-list code {
-		padding: 1px 5px;
-		font-size: 12px;
+	/* 切换栏（对齐 Ardot 原型 84:1）*/
+	.status-green {
 		color: #5f7d22;
-		background: #f2f5ec;
-		border-radius: 3px;
+		background: #edf2de;
+		display: inline-block;
+		padding: 2px 10px;
+		border-radius: 10px;
+		font-size: 12px;
 	}
 
-	.pending-foot {
-		margin-top: 8px;
+	.status-gray {
 		color: #8a917f;
+		background: #f1efe8;
+		display: inline-block;
+		padding: 2px 10px;
+		border-radius: 10px;
 		font-size: 12px;
+	}
+
+	.status-red {
+		color: #e25a2b;
+		background: #fce3e3;
+		display: inline-block;
+		padding: 2px 10px;
+		border-radius: 10px;
+		font-size: 12px;
+	}
+
+	.bal-box {
+		display: flex;
+		align-items: center;
+		padding: 12px 0;
+	}
+
+	.bal-main {
+		width: 300px;
+	}
+
+	.bal-main .bl {
+		font-size: 13px;
+		color: #8a917f;
+		margin-bottom: 8px;
+	}
+
+	.bal-main .bv {
+		font-size: 30px;
+		font-weight: 700;
+		color: #404a21;
+	}
+
+	.bal-metrics {
+		display: flex;
+		flex: 1;
+	}
+
+	.metric {
+		flex: 1;
+		padding-left: 32px;
+		border-left: 1px solid #e3e6da;
+	}
+
+	.metric .ml {
+		font-size: 13px;
+		color: #8a917f;
+		margin-bottom: 8px;
+	}
+
+	.metric .mv {
+		font-size: 18px;
+		font-weight: 700;
+		color: #3c4233;
 	}
 </style>

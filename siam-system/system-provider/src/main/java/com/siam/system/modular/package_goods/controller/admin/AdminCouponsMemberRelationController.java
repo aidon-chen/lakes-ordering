@@ -1,5 +1,6 @@
 package com.siam.system.modular.package_goods.controller.admin;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.siam.package_common.constant.BasicResultCode;
 import com.siam.package_common.constant.BusinessType;
 import com.siam.package_common.entity.BasicResult;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping(value = "/rest/admin/couponsMemberRelation")
@@ -150,5 +152,28 @@ public class AdminCouponsMemberRelationController {
         /*aliyunSms.sendCouponsDistributeReminderMessage(member.getMobile(), coupons.getName());*/
 
         return BasicResult.success();
+    }
+
+    @ApiOperation(value = "会员优惠券列表（按会员id查询，供商家端会员详情-优惠券Tab使用）")
+    @PostMapping(value = "/list")
+    public BasicResult list(@RequestBody @Validated(value = {}) CouponsMemberRelation param) {
+        // 与会员端 /rest/member/couponsMemberRelation/list 同一 service 实现；
+        // 区别在于 memberId 由前端显式传入（会员端取登录态）
+        Page<Map<String, Object>> page = couponsMemberRelationService.getListByPage(param.getPageNo(), param.getPageSize(), param);
+        // relation 表只冗余了券名；类型/优惠力度在 tb_coupons —— 逐行补齐（每会员券数少，N+1 可接受）
+        for (Map<String, Object> row : page.getRecords()) {
+            Map<String, Object> rel = (Map<String, Object>) row.get("couponsMemberRelationMap");
+            if (rel == null || rel.get("couponsId") == null) {
+                continue;
+            }
+            Coupons coupons = couponsService.selectByPrimaryKey((Integer) rel.get("couponsId"));
+            if (coupons != null) {
+                rel.put("preferentialType", coupons.getPreferentialType());
+                rel.put("discountAmount", coupons.getDiscountAmount());
+                rel.put("limitedPrice", coupons.getLimitedPrice());
+                rel.put("reducedPrice", coupons.getReducedPrice());
+            }
+        }
+        return BasicResult.success(page);
     }
 }

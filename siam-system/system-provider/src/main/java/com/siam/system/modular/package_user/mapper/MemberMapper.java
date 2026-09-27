@@ -26,7 +26,9 @@ public interface MemberMapper extends BaseMapper<Member> {
             "m.vip_no, m.vip_status, m.vip_type, m.vip_start_time, m.vip_end_time, " +
             "m.balance, m.points, m.growth, m.real_name, m.is_disabled, m.is_deleted, " +
             "m.invite_code, m.login_count, m.create_time, m.last_login_time, " +
-            "m.last_use_time, m.last_use_address";
+            "m.last_use_time, m.last_use_address, " +
+            "m.total_consume_balance, m.invite_reward_amount, " +
+            "m.total_withdraw_invite_reward_amount, m.unreceived_invite_reward_amount";
 
     int countByExample(MemberExample example);
 
