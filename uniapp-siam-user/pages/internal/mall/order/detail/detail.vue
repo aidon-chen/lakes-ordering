@@ -10,7 +10,7 @@
 				</view>
 			</view>
 			<view class="to-greet-view" v-else>期待您再次光临。</view>
-			<view class="status-view">{{ order.statusText }}</view>
+			<!-- 09-25 拍板：去掉「待发货/待收货」等状态行，头部仅保留问候语（未付款分支的支付提示不受影响） -->
 
 			<view class="caozuo-buttons">
 				<button size="mini" class="quxiao-shenqing-button pinglun-btn" hover-class="hover-class-public"
@@ -954,7 +954,7 @@
 	.caozuo-buttons {
 		display: flex;
 		align-items: center;
-		/* justify-content: center; */
+		justify-content: center; /* 09-25 拍板：操作按钮组居中（原注释掉偏左） */
 		width: 100%;
 		margin: 20rpx;
 		flex-wrap: wrap;

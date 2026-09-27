@@ -5,7 +5,8 @@
 		<view class="top-tabs">
 			<view class="main-tabs">
 				<view class="main-tab-item" v-for="(item, index) in tabList" :key="index" @tap="clickTab(index)">
-					<text :class="'main-tab-text ' + (currentTab == index ? 'active' : '')">{{ item.modeName }}</text>
+					<!-- ⚠️ 条件类名不能用 active：app.wxss 有全局 .active{border-bottom:4rpx}，会撞出第二道下划线 -->
+					<text :class="'main-tab-text ' + (currentTab == index ? 'main-tab-on' : '')">{{ item.modeName }}</text>
 					<view class="tab-indicator" v-if="currentTab == index"></view>
 				</view>
 			</view>
@@ -14,8 +15,8 @@
 		<!-- 订单列表 -->
 		<view class="order-list" v-if="activeList.length > 0">
 			<template v-for="(item, index) in activeList" :key="item.id">
-				<!-- 点单订单：复刻版卡片（2026-09-23 设计稿「订单卡片·复刻」；13:2x 追加拍板：删logo占位与出品小标，进行中右下角=再来一单） -->
-				<view class="order-card" v-if="currentTab == 0" hover-class="card-hover" @tap="goDetail(item)">
+				<!-- 订单卡·复刻版（2026-09-23 设计稿；09-25 商城订单同步此卡片，删除旧商城分支） -->
+				<view class="order-card" hover-class="card-hover" @tap="goDetail(item)">
 					<view class="card-header">
 						<text class="shop-name">{{ item.shopName }}</text>
 						<text class="header-arrow">›</text>
@@ -37,7 +38,7 @@
 							<text class="price-count">共{{ totalQty(item) }}件</text>
 						</view>
 					</view>
-					<text class="goods-names" :decode="true">{{ item.description }}</text>
+					<text class="goods-names" :decode="true">{{ goodsNames(item) }}</text>
 					<view class="time-row">
 						<text class="time-text">下单: {{ (item.createTime || '').slice(0, 16) }}</text>
 					</view>
@@ -48,24 +49,6 @@
 							<view v-for="btn in cardButtons(item)" :key="btn.key" :class="'card-btn btn-' + btn.type"
 								hover-class="btn-hover" @tap.stop="onCardButton(btn.key, item)">{{ btn.text }}</view>
 						</view>
-					</view>
-				</view>
-				<!-- 商城订单：沿用旧卡片 -->
-				<view class="order-card" v-else hover-class="card-hover" @tap="goDetail(item)">
-					<view class="card-header">
-						<text class="shop-name">{{ item.shopName }}</text>
-						<text :class="'status-text ' + (item.statusActive ? 'blue' : 'gray')">{{ item.statusText }}</text>
-					</view>
-					<text class="prod-badge" v-if="prodBadge(item)">{{ prodBadge(item) }}</text>
-					<text class="goods-summary" :decode="true">{{ item.description }}</text>
-					<view class="money-row">
-						<text class="money-label">合计</text>
-						<text class="money-value">¥{{ item.actualPrice }}</text>
-					</view>
-					<view class="btn-row" v-if="cardButtons(item).length > 0">
-						<view v-for="btn in cardButtons(item)" :key="btn.key"
-							:class="'card-btn ' + (btn.type == 'primary' ? 'btn-primary' : 'btn-stroke')"
-							hover-class="btn-hover" @tap.stop="onCardButton(btn.key, item)">{{ btn.text }}</view>
 					</view>
 				</view>
 			</template>
@@ -90,6 +73,7 @@
 	import toastService from '../../../utils/toast.service';
 	import dateHelper from '../../../utils/date-helper';
 	import systemStatus from '../../../utils/system-status';
+	import GlobalConfig from '../../../utils/global-config';
 
 	const PAGE_SIZE = 10;
 	// 进行中状态（头行状态字标蓝），其余（已完成/售后/取消）标灰
@@ -219,18 +203,13 @@
 				this.currentTab = index;
 				this.reload();
 			},
-		// 订单卡按钮（2026-09-23 复刻改版）：待付款[取消/立即支付] 进行中[再来一单，退款收进「更多」]
-		// 已完成[评价/再来一单] 已取消[再来一单]；点单 tab 申请退款收进「更多」，商城 tab 旧卡片按钮平铺不变
+		// 订单卡按钮（2026-09-25 商城同步复刻 + grill 裁决）：两套 tab 按钮矩阵完全一致
+		// 待付款[立即支付] 进行中[更多+再来一单] 已完成[评价/再来一单] 已取消[再来一单]
+		// ⚠️ 卡片不放「取消订单」——取消是申请式动作，入口统一在详情页（grill Round 3 裁决，CONTEXT.md 有词条）
 		cardButtons(item) {
 			const s = Number(item.status);
-			const isShop = this.currentTab == 0;
 			const btns = [];
 			if (s === 1) {
-				btns.push({
-					key: 'cancel',
-					text: '取消订单',
-					type: 'stroke'
-				});
 				btns.push({
 					key: 'pay',
 					text: '立即支付',
@@ -238,47 +217,26 @@
 				});
 				return btns;
 			}
-			if (s >= 2 && s <= 5) {
-				if (!isShop) {
-					// 商城订单沿用旧卡片：申请退款平铺 + 取消订单保留
-					btns.push({
-						key: 'refund',
-						text: '申请退款',
-						type: 'stroke'
-					});
-					if (s <= 3) {
-						btns.push({
-							key: 'cancel',
-							text: '取消订单',
-							type: 'stroke'
-						});
-					}
-				}
-				// 点单 tab：进行中不放「取消订单」（2026-09-23 13:2x 拍板），申请退款收在「更多」
-			} else if (s === 6) {
-				if (item.isAllowAppraise) {
-					btns.push({
-						key: 'evaluate',
-						text: '评价',
-						type: 'stroke'
-					});
-				}
+			if (s === 6 && item.isAllowAppraise) {
+				btns.push({
+					key: 'evaluate',
+					text: '评价',
+					type: 'stroke'
+				});
 			}
-			// 点单 tab：进行中(s2-5)也显示「再来一单」（2026-09-23 13:2x 拍板，替代原取消订单位）
-			const showReorder = s === 6 || s === 10 || s === 11 || (isShop && s >= 2 && s <= 5);
+			// 进行中(s2-5)与已完成/已取消都带「再来一单」（描边胶囊，设计稿口径）
+			const showReorder = s === 6 || s === 10 || s === 11 || (s >= 2 && s <= 5);
 			if (showReorder) {
 				btns.push({
 					key: 'reorder',
 					text: '再来一单',
-					// 点单 tab 照设计稿=描边胶囊；商城旧卡片维持绿色实底
-					type: isShop ? 'strokeGreen' : 'primary'
+					type: 'strokeGreen'
 				});
 			}
 			return btns;
 		},
-		// 「更多」入口（2026-09-23 复刻拍板）：点单 tab 进行中订单，把申请退款收进来
+		// 「更多」入口：进行中订单（点单 s2-5 / 商城 s4-5），申请退款收在里面（09-25 拍板商城同步）
 		hasMore(item) {
-			if (this.currentTab != 0) return false;
 			const s = Number(item.status);
 			return s >= 2 && s <= 5;
 		},
@@ -288,8 +246,12 @@
 				itemColor: '#333333',
 				success: (res) => {
 					if (res.tapIndex === 0) {
+						// 商城单走商城退款页（参数同名 orderId），别跳到点单退款页
+						const url = this.currentTab == 0
+							? '../refund/apply/apply?orderId=' + item.id
+							: '../../internal/mall/order/refund/apply/apply?orderId=' + item.id;
 						uni.navigateTo({
-							url: '../refund/apply/apply?orderId=' + item.id
+							url: url
 						});
 					}
 				}
@@ -303,14 +265,27 @@
 			return q > 0 ? q : 1;
 		},
 		thumbCount(item) {
-			// 设计稿一行最多 4 张缩略图
+			// 设计稿一行最多 4 张缩略图；有真实明细时按明细条数（同商品×N 算一张），否则兜底件数
+			const list = item.orderDetailList;
+			if (list && list.length > 0) return Math.min(list.length, 4);
 			return Math.min(Math.max(this.totalQty(item), 1), 4);
 		},
-		// 商品缩略图：拍板=占位先行，后续列表接口附带 orderDetailList(mainImage) 后此处自动显示真图
+		// 商品缩略图：列表接口已附 orderDetailList（2026-09-25 后端批量补）；mainImage 为相对路径，拼 ossUrl 前缀
 		thumbSrc(item, idx) {
 			const list = item.orderDetailList;
-			if (list && list[idx] && list[idx].mainImage) return list[idx].mainImage;
+			const d = list && list[idx];
+			if (d && d.mainImage) {
+				return d.mainImage.indexOf('http') === 0 ? d.mainImage : GlobalConfig.ossUrl + d.mainImage;
+			}
 			return '';
+		},
+		// 商品名行：优先明细逐项名称（设计稿口径），无明细时兜底 description 摘要
+		goodsNames(item) {
+			const list = item.orderDetailList;
+			if (list && list.length > 0) {
+				return list.map((d) => d.goodsName).filter(Boolean).join('  ');
+			}
+			return item.description || '';
 		},
 		// ¥19.8：去掉多余尾零（"19.80" → 19.8）
 		fmtPrice(price) {
@@ -318,26 +293,7 @@
 			return isNaN(n) ? price : String(n);
 		},
 			onCardButton(key, item) {
-				const s = Number(item.status);
-				if (key === 'cancel') {
-					if (s === 1) {
-						// 未付款：列表页直接取消
-						toastService.showModal(null, '确定取消这个订单吗?', () => {
-							https.request('/rest/member/order/cancelOrder', {
-								id: item.id
-							}).then((result) => {
-								if (result.success) {
-									toastService.showSuccess('取消成功', true);
-									this.reload();
-								}
-							});
-						}, null);
-					} else {
-						// 已付款：到详情页走无理由取消（需选原因）
-						this.goDetail(item);
-					}
-					return;
-				}
+				// 「取消订单」已从卡片下线（grill Round 3 裁决：申请式动作，入口统一详情页），cancel 分支一并废弃
 				if (key === 'pay') {
 					this.goDetail(item);
 					return;
@@ -422,7 +378,8 @@
 		color: #666666;
 	}
 
-	.main-tab-text.active {
+	/* 激活态类名用 main-tab-on（不用全局 active，避免撞出第二道下划线，见模板注释） */
+	.main-tab-text.main-tab-on {
 		color: #5f7d22;
 		font-weight: 500;
 	}

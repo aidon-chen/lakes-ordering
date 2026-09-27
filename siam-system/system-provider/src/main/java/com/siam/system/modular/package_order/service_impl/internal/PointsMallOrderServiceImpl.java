@@ -7,7 +7,9 @@ import com.siam.package_common.constant.Quantity;
 import com.siam.package_common.exception.StoneCustomerException;
 import com.siam.package_common.util.*;
 import com.siam.system.modular.package_goods.entity.Setting;
+import com.siam.system.modular.package_goods.entity.Shop;
 import com.siam.system.modular.package_goods.entity.internal.*;
+import com.siam.system.modular.package_goods.mapper.internal.PointsMallGoodsMapper;
 import com.siam.package_weixin_basic.service.WxNotifyService;
 import com.siam.package_weixin_basic.service.WxPublicPlatformNotifyService;
 import com.siam.system.modular.package_goods.service.*;
@@ -19,6 +21,7 @@ import com.siam.system.modular.package_user.service.MemberTradeRecordService;
 import com.siam.system.modular.package_order.controller.member.internal.PointsMallWxPayService;
 import com.siam.system.modular.package_order.entity.*;
 import com.siam.system.modular.package_order.entity.internal.*;
+import com.siam.system.modular.package_order.mapper.internal.PointsMallOrderDetailMapper;
 import com.siam.system.modular.package_order.mapper.internal.PointsMallOrderMapper;
 import com.siam.system.modular.package_order.model.example.internal.PointsMallOrderDetailExample;
 import com.siam.system.modular.package_order.model.example.internal.PointsMallOrderExample;
@@ -60,6 +63,16 @@ public class PointsMallOrderServiceImpl extends ServiceImpl<PointsMallOrderMappe
 
     @Autowired
     private PointsMallOrderMapper pointsMallOrderMapper;
+
+    /** 订单明细/商品批量查询（2026-09-25 顾客端商城订单卡片复刻用） */
+    @Autowired
+    private PointsMallOrderDetailMapper pointsMallOrderDetailMapper;
+
+    @Autowired
+    private PointsMallGoodsMapper pointsMallGoodsMapper;
+
+    @Autowired
+    private com.siam.system.modular.package_goods.service.ShopService shopService;
 
     @Autowired
     private PointsMallOrderDetailService orderDetailService;
@@ -266,7 +279,7 @@ public class PointsMallOrderServiceImpl extends ServiceImpl<PointsMallOrderMappe
         insertOrder.setTradeId(null);
         insertOrder.setRemark(param.getRemark());
         insertOrder.setDescription(param.getDescription());
-        insertOrder.setStatus(isPayAtStore ? PointsMallOrder.STATUS_OF_WAIT_DELIVERY : PointsMallOrder.STATUS_OF_WAIT_PAYMENT);
+        insertOrder.setStatus(isPayAtStore ? PointsMallOrder.STATUS_OF_WAIT_PICKUP : PointsMallOrder.STATUS_OF_WAIT_PAYMENT);
         insertOrder.setOrderLogisticsId(null);
         insertOrder.setIsInvoice(false);
         insertOrder.setInvoiceId(null);
@@ -598,6 +611,72 @@ public class PointsMallOrderServiceImpl extends ServiceImpl<PointsMallOrderMappe
         param.setIsDeleted(false);
 
         Page<Map<String, Object>> page = pointsMallOrderMapper.getListByPageWithDesc(new Page(param.getPageNo(), param.getPageSize()), param);
+
+        //附带订单明细（商品名/主图/数量）与门店名——顾客端商城订单卡片复刻用（2026-09-25）
+        //明细表 main_image 未随下单写入 → 按 goodsId 从商品表补；主表 shop_name 列历史未写入 → 按 shopId 从门店表补
+        List<Integer> mallOrderIds = new ArrayList<>();
+        Set<Integer> shopIds = new HashSet<>();
+        for (Map<String, Object> record : page.getRecords()) {
+            mallOrderIds.add(((Number) record.get("id")).intValue());
+            Object sid = record.get("shopId") != null ? record.get("shopId") : record.get("shop_id");
+            if (sid != null) {
+                shopIds.add(((Number) sid).intValue());
+            }
+        }
+        if (!mallOrderIds.isEmpty()) {
+            List<PointsMallOrderDetail> details = pointsMallOrderDetailMapper.selectList(
+                    new LambdaQueryWrapper<PointsMallOrderDetail>()
+                            .select(PointsMallOrderDetail::getId, PointsMallOrderDetail::getOrderId,
+                                    PointsMallOrderDetail::getGoodsId, PointsMallOrderDetail::getGoodsName,
+                                    PointsMallOrderDetail::getNumber)
+                            .in(PointsMallOrderDetail::getOrderId, mallOrderIds));
+            //批量补商品主图
+            Set<Integer> goodsIds = new HashSet<>();
+            for (PointsMallOrderDetail d : details) {
+                if (d.getGoodsId() != null) {
+                    goodsIds.add(d.getGoodsId());
+                }
+            }
+            if (!goodsIds.isEmpty()) {
+                Map<Integer, String> goodsImageMap = new HashMap<>();
+                for (PointsMallGoods g : pointsMallGoodsMapper.selectList(
+                        new LambdaQueryWrapper<PointsMallGoods>()
+                                .select(PointsMallGoods::getId, PointsMallGoods::getMainImage)
+                                .in(PointsMallGoods::getId, goodsIds))) {
+                    goodsImageMap.put(g.getId(), g.getMainImage());
+                }
+                for (PointsMallOrderDetail d : details) {
+                    d.setMainImage(goodsImageMap.get(d.getGoodsId()));
+                }
+            }
+            Map<Long, List<PointsMallOrderDetail>> detailMap = new HashMap<>();
+            for (PointsMallOrderDetail d : details) {
+                List<PointsMallOrderDetail> list = detailMap.get(d.getOrderId());
+                if (list == null) {
+                    list = new ArrayList<>();
+                    detailMap.put(d.getOrderId(), list);
+                }
+                list.add(d);
+            }
+            for (Map<String, Object> record : page.getRecords()) {
+                record.put("orderDetailList",
+                        detailMap.getOrDefault(((Number) record.get("id")).longValue(), new ArrayList<>()));
+            }
+        }
+        //补门店名（单店制通常只有 1 个 shopId）
+        if (!shopIds.isEmpty()) {
+            Map<Integer, String> shopNameMap = new HashMap<>();
+            for (Shop shop : shopService.listByIds(shopIds)) {
+                shopNameMap.put(shop.getId(), shop.getName());
+            }
+            for (Map<String, Object> record : page.getRecords()) {
+                Object sid = record.get("shopId") != null ? record.get("shopId") : record.get("shop_id");
+                String shopName = sid == null ? null : shopNameMap.get(((Number) sid).intValue());
+                if (shopName != null) {
+                    record.put("shopName", shopName);
+                }
+            }
+        }
 
         //如果订单已评价 或 订单已完成超过14天 或 订单非已完成状态，则不允许评价
         page.getRecords().forEach(map -> {
@@ -2742,7 +2821,7 @@ public class PointsMallOrderServiceImpl extends ServiceImpl<PointsMallOrderMappe
         //可核销状态：4=待发货(自提场景=待自提)、5=已发货(配送场景)
         //⚠️ 原实现判断 status==3 并置 8(=已退款，废弃选项)，两个值都不在状态值域内，属基座遗留 bug，本次一并修正
         int status = dbPointsMallOrder.getStatus();
-        if (status != PointsMallOrder.STATUS_OF_WAIT_DELIVERY && status != PointsMallOrder.STATUS_OF_DELIVERYED) {
+        if (status != PointsMallOrder.STATUS_OF_WAIT_PICKUP && status != PointsMallOrder.STATUS_OF_DELIVERYED) {
             throw new StoneCustomerException("该订单状态不正确，不允许修改");
         }
 
@@ -2780,7 +2859,7 @@ public class PointsMallOrderServiceImpl extends ServiceImpl<PointsMallOrderMappe
         if (status != null && status == PointsMallOrder.STATUS_OF_COMPLETED) {
             return;
         }
-        if (status == null || status != PointsMallOrder.STATUS_OF_WAIT_DELIVERY) {
+        if (status == null || status != PointsMallOrder.STATUS_OF_WAIT_PICKUP) {
             throw new StoneCustomerException("该订单当前状态不可核销，仅「待自提」订单可核销");
         }
 
@@ -2873,7 +2952,7 @@ public class PointsMallOrderServiceImpl extends ServiceImpl<PointsMallOrderMappe
         //门店接单/备货完成：状态进入 4=待发货(自提场景=待自提) 或 6=已完成 即视为已备齐，时间取订单最后更新时间
         Date readyTime = null;
         Integer status = dbOrder.getStatus();
-        if (status != null && (status == PointsMallOrder.STATUS_OF_WAIT_DELIVERY || status == PointsMallOrder.STATUS_OF_COMPLETED)) {
+        if (status != null && (status == PointsMallOrder.STATUS_OF_WAIT_PICKUP || status == PointsMallOrder.STATUS_OF_COMPLETED)) {
             readyTime = dbOrder.getUpdateTime() != null ? dbOrder.getUpdateTime() : createTime;
         }
 

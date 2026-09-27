@@ -60,6 +60,10 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     @Autowired
     private OrderMapper orderMapper;
 
+    /** 订单明细批量查询（2026-09-25 顾客端订单卡片缩略图用） */
+    @Autowired
+    private com.siam.system.modular.package_order.mapper.OrderDetailMapper orderDetailMapper;
+
     @Autowired
     private GoodsService goodsService;
 
@@ -1668,6 +1672,33 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         param.setIsDeleted(false);
 
         Page<Map<String, Object>> page = orderMapper.getListByPageWithDesc(new Page<>(param.getPageNo(), param.getPageSize()), param);
+
+        //附带订单明细（商品名/主图/数量）——顾客端订单卡片缩略图用（2026-09-25）
+        //一次 IN 查询 + 按 orderId 分组，避免每卡一次 selectById 的 N+1
+        List<Integer> orderIds = new ArrayList<>();
+        for (Map<String, Object> record : page.getRecords()) {
+            orderIds.add(((Number) record.get("id")).intValue());
+        }
+        if (!orderIds.isEmpty()) {
+            List<OrderDetail> details = orderDetailMapper.selectList(
+                    new LambdaQueryWrapper<OrderDetail>()
+                            .select(OrderDetail::getId, OrderDetail::getOrderId, OrderDetail::getGoodsName,
+                                    OrderDetail::getMainImage, OrderDetail::getNumber)
+                            .in(OrderDetail::getOrderId, orderIds));
+            Map<Integer, List<OrderDetail>> detailMap = new HashMap<>();
+            for (OrderDetail detail : details) {
+                List<OrderDetail> list = detailMap.get(detail.getOrderId());
+                if (list == null) {
+                    list = new ArrayList<>();
+                    detailMap.put(detail.getOrderId(), list);
+                }
+                list.add(detail);
+            }
+            for (Map<String, Object> record : page.getRecords()) {
+                record.put("orderDetailList",
+                        detailMap.getOrDefault(((Number) record.get("id")).intValue(), new ArrayList<>()));
+            }
+        }
 
 
         //如果订单已评价 或 订单已完成超过14天 或 订单非已完成状态，则不允许评价

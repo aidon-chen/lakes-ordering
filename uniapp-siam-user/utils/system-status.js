@@ -39,9 +39,9 @@ const statusMallText = (status) => {
         case 3:
             return '待自提';
         case 4:
-            return '待发货';
+            return '待自提';
         case 5:
-            return '已发货';
+            return '已自提';
         case 6:
             return '已完成';
         case 7:

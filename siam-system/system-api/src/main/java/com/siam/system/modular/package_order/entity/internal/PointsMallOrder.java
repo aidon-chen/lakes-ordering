@@ -17,7 +17,9 @@ public class PointsMallOrder {
 
     //订单状态 1=未付款 4=待发货(已处理) 5=已发货 6=已完成 7=售后处理中 8=已退款(废弃选项) 9=售后处理完成 10=已取消(未支付)
     public static final int STATUS_OF_WAIT_PAYMENT = 1;
-    public static final int STATUS_OF_WAIT_DELIVERY = 4;
+    /** 待自提（2026-09-25 grill 裁决：商城纯自提，原"待发货"语义废弃，值 4 不变零迁移） */
+    public static final int STATUS_OF_WAIT_PICKUP = 4;
+    /** 废弃预留（2026-09-25 grill 裁决）：自提模式永不产生，保留占位防历史数据变"未知态"，禁止复用 */
     public static final int STATUS_OF_DELIVERYED = 5;
     public static final int STATUS_OF_COMPLETED = 6;
     public static final int STATUS_OF_WAIT_AFTER_SALE = 7;
