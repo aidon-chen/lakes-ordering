@@ -38,7 +38,7 @@ export default defineConfig(({ mode }) => ({
     port: 5270,
     proxy: {
       // 后端 context-path = /siam-server，vite 的 /rest 需加前缀
-      '/rest': { target: 'http://localhost:9411', changeOrigin: true, rewrite: p => '/siam-server' + p }
+      '/rest': { target: 'https://bar-mvp-315579-12-1488393615.sh.run.tcloudbase.com', changeOrigin: true, rewrite: p => '/siam-server' + p }
     }
   }
 }))
