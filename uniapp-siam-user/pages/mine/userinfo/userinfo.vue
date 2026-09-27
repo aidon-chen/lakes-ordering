@@ -1,14 +1,21 @@
 <template>
 	<view class="c02">
 		<!-- 行序对齐画板 21:191：头像 / 用户名 / 绑定手机 / 性别 / 邮箱 / 绑定微信 / 认证身份 -->
-		<view class="userinfo-item">
+		<!-- 头像 / 用户名：2026-09-25 放开编辑（原先两行只读，用户报「没法编辑我的头像和用户名」）。
+		     头像走 /rest/member/uploadHeadImg（multipart，字段名 file）；用户名走 /rest/member/update。 -->
+		<view class="userinfo-item" @tap="chooseHeadImg">
 			<text class="title-text">头像</text>
-			<image class="userinfo-avatar"
-				:src="data.headImg ? data.headImg : '/static/assets/images/default-avatar.jpg'" mode="cover"></image>
+			<view class="input-image">
+				<image class="userinfo-avatar" :src="headImgUrl" mode="cover"></image>
+				<van-icon name="arrow" />
+			</view>
 		</view>
-		<view class="userinfo-item">
+		<view class="userinfo-item" @tap="openUsername">
 			<text class="title-text">用户名</text>
-			<text class="userinfo-text">{{ data.username }}</text>
+			<view class="input-image">
+				<text class="userinfo-text">{{ data.username }}</text>
+				<van-icon name="arrow" />
+			</view>
 		</view>
 		<view class="userinfo-item">
 			<text class="title-text">绑定手机</text>
@@ -107,6 +114,21 @@
 				</view>
 			</view>
 		</van-action-sheet>
+
+		<van-action-sheet :show="dialogShowUsername" @close="close" @cancel="close" title="修改用户名">
+			<view class="content_box">
+				<scroll-view scroll-y style="height: 52vh">
+					<view class="content_box">
+						<input class="userinfo-text input-email" placeholder="请输入用户名（20 字以内）"
+							:value="usernameInput" maxlength="20" @input="bindInputUsername" />
+					</view>
+				</scroll-view>
+				<view class="flex_between">
+					<view class="close-botton good-choice-btn" @tap="close">取消</view>
+					<view class="good-choice-btn theme-bg" @tap="tapdialogUsernameButton">确定修改</view>
+				</view>
+			</view>
+		</van-action-sheet>
 	</view>
 </template>
 
@@ -115,6 +137,7 @@
 	import authService from '../../../utils/auth';
 	import toastService from '../../../utils/toast.service';
 	import utilHelper from '../../../utils/util';
+	import GlobalConfig from '../../../utils/global-config';
 
 	let app = null;
 
@@ -133,6 +156,9 @@
 				dialogShow: false,
 				dialogShowEmail: false,
 				dialogShowRealName: false,
+				dialogShowUsername: false,
+				usernameInput: '',
+				headUploading: false,
 				authStatusText: '未认证',
 				authPassed: false,
 				email: '',
@@ -142,6 +168,15 @@
 			};
 		},
 		computed: {
+			// 头像地址兼容两种存量格式：老数据存的是完整 URL（如 https://picture.moguit.cn/...，模板期遗留），
+			// 而 /rest/member/uploadHeadImg → ossUtils.uploadImage 返回的是 OSS 相对路径 → 需拼 ossUrl。
+			headImgUrl() {
+				const img = this.data.headImg;
+				if (!img) {
+					return '/static/assets/images/default-avatar.jpg';
+				}
+				return img.indexOf('http') === 0 ? img : GlobalConfig.ossUrl + img;
+			},
 			// 认证状态色：已认证=绿，未认证=橙，审核中/已驳回=警示橙
 			authStatusClass() {
 				if (this.authPassed) {
@@ -202,6 +237,90 @@
 			goInvoiceApply() {
 				uni.navigateTo({
 					url: '/pages/mine/invoice/apply/apply'
+				});
+			},
+
+			// ===== 头像 =====
+			chooseHeadImg() {
+				if (this.headUploading) {
+					return;
+				}
+				uni.showActionSheet({
+					itemList: ['拍照', '从手机相册选择'],
+					success: (res) => {
+						uni.chooseImage({
+							count: 1,
+							sizeType: ['original', 'compressed'],
+							sourceType: [res.tapIndex === 0 ? 'camera' : 'album'],
+							success: (result) => {
+								this.uploadHeadImg(result.tempFilePaths[0]);
+							}
+						});
+					}
+				});
+			},
+
+			// 头像上传走 multipart（字段名 file），与 /rest/member/uploadSingleImage 同款；
+			// 接口成功即已写库，故成功后重新拉一次会员信息回显
+			uploadHeadImg(filePath) {
+				this.headUploading = true;
+				toastService.showLoading('正在上传...', true);
+				const url = GlobalConfig.baseUrl + '/rest/member/uploadHeadImg';
+				https.uploadImage({
+					url: url,
+					filePath: filePath,
+					success: (data) => {
+						toastService.hideLoading();
+						this.headUploading = false;
+						if (data && data.success) {
+							toastService.showToast('头像已更新');
+							this.getUserInfo();
+						} else {
+							toastService.showToast((data && data.message) || '上传失败');
+						}
+					},
+					fail: () => {
+						toastService.hideLoading();
+						this.headUploading = false;
+						toastService.showToast('上传失败，请重试');
+					}
+				});
+			},
+
+			// ===== 用户名 =====
+			openUsername() {
+				this.dialogShowUsername = true;
+				this.usernameInput = this.data.username;
+			},
+
+			bindInputUsername(e) {
+				this.usernameInput = e.detail.value;
+			},
+
+			tapdialogUsernameButton() {
+				const username = (this.usernameInput || '').trim();
+				if (!username) {
+					toastService.showToast('请输入用户名');
+					return;
+				}
+				if (username === this.data.username) {
+					toastService.showToast('请输入不同的用户名');
+					return;
+				}
+				if (username.length > 20) {
+					toastService.showToast('用户名不能超过 20 个字');
+					return;
+				}
+				https.request('/rest/member/update', {
+					username: username
+				}).then((result) => {
+					if (result && result.success) {
+						toastService.showToast(result.message || '用户名已更新');
+						this.data.username = username;
+						this.dialogShowUsername = false;
+					} else {
+						toastService.showToast((result && result.message) || '修改失败');
+					}
 				});
 			},
 
@@ -336,6 +455,7 @@
 				this.dialogShow = false;
 				this.dialogShowRealName = false;
 				this.dialogShowEmail = false;
+				this.dialogShowUsername = false;
 			}
 		}
 	};
@@ -365,6 +485,8 @@
 		width: 108rpx;
 		height: 108rpx;
 		border-radius: 50%;
+		/* 头像行现为可点行：头像与右侧箭头之间留出间距 */
+		margin-right: 12rpx;
 		box-shadow: -2px 0px 5px 0.5px rgba(0, 0, 0, 0), 0px -2px 5px 1px rgba(0, 0, 0, 0.1), 2px 0px 5px 1px rgba(0, 0, 0, 0), 0px 2px 5px 1px rgba(0, 0, 0, 0.1);
 	}
 

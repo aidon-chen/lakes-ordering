@@ -12,6 +12,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -125,7 +126,12 @@ public class MemberController {
      * @author 暹罗
      */
     @PostMapping(value = "/uploadHeadImg")
-    public BasicResult uploadHeadImg(@RequestBody @Validated(value = {}) MemberParam param) {
+    public BasicResult uploadHeadImg(@RequestParam("file") MultipartFile file) {
+        // ⚠️ 原签名是 @RequestBody MemberParam，但 Service 实现读的是 param.getFile()（MultipartFile）——
+        // @RequestBody 只绑定 JSON body，file 字段永远为 null，该接口此前必然抛「图片不能为空」。
+        // 改为标准 multipart 接收（与 UploadController.uploadSingleImage 一致），Service 签名保持不变。
+        MemberParam param = new MemberParam();
+        param.setFile(file);
         memberService.uploadHeadImg(param);
         return BasicResult.success();
     }

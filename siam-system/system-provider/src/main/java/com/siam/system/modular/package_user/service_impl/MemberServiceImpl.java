@@ -1001,12 +1001,24 @@ public class MemberServiceImpl implements MemberService {
     public void update(MemberParam param) {
         Member loginMember = memberSessionManager.getSession(TokenUtil.getToken());
 
-        //目前只准修改邮箱地址、性别、真实姓名
+        //目前只准修改邮箱地址、性别、真实姓名、用户名
         Member updateMember = new Member();
         updateMember.setId(loginMember.getId());
         updateMember.setEmail(param.getEmail());
         updateMember.setSex(param.getSex());
         updateMember.setRealName(param.getRealName());
+
+        //用户名（昵称）2026-09-25 放开编辑。只在有值时写入 —— updateByPrimaryKeySelective 会跳过 null 字段，
+        //因此单独改用户名不会把邮箱/性别清空。不影响登录：账号密码登录走 selectByUsernameOrMobile，
+        //手机号始终可登；顾客端小程序走验证码登录。
+        if (param.getUsername() != null && param.getUsername().trim().length() > 0) {
+            String username = param.getUsername().trim();
+            if (username.length() > 20) {
+                throw new StoneCustomerException("用户名不能超过 20 个字");
+            }
+            updateMember.setUsername(username);
+        }
+
         memberMapper.updateByPrimaryKeySelective(updateMember);
     }
 
