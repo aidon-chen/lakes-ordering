@@ -10,7 +10,7 @@
       <AppSidebar v-show="!collapsed" />
 
       <main class="flex-1 flex flex-col min-w-0" style="background: var(--bg)">
-        <AppBreadcrumb />
+        <!-- 面包屑白条已按 09-25 拍板移除（AppBreadcrumb.vue 文件保留，恢复时重新挂载即可） -->
         <router-view />
       </main>
     </div>
@@ -22,7 +22,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import AppSidebar from '@/components/AppSidebar.vue'
-import AppBreadcrumb from '@/components/AppBreadcrumb.vue'
+// AppBreadcrumb（面包屑白条）09-25 拍板移除，组件文件保留备用
 import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()

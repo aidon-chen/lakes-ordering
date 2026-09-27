@@ -21,12 +21,12 @@
       <!-- 全屏钮已移至顶栏「代客点单」处（09-24 拍板，AppHeader.vue，仅本页显示） -->
     </div>
 
-    <!-- 三列 2:991 -->
-    <div class="flex-1 min-h-0 grid" style="grid-template-columns: repeat(3, 1fr); gap: 16px">
+    <!-- 三列 2:991 ｜ Pad 适配（09-25）：minmax(0,1fr) 防长品项串把列撑破横向溢出 -->
+    <div class="flex-1 min-h-0 grid" style="grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px">
       <section
         v-for="col in columns"
         :key="col.key"
-        class="flex flex-col rounded-lg min-h-0"
+        class="flex flex-col rounded-lg min-h-0 overflow-hidden"
         style="padding: 12px; background: #262E17; gap: 10px"
       >
         <h3 class="shrink-0 text-[16px] font-medium" style="color: #FFFFFF">{{ col.title }}</h3>
@@ -44,9 +44,10 @@
             @click="openDetail(it)"
           >
             <div class="flex items-baseline" style="gap: 8px; justify-content: space-between">
-              <span class="text-[20px] font-bold" style="color: #404A21">{{ headText(it) }}</span>
+              <!-- 头行 nowrap：窄列（pad 竖屏 ~300px）下防「自取」被挤成逐字竖排 -->
+              <span class="text-[20px] font-bold whitespace-nowrap" style="color: #404A21">{{ headText(it) }}</span>
               <!-- 右侧组：下单时间 + 计时器/出品时间（space-between 保证靠右，不依赖容器自由空间） -->
-              <span class="flex items-baseline" style="gap: 8px">
+              <span class="flex items-baseline shrink-0" style="gap: 8px">
                 <span class="text-[12px]" style="color: #8F9499">下单 {{ hhmm(it.order.createTime) }}</span>
                 <span
                   class="text-[12px] font-medium"
@@ -280,7 +281,8 @@ function headText(it: KanbanItem): string {
   // 2026-09-23：一级界面显示**取餐码**（A-00N 形态），与顾客端/订阅消息同口径 —— 店员与顾客对得上号
   const no = o.queueNo ? pickupCodeText(o.queueNo) : (o.tableNo ?? '—')
   const isTakeaway = !o.tableName || !String(o.tableName).trim()
-  if (isTakeaway) return `${no} · 外带自取`
+  // 09-25 拍板：卡片头行标「自取」（原「外带自取」太长，看板场景够用即可）
+  if (isTakeaway) return `${no} · 自取`
   const type = typeByTableNo.value[o.tableNo ?? ''] ?? ''
   return type ? `${no} · ${type}` : `${no} · 台位`
 }

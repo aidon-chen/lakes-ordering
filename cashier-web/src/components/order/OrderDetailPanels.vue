@@ -41,7 +41,8 @@
         class="flex items-center text-[12px]"
         style="height: 40px; border-top: 1px solid var(--tc-line); color: var(--txt)"
       >
-        <span class="px-2 truncate" style="width: 240px">{{ d.goodsName || '—' }}{{ specText(d) ? ' · ' + specText(d) : '' }}</span>
+        <!-- 品名/规格允许换行完整展示（09-25 拍板：规格显示不全 → 去掉单行截断；多行时行高 1.5 保持可读） -->
+        <span class="px-2" style="width: 240px; white-space: normal; word-break: break-all; line-height: 1.5">{{ d.goodsName || '—' }}{{ specText(d) ? ' · ' + specText(d) : '' }}</span>
         <span class="px-2 truncate" style="width: 80px">{{ d.number ?? 1 }}</span>
         <span class="px-2 truncate" style="width: 110px">¥{{ money(d.price) }}</span>
         <span class="px-2 truncate" style="width: 110px">¥{{ money(d.subtotal) }}</span>
