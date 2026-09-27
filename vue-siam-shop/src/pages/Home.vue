@@ -489,7 +489,10 @@ export default {
 			user = JSON.parse(user);
 			// 顶部店名不从 sessionStorage.user 取：该对象是商家账号（Merchant 无 shopName 字段），
 			// 取到的恒为空。真实店名统一在下方的 getLoginMerchantShopInfo 回调里赋值。
-			this.sysUserAvatar = "https://lakes-public.oss-cn-chengdu.aliyuncs.com/" + user.shopLogoImg;
+			// 顶部头像同理：user(Merchant) 上没有 shopLogoImg 字段，直接拼接会得到 ".../undefined"（404）。
+			// 这里先给默认图（走 publicUrl：本地联调=后端图片目录，线上=OSS），
+			// 真实头像在下方 getLoginMerchantShopInfo 回调里按 Shop.shopLogoImg 覆盖。
+			this.sysUserAvatar = this.$http.publicUrl('data/images/system/logo.png');
 			if (user.issaler) {
 				this.routerArr = this.formatRouter()
 			}
@@ -503,6 +506,11 @@ export default {
 			(vue, data) => {
 				let shop = data.data
 				this.sysUserName = shop.name || '';
+				// 顶部头像：Shop 实体才有 shopLogoImg（Merchant 没有，见 mounted 注释）；
+				// 空值兜底保留 mounted 里的默认图，避免拼出 ".../undefined"。
+				if (shop.shopLogoImg) {
+					this.sysUserAvatar = this.$http.publicUrl(shop.shopLogoImg);
+				}
 				this.isOperating = shop.isOperating;
 				this.isOpenOrderAudio = shop.isOpenOrderAudio;
 				this.isOpenLocalPrint = shop.isOpenLocalPrint;
