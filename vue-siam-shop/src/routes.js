@@ -39,6 +39,8 @@ const takeOutTabsChild1 = () => import( './pages/orderManage/takeOutTabsChild1.v
 const takeOutTabsChild2 = () => import( './pages/orderManage/takeOutTabsChild2.vue')
 const forHereTabsChild2 = () => import( './pages/orderManage/forHereTabsChild2.vue')
 const refundOrderList = () => import( './pages/orderManage/refundOrderList.vue')
+//C-15 发票申请审批（商家完结：已开具/已驳回）
+const invoiceApprovalList = () => import( './pages/orderManage/invoiceApprovalList.vue')
 const forHereTabsChild3 = () => import( './pages/orderManage/forHereTabsChild3.vue')
 const orderDetail = () => import( './pages/orderManage/orderDetail.vue')
 //const unpaidOrderList = () => import( './pages/MallManage/unpaidOrderList.vue')
@@ -162,6 +164,7 @@ let routes = [
       children: [
           { path: '/memberList', component: memberList, name: '会员列表' },
           { path: '/memberDetail', component: memberDetail, name: '会员详情', hidden: true },
+          { path: '/memberIdentityAuth', component: memberIdentityAuth, name: '身份认证审核' },//C-17（2026-09-27 自财务报表迁入）
       ]
     },
     {
@@ -180,8 +183,9 @@ let routes = [
           // { path: '/takeOutTabsChild1', component: takeOutTabsChild1, name: '待配送订单' },
           // { path: '/takeOutTabsChild2', component: takeOutTabsChild2, name: '已配送订单' },
           // { path: '/forHereTabsChild2', component: forHereTabsChild2, name: '已完成订单' },       
-          { path: '/refundOrderList', component: refundOrderList, name: '售后订单' },          
-          { path: '/appraiseList', component: appraiseList, name: '评价管理' },     
+          { path: '/refundOrderList', component: refundOrderList, name: '售后订单' },
+          { path: '/invoiceApprovalList', component: invoiceApprovalList, name: '发票审批' },
+          { path: '/appraiseList', component: appraiseList, name: '评价管理' },
           // { path: '/forHereTabsChild3', component: forHereTabsChild3, name: '已取消订单' },          
           { path: '/orderDetail', component: orderDetail, name: '查看订单详情', hidden: true },   
          // { path: '/CoreImage', component: CoreImage, name: '裁剪图片' },        
@@ -267,7 +271,7 @@ let routes = [
           { path: '/merchantWithdrawRecord', component: merchantWithdrawRecord, name: '提现记录' },
           { path: '/vipRechargeRecord', component: vipRechargeRecord, name: '会员充值记录' },
           { path: '/memberWithdrawRecord', component: memberWithdrawRecord, name: '奖励金提现记录' },
-          { path: '/memberIdentityAuth', component: memberIdentityAuth, name: '身份认证审核' },
+          // 身份认证审核已迁至「用户管理」分组（2026-09-27）
       ]
     },        
     {

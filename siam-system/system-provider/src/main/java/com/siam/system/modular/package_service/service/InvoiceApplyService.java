@@ -24,7 +24,15 @@ public interface InvoiceApplyService {
     List<InvoiceApply> listByMember(Integer memberId, Integer status);
 
     /**
-     * 商家完结（预留接口，本批无商家端 UI）：status=2 已开具 / 3 已驳回，写 finish_time
+     * 商家审批列表（全量，status 可选过滤 1 待处理 / 2 已开具 / 3 已驳回；apply_time 倒序）
+     *
+     * 注：tb_invoice_apply 无 shop_id 列——唯一门店期（湖里Lakes）不做门店过滤，
+     * 多店场景需先加列再补过滤（铁律：加列本地库+云库同步）。
+     */
+    List<InvoiceApply> listForMerchant(Integer status);
+
+    /**
+     * 商家完结（发票审批页）：status=2 已开具 / 3 已驳回，写 finish_time
      */
     void finish(InvoiceApplyParam param);
 }

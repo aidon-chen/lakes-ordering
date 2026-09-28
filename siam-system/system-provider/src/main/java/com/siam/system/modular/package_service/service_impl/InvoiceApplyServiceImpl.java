@@ -115,6 +115,16 @@ public class InvoiceApplyServiceImpl implements InvoiceApplyService {
     }
 
     @Override
+    public List<InvoiceApply> listForMerchant(Integer status) {
+        QueryWrapper<InvoiceApply> qw = new QueryWrapper<>();
+        if (status != null) {
+            qw.eq("status", status);
+        }
+        qw.orderByDesc("apply_time").orderByDesc("id");
+        return invoiceApplyMapper.selectList(qw);
+    }
+
+    @Override
     public void finish(InvoiceApplyParam param) {
         if (param.getId() == null) {
             throw new StoneCustomerException("申请记录id不能为空");
