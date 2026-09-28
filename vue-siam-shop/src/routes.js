@@ -50,7 +50,6 @@ const todayOrderList = () => import( './pages/orderManage/todayOrderList.vue')
 const appraiseList = () => import( './pages/orderManage/appraiseList.vue')
 
 //促销管理
-const fullReductionRuleList = () => import( './pages/promotionManage/fullReductionRuleList.vue')
 const couponsList = () => import( './pages/promotionManage/couponsList.vue')
 
 //营销中心（M-01~M-04 / A-10 首页海报）
@@ -237,7 +236,6 @@ let routes = [
           { path: '/activityPopupList', component: activityPopupList, name: '首页活动弹窗' },//M-01/M-02
           { path: '/homePosterList', component: homePosterList, name: '首页海报' },//A-10 首页海报（type=1，R3 迁移单一入口）
           { path: '/couponsList', component: couponsList, name: '优惠券管理' },
-          { path: '/fullReductionRuleList', component: fullReductionRuleList, name: '满减' },
       ]
     },     
     {
