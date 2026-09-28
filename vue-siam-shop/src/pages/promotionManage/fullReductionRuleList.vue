@@ -76,15 +76,6 @@
 						<el-radio-button label="关闭" value="2"></el-radio-button>
 					</el-radio-group>				
 				</el-form-item>						
-				<!-- [2026-09-28 满减规则并入券体系] 新增规则时同步生成满减券，有效期商家自选；
-				     value-format="timestamp" 直出毫秒时间戳，避开 Jackson 只认时间戳/ISO 的反序列化坑（09-28 优惠券时间段同族问题） -->
-				<el-form-item label="券有效期" prop="validStartTime" v-if="!editForm.id">
-					<el-date-picker v-model="editForm.validStartTime" type="date" value-format="timestamp" placeholder="券生效开始日期" style="width:48%;"></el-date-picker>
-					<el-date-picker v-model="editForm.validEndTime" type="date" value-format="timestamp" placeholder="券失效日期" style="width:48%;"></el-date-picker>
-				</el-form-item>
-				<el-form-item v-if="editForm.id" label=" ">
-					<div style="color:#909399;font-size:12px;line-height:1.5;">满减规则已并入优惠券体系：新增规则会自动生成同参满减券；编辑/删除本规则不会同步已生成的券，券请在「优惠券管理」维护</div>
-				</el-form-item>
 			</el-form>
 			<div slot="footer" class="dialog-footer">
 				<el-button @click.native="editFormVisible = false">取消</el-button>
@@ -115,21 +106,6 @@
 					limitedPrice: [{ required: true, message: '请输入满足价格', trigger: 'blur' }],
 					reducedPrice: [{ required: true, message: '请输入减价额度', trigger: 'blur' }],
 					status: [{ required: true, message: '请选择活动状态', trigger: 'change' }],
-					// [2026-09-28 满减规则并入券体系] 券有效期仅新增（无 id）时必填；编辑规则不涉及券
-					validStartTime: [{
-						validator: (rule, value, callback) => {
-							if (!this.editForm.id && (value === '' || value === null || value === undefined)) {
-								callback(new Error('请选择券生效开始日期'));
-							} else { callback(); }
-						}, trigger: 'change'
-					}],
-					validEndTime: [{
-						validator: (rule, value, callback) => {
-							if (!this.editForm.id && (value === '' || value === null || value === undefined)) {
-								callback(new Error('请选择券失效日期'));
-							} else { callback(); }
-						}, trigger: 'change'
-					}],
 				},
 				//编辑界面数据
 				editForm: {
@@ -137,8 +113,6 @@
 					limitedPrice: '',
 					reducedPrice: '',
 					status: false,
-					validStartTime: '',
-					validEndTime: ''
 				}
 			}
 		},
@@ -242,8 +216,6 @@
 						limitedPrice: '',
 						reducedPrice: '',
 						status: '开启',
-						validStartTime: '',
-						validEndTime: ''
 					}
 				}
 
@@ -276,12 +248,6 @@
 
 						param.status = (param.status == '开启') ? 1 : 2;
 
-						// [2026-09-28 满减规则并入券体系] 券有效期只给券接口用；规则实体无此字段，插库前剥离
-						let couponValidStartTime = param.validStartTime;
-						let couponValidEndTime = param.validEndTime;
-						delete param.validStartTime;
-						delete param.validEndTime;
-
 						if(param.id){
 							url = '/rest/merchant/fullReductionRule/update';
 							vue.$http.put(vue, url, param,
@@ -308,37 +274,6 @@
 							url = '/rest/merchant/fullReductionRule/insert';
 							vue.$http.post(vue, url, param,
 								(vue, data) => {
-									// [2026-09-28 满减规则并入券体系] 规则建好后同步生成同参满减券（顾客领券使用；收银端仍走规则表）。
-									// 券有效期毫秒时间戳直传（Jackson 只认时间戳/ISO）；失效日期取所选日期当天 23:59:59.999。
-									let couponParam = {
-										name: param.name,
-										preferentialType: 2,
-										issueType: 2,
-										notice: '满' + param.limitedPrice + '减' + param.reducedPrice,
-										description: '满' + param.limitedPrice + '减' + param.reducedPrice,
-										limitedPrice: param.limitedPrice,
-										reducedPrice: param.reducedPrice,
-										validType: 1,
-										validStartTime: couponValidStartTime,
-										validEndTime: couponValidEndTime + 86400000 - 1,
-										source: 1
-									};
-									vue.$http.post(vue, '/rest/merchant/coupons/insert', couponParam,
-										(vue2, cdata) => {
-											vue.$message({
-												showClose: true,
-												message: '已同步生成满减券「' + param.name + '」，顾客可在领券中心领取',
-												type: 'success'
-											});
-										}, (error2, cdata) => {
-											vue.$message({
-												showClose: true,
-												message: '满减规则已创建，但同步生成满减券失败（' + (cdata && cdata.message ? cdata.message : '未知错误') + '），请到「优惠券管理」手动创建',
-												type: 'warning',
-												duration: 6000
-											});
-										}
-									)
 									// this.editLoading = false;
 									vue.$message({
 										showClose: true,
