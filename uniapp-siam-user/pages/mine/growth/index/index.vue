@@ -26,8 +26,8 @@
 
 			<view class="c08-summary">
 				<view class="c08-summary-item">
-					<view class="c08-summary-value">{{ summary.total }}</view>
-					<view class="c08-summary-label">累计成长值</view>
+				<view class="c08-summary-value">{{ summaryTotal }}</view>
+				<view class="c08-summary-label">累计成长值</view>
 				</view>
 				<view class="c08-summary-item">
 					<view class="c08-summary-value">{{ summary.consume }}</view>
@@ -66,8 +66,9 @@
 			return {
 				statusBarHeight: 40,
 				growth: 0,
+				// 累计成长值 = 积分流水净额（myPoints.totalPoints，真累计，不受明细分页窗口限制）
+				summaryTotal: 0,
 				summary: {
-					total: 0,
 					consume: 0,
 					today: 0
 				},
@@ -111,43 +112,48 @@
 			});
 		},
 		methods: {
+			// 当前成长值：改读积分流水账本（2026-09-27 换源）。
+			// 旧源 getLoginMemberInfo.growth 是 19 号 SQL 的种子死数（后端无写入点）；
+			// 真实入账在 tb_member_points_log（支付/充值/退款红冲，package_points 模块），
+			// myPoints.totalPoints = SUM(change_points)，与等级阈值表同源。
 			getMemberInfo() {
-				https.request('/rest/member/getLoginMemberInfo', {}).then((result) => {
+				https.request('/rest/member/points/myPoints', {}).then((result) => {
 					if (result && result.success && result.data) {
-						this.growth = Number(result.data.growth) || 0;
+						this.growth = Number(result.data.totalPoints) || 0;
+						// 累计成长值直接用流水净额（真累计）；明细接口只负责两个派生格
+						this.summaryTotal = this.growth;
 					}
 				});
 			},
-			// 成长值明细复用通用账单流水接口，coinType=6（成长值，见 sql/mysql/cloudrun/19-*.sql）
+			// 成长值明细：改读积分流水分页（2026-09-27 换源）。
+			// 旧源 billingRecord/list?coinType=6 只有种子；biz_type 1=消费 2=活动 3=充值 4=退款红冲 5=后台调整
+			// ⚠️ https.request 封装是 POST+JSON body（参数不拼 query），而 myLog 是 @RequestParam
+			//    读 query —— 分页参数必须拼在 URL 上，放 body 会被吞掉走默认 20 条；
+			//    pageSize=-1 = MyBatis-Plus 不分页全量（与旧 billing 调用 pageNo:-1 同口径）
 			getGrowthList() {
-				https.request('/rest/member/billingRecord/list', {
-					pageNo: -1,
-					pageSize: 50,
-					coinType: 6
-				}).then((result) => {
+				https.request('/rest/member/points/myLog?pageNo=1&pageSize=-1', {}).then((result) => {
 					if (!result || !result.success || !result.data || !result.data.records) {
 						this.list = [];
 						this.summary = {
-							total: 0,
 							consume: 0,
 							today: 0
 						};
 						return;
 					}
 					const todayKey = this.todayKey();
+					// total 格不用这里统计——累计成长值=流水净额，走 myPoints（真累计）
 					const summary = {
-						total: 0,
 						consume: 0,
 						today: 0
 					};
 					this.list = result.data.records.map((raw) => {
-						// Map 结果经 MyBatis-Plus 驼峰化，但驱动/配置变动会退回下划线，两种都兜住
+						// MyBatis-Plus 驼峰为主，退回下划线兜底（与旧 normalize 同策略）
 						const rec = this.normalize(raw);
-						const isAdd = Number(rec.operateType) === 1;
-						const num = Math.abs(Number(rec.number) || 0);
+						const num = Math.abs(Number(rec.changePoints) || 0);
+						const isAdd = Number(rec.changePoints) > 0;
 						if (isAdd) {
-							summary.total += num;
-							if (Number(rec.type) === 23) {
+							if (Number(rec.bizType) === 1) {
+								// biz_type 1=消费（对应旧 coinType=6 流水的 type 23）
 								summary.consume += num;
 							}
 							if (this.dateKey(rec.createTime) === todayKey) {
@@ -155,7 +161,7 @@
 							}
 						}
 						return {
-							title: rec.message || '成长值变动',
+							title: rec.remark || this.bizTitle(rec.bizType),
 							timeText: this.formatTime(rec.createTime),
 							valueText: (isAdd ? '+' : '-') + num,
 							isAdd: isAdd
@@ -167,12 +173,23 @@
 			normalize(raw) {
 				const pick = (camel, snake) => (raw[camel] !== undefined ? raw[camel] : raw[snake]);
 				return {
-					type: pick('type', 'type'),
-					operateType: pick('operateType', 'operate_type'),
-					number: pick('number', 'number'),
-					message: pick('message', 'message'),
+					bizType: pick('bizType', 'biz_type'),
+					changePoints: pick('changePoints', 'change_points'),
+					remark: pick('remark', 'remark'),
 					createTime: pick('createTime', 'create_time')
 				};
+			},
+			// 流水标题：后端 earnByAmount 的 remark 为空（商品名未带），按 biz_type 出通用文案，
+			// 与 19 号种子文案口径一致（1消费/2活动/3充值/4退款红冲/5后台调整）
+			bizTitle(bizType) {
+				const map = {
+					1: '消费获得成长值',
+					2: '活动赠送成长值',
+					3: '充值获得成长值',
+					4: '退款扣回成长值',
+					5: '积分调整'
+				};
+				return map[Number(bizType)] || '成长值变动';
 			},
 			todayKey() {
 				return this.dateKey(new Date());

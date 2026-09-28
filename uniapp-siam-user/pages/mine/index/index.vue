@@ -257,6 +257,19 @@
 				https.request('/rest/member/getLoginMemberInfo', {}).then((result) => {
 					if (result && result.success && result.data) {
 						this.member = result.data;
+						// 成长值换源（2026-09-27）：growth 是 19 号 SQL 种子死数（后端无写入点），
+						// 真实账在 tb_member_points_log，改用 myPoints.totalPoints 回填；
+						// 等级徽章/升级提示行的 levelOf 管线不变（阈值与后端 level_setting 对齐）
+						this.getMyPoints();
+					}
+				});
+			},
+			// 当前成长值：SUM(积分流水)，与 C-08「我的成长值」/C-03 同源
+			getMyPoints() {
+				https.request('/rest/member/points/myPoints', {}).then((result) => {
+					if (result && result.success && result.data) {
+						// 只回填 growth，避免整体覆盖冲掉并行请求刚写入的其余字段
+						this.member.growth = Number(result.data.totalPoints) || 0;
 					}
 				});
 			},
