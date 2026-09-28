@@ -18,7 +18,7 @@
 					<text class="name out_of_range two_row">{{ data.name }}</text>
 					<text :decode="true" class="price">
 						￥{{ priceAfter }}
-						<text class="score-money" :decode="true">&nbsp;&nbsp;(可用积分等额兑换)</text>
+						<!-- 2026-09-27：「(可用积分等额兑换)」提示已删（用户拍板；项目口径不做积分支付） -->
 					</text>
 				</view>
 				<!-- 2026-09-27：「收藏」入口已删（用户拍板没什么用；「我的收藏」列表页 mine/collect 本就无可达入口，
@@ -530,11 +530,15 @@
 					id: id
 				}).then((result) => {
 					if (result.success && result.data) {
-						//获取商品的详细图片，转换以轮播图的数据格式
-						let carouselUrls = result.data.subImages.split(',');
+						// 2026-09-27：图片字段判空加固——云端种子数据 subImages/mainImage 为 NULL，
+						// 原写法 .split(',') 抛 TypeError 中断整个渲染回调，详情页全空（本地库有占位图值故仅云上复现）
 						this.carouselUrls = [];
-						for (let i = 0; i < carouselUrls.length; i++) {
-							this.carouselUrls.push(GlobalConfig.ossUrl + carouselUrls[i]);
+						if (result.data.subImages) {
+							//获取商品的详细图片，转换以轮播图的数据格式
+							let carouselUrls = result.data.subImages.split(',');
+							for (let i = 0; i < carouselUrls.length; i++) {
+								this.carouselUrls.push(GlobalConfig.ossUrl + carouselUrls[i]);
+							}
 						}
 						this.detailImages = [];
 						if (result.data.detailImages) {
@@ -542,6 +546,8 @@
 							for (let i = 0; i < detailImages.length; i++) {
 								this.detailImages.push(GlobalConfig.ossUrl + detailImages[i]);
 							}
+						}
+						if (result.data.mainImage) {
 							result.data.mainImage = GlobalConfig.ossUrl + result.data.mainImage;
 						}
 						this.setData({
@@ -553,6 +559,13 @@
 						this.selectByGoodsId(id);
 						this.getFullReductionRule(result.data);
 						this.chooseSpecifications();
+					} else {
+						//静默失败兜底：接口异常时给出提示，避免详情页无任何反馈地全空
+						uni.showToast({
+							title: (result && result.message) || '商品信息加载失败',
+							icon: 'none',
+							duration: 2500
+						});
 					}
 				});
 			},
@@ -1441,10 +1454,7 @@
 		font-weight: bold;
 	}
 
-	.score-money {
-		font-size: 30rpx;
-	}
-
+	/* 2026-09-27：.score-money（"可用积分等额兑换"角标样式）已随文案一并删除 */
 	.content_box {
 		padding-top: 0;
 	}

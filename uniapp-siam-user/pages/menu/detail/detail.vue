@@ -744,12 +744,19 @@
 					position: app.globalData.deliveryAndSelfTaking.location
 				}).then((result) => {
 					if (result.success && result.data) {
-						//获取商品的详细图片，转换以轮播图的数据格式
-						let carouselUrls = result.data.subImages.split(',');
-						for (let i = 0; i < carouselUrls.length; i++) {
-							this.carouselUrls.push(GlobalConfig.ossUrl + carouselUrls[i]);
+						// 2026-09-27：图片字段判空加固——云端数据 subImages/mainImage 为 NULL 时
+						// .split(',') 抛 TypeError 中断整个渲染回调，详情页全空（与商城详情页同款修复）
+						this.carouselUrls = [];
+						if (result.data.subImages) {
+							//获取商品的详细图片，转换以轮播图的数据格式
+							let carouselUrls = result.data.subImages.split(',');
+							for (let i = 0; i < carouselUrls.length; i++) {
+								this.carouselUrls.push(GlobalConfig.ossUrl + carouselUrls[i]);
+							}
 						}
-						result.data.mainImage = GlobalConfig.ossUrl + result.data.mainImage;
+						if (result.data.mainImage) {
+							result.data.mainImage = GlobalConfig.ossUrl + result.data.mainImage;
+						}
 						this.data = result.data;
 						this.carouselUrls = this.carouselUrls;
 						this.priceAfter = result.data.price;
@@ -1763,10 +1770,7 @@
 	}
 
 	/* 2026-09-27：.collect-in / .iconshoucang1 / .is-collect / .shoucang-text / .not-collect（收藏图标与状态样式）已随「收藏」入口一并删除 */
-
-	.score-money {
-		font-size: 30rpx;
-	}
+	/* 2026-09-27：.score-money（"可用积分等额兑换"角标样式，本页本就无该文案节点）已删 */
 
 	.content {
 		padding: 0 16px 16px 16px;

@@ -18,15 +18,12 @@
 					取消订单
 				</button>
 
-				<button size="mini" class="quxiao-shenqing-button pinglun-btn" hover-class="hover-class-public"
-					@tap="applyRefund" v-if="order.isAllowApplyRefund" style="font-size: 28rpx">
-					申请退款
-				</button>
+			<!-- 「申请退款」入口已下线（2026-09-27 用户拍板，商城订单详情页）；已申请的退款进度仍走下方「退款进度」卡 -->
 
-				<button size="mini" class="pinglun-btn theme-color-border" hover-class="hover-class-public"
-					@tap="applyServer" v-if="order.isAllowApplyAfterSales" style="font-size: 28rpx">
-					申请售后
-				</button>
+			<button size="mini" class="pinglun-btn theme-color-border" hover-class="hover-class-public"
+				@tap="applyServer" v-if="order.isAllowApplyAfterSales" style="font-size: 28rpx">
+				申请售后
+			</button>
 
 				<!-- C-10 批次6：门店自提订单（shoppingWay=1）用「查看自提码」替代「查看物流」 -->
 				<button size="mini" class="pinglun-btn theme-color-border" hover-class="hover-class-public"
