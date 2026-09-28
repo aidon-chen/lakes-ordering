@@ -1,5 +1,5 @@
 <template>
-	<view class="page" :style="{ paddingTop: statusBarHeight + 'px' }">
+	<view class="page" :style="{ '--status-bar-height': statusBarHeight + 'px' }">
 
 		<!-- C-02 首页活动弹窗 -->
 		<view class="activity-mask" v-if="activityDialogShow" @tap="closeActivityDialog">
@@ -26,12 +26,12 @@
 			<!-- 音符水印（设计稿不透明度 12%，见 a01-opt 画板像素反解） -->
 			<image class="hero-watermark" src="/static/assets/icons/login-note-white.png" mode="widthFix" />
 
-			<!-- 品牌行：门店 logo + 门店名 -->
-			<view class="hero-brand">
+			<!-- 品牌行：门店 logo + 门店名（选门店恢复⑥：点击进门店列表） -->
+			<view class="hero-brand" @tap="shopTap">
 				<image class="hero-brand-logo" :src="shopLogo" mode="aspectFill" />
 				<view class="hero-brand-name">{{ shopName }}</view>
 			</view>
-			<view class="hero-shop-info">{{ shopInfoLine }}</view>
+			<view class="hero-shop-info" @tap="shopTap">{{ shopInfoLine }}</view>
 
 			<!-- 底部渐变遮罩 -->
 			<view class="hero-mask"></view>
@@ -210,6 +210,11 @@
 				this.swiperCurrent = e.detail.current;
 			},
 
+			// 选门店入口（选门店恢复⑥）：品牌行/门店信息行 → 门店列表页
+			shopTap() {
+				uni.navigateTo({ url: '/pages/shop/shop-list/shop-list' });
+			},
+
 			// 门店信息：① 用户选过的 currentShopId → /rest/shop/detail；
 			// ② 否则按定位 → /rest/shop/listForPickup 取最近一家 → 再用 detail 补全；
 			// ③ 全失败则保留 data 里的兜底文案。任何一步失败都静默降级，不阻塞首页。
@@ -261,6 +266,13 @@
 				https.request('/rest/member/getLoginMemberInfo', {}).then((result) => {
 					if (result && result.success && result.data) {
 						this.member = result.data;
+						// 成长值换源（2026-09-27）：growth 是种子死数，改用积分流水合计回填
+						//（会员条 growthValue computed 自动跟随；与 C-01/C-03/C-08 同源）
+						https.request('/rest/member/points/myPoints', {}).then((res) => {
+							if (res && res.success && res.data) {
+								this.member.growth = Number(res.data.totalPoints) || 0;
+							}
+						}).catch(() => {});
 					}
 				}).catch(() => {});
 			},
@@ -435,7 +447,10 @@
 	.hero {
 		position: relative;
 		width: 100%;
-		height: 1140rpx;
+		/* 沉浸式海报（09-28 用户拍板）：页面不再预留 statusBarHeight 空隙，渐变直顶状态栏；
+		   高度 = 100vh（custom 导航下为扣掉原生 tabBar 的窗口高）- 功能区 296rpx
+		   → 首页恰好一屏，不再出现上下滚动 */
+		height: calc(100vh - 296rpx);
 		background: linear-gradient(180deg, #253730 0%, #4F6B5E 55%, #739B8D 100%);
 		overflow: hidden;
 	}
@@ -444,7 +459,7 @@
 	.hero-slide,
 	.hero-image {
 		width: 100%;
-		height: 1140rpx;
+		height: 100%;
 	}
 
 	/* 真实海报图（后台配置，规格 750×1140，aspectFill 填满 hero） */
@@ -457,23 +472,29 @@
 		background: linear-gradient(180deg, #253730 0%, #4F6B5E 55%, #739B8D 100%);
 	}
 
-	/* 音符水印：画板 334:93，左 169.4pt 上 161.4pt 宽 171.5pt，不透明度 0.12 */
+	/* 音符水印：画板 334:93，左 169.4pt 上 161.4pt 宽 171.5pt，不透明度 0.12
+	   pointer-events:none —— 纯装饰层不截触摸，保证 swiper 手势可滑动（09-28） */
 	.hero-watermark {
 		position: absolute;
 		left: 338rpx;
-		top: 322rpx;
+		/* 沉浸后 hero 顶=状态栏顶，设计稿坐标基于状态栏下方内容区 → 统一下移状态栏高度 */
+		top: calc(322rpx + var(--status-bar-height, 0px));
 		width: 344rpx;
 		height: 344rpx;
 		opacity: 0.12;
+		pointer-events: none;
 	}
 
-	/* 品牌行：画板 334:97，left 16pt / top 14pt，logo 24pt + gap 8pt */
+	/* 品牌行：画板 334:97，left 16pt / top 14pt，logo 24pt + gap 8pt（纯展示，触摸穿透） */
 	.hero-brand {
 		position: absolute;
 		left: 32rpx;
-		top: 28rpx;
+		top: calc(28rpx + var(--status-bar-height, 0px));
 		display: flex;
 		align-items: center;
+		/* 选门店恢复⑥：品牌行可点跳门店列表 —— 须 auto 接管点击，
+		   与 1.1.9 触摸穿透修复的取舍：仅这两小块区域内海报不可滑动手势 */
+		pointer-events: auto;
 	}
 
 	.hero-brand-logo {
@@ -489,17 +510,19 @@
 		color: #FFFFFF;
 	}
 
-	/* 门店信息：画板 334:104，left 16pt / top 44pt，11pt */
+	/* 门店信息：画板 334:104，left 16pt / top 44pt，11pt（纯展示，触摸穿透） */
 	.hero-shop-info {
 		position: absolute;
 		left: 32rpx;
-		top: 88rpx;
+		top: calc(88rpx + var(--status-bar-height, 0px));
 		font-size: 22rpx;
 		font-weight: 400;
 		color: #FFFFFF;
+		/* 同 .hero-brand：选门店入口行，恢复可点 */
+		pointer-events: auto;
 	}
 
-	/* 底部渐变遮罩：画板 334:109，高 200pt，透明 → 黑 55% */
+	/* 底部渐变遮罩：画板 334:109，高 200pt，透明 → 黑 55%（纯展示，触摸穿透） */
 	.hero-mask {
 		position: absolute;
 		left: 0;
@@ -507,9 +530,10 @@
 		bottom: 0;
 		height: 400rpx;
 		background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.55) 100%);
+		pointer-events: none;
 	}
 
-	/* 海报主/副标题：画板 334:110/334:111，left 20pt，距底 80pt / 59pt */
+	/* 海报主/副标题：画板 334:110/334:111，left 20pt，距底 80pt / 59pt（纯展示，触摸穿透） */
 	.hero-title {
 		position: absolute;
 		left: 40rpx;
@@ -518,6 +542,7 @@
 		line-height: 76rpx;
 		font-weight: 700;
 		color: #FFFFFF;
+		pointer-events: none;
 	}
 
 	.hero-subtitle {
@@ -528,9 +553,10 @@
 		line-height: 38rpx;
 		font-weight: 400;
 		color: #FFFFFF;
+		pointer-events: none;
 	}
 
-	/* 轮播指示点：画板 343:29，整体居中，距底 30pt；未选中白 44%，选中白色 16pt 长胶囊 */
+	/* 轮播指示点：画板 343:29，整体居中，距底 30pt；未选中白 44%，选中白色 16pt 长胶囊（纯展示，触摸穿透） */
 	.hero-dots {
 		position: absolute;
 		left: 0;
@@ -540,6 +566,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
+		pointer-events: none;
 	}
 
 	.hero-dot {

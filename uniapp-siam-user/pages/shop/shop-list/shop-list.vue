@@ -27,26 +27,6 @@
 
 			<van-empty v-if="!isLoading && shopList.length === 0" description="附近暂无门店" />
 		</view>
-
-		<!-- 台位类型说明卡 -->
-		<view class="table-type-card" v-if="shopList.length > 0">
-			<view class="table-type-title">台位类型说明</view>
-			<view class="table-type-row">
-				<text class="tt-name">散台</text>
-				<text class="tt-desc">大厅开放座位，扫码即可入座</text>
-			</view>
-			<view class="table-type-row">
-				<text class="tt-name">卡座</text>
-				<text class="tt-desc">半独立卡座，适合 2-6 人小聚</text>
-			</view>
-			<view class="table-type-row">
-				<text class="tt-name">包间</text>
-				<text class="tt-desc">独立包间，适合聚会宴请</text>
-			</view>
-		</view>
-
-		<!-- 页脚说明 -->
-		<view class="footer-tip" v-if="shopList.length > 0">扫码进入将自动带入对应桌台信息</view>
 	</view>
 </template>
 
@@ -144,6 +124,9 @@
 				const pages = getCurrentPages();
 				if (pages.length > 1) {
 					uni.navigateBack();
+				} else {
+					// 选门店恢复⑤：无上级页（直接打开）时回落点餐 tab，保证手选生效
+					uni.switchTab({ url: '/pages/menu/index/index' });
 				}
 			},
 			formatImg(path) {
@@ -176,7 +159,6 @@
 		border-radius: 16rpx;
 		padding: 28rpx 24rpx;
 		margin-bottom: 24rpx;
-
 		/* C-03 当前门店：蓝色描边高亮 */
 		&.is-current {
 			border-color: #5f7d22;
@@ -279,51 +261,5 @@
 		.shop-arrow {
 			color: #CCCCCC;
 		}
-	}
-
-	/* ===== C-03 台位类型说明卡 ===== */
-	.table-type-card {
-		margin: 10rpx 30rpx 0;
-		background-color: #FFFFFF;
-		border-radius: 16rpx;
-		padding: 30rpx;
-
-		.table-type-title {
-			font-size: 28rpx;
-			font-weight: 600;
-			color: #333333;
-			margin-bottom: 24rpx;
-		}
-
-		.table-type-row {
-			display: flex;
-			align-items: center;
-			margin-bottom: 20rpx;
-
-			&:last-child {
-				margin-bottom: 0;
-			}
-
-			.tt-name {
-				flex-shrink: 0;
-				width: 96rpx;
-				font-size: 26rpx;
-				font-weight: 600;
-				color: #5f7d22;
-			}
-
-			.tt-desc {
-				font-size: 24rpx;
-				color: #666666;
-			}
-		}
-	}
-
-	/* ===== C-03 页脚说明 ===== */
-	.footer-tip {
-		margin-top: 40rpx;
-		font-size: 22rpx;
-		color: #BBBBBB;
-		text-align: center;
 	}
 </style>

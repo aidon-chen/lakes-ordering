@@ -3,8 +3,7 @@
 		<view id="page-top-view">
 			<view style="padding-bottom: 20rpx;background: #f6f6f6;">
 				<view class="flex_between public-views" style="background-color: white;">
-					<view class="shop_info_view" @tap="parseEventDynamicCode($event, !memberInfo.id ? '' : 'selfTap')"
-						:data-index="selfOutActiveIndex">
+					<view class="shop_info_view" @tap="goShopList">
 						<!-- 门店信息：与首页 A-01 同源占位文案（暂不接定位，不做外送）
 						     要接真实数据：uni.getLocation → /rest/shop/listForPickup 取最近门店，
 						     店名改 shopInfo.shop.name、地址拼 shop.street + shop.houseNumber -->
@@ -12,6 +11,8 @@
 							<view>
 								<view class="flex_start shop-name-row">
 									<view class="out_of_range one_row shop-name-text">{{ shopDisplayName }}</view>
+									<!-- 选门店入口（选门店恢复①）：点击整块跳门店列表 -->
+									<view class="switch-shop-tag">切换门店 ›</view>
 									<view class="dine-table-tag" v-if="dineInfo">堂食·{{ dineInfo.tableNo }}</view>
 								</view>
 								<view class="distance_m">{{ shopDisplayAddress }}</view>
@@ -541,6 +542,38 @@
 			this.deliveryAndSelfTaking.deliveryAddress = app.globalData.deliveryAndSelfTaking.deliveryAddress;
 			this.deliveryAndSelfTaking.selfOutActiveIndex = selfOutActiveIndex;
 
+			// 切店返回检测（选门店恢复③④）：手选门店与当前展示门店不同 → 重载新店。
+			// 堂食（dineInfo 存在）切店先弹窗确认，确认清桌台、取消回写旧店 id；
+			// 命中后 return，避免后续 ifChooseBack 分支对同一门店重复请求。
+			var savedShopId = uni.getStorageSync('currentShopId');
+			if (savedShopId && this.shopInfo.shop.id && savedShopId != this.shopInfo.shop.id) {
+				var reloadNewShop = function() {
+					_this.isLoading = true;
+					_this.menuList = [];
+					_this.getShopInfo({ id: savedShopId });
+				};
+				if (this.dineInfo) {
+					uni.showModal({
+						title: '提示',
+						content: '切换门店将清除当前桌台信息',
+						success: function(res) {
+							if (res.confirm) {
+								app.globalData.deliveryAndSelfTaking.dineInfo = null;
+								_this.dineInfo = null;
+								reloadNewShop();
+							} else {
+								// 取消切店：回写旧店 id，保持手选与展示一致
+								uni.setStorageSync('currentShopId', _this.shopInfo.shop.id);
+								uni.setStorageSync('currentShopName', _this.shopDisplayName);
+							}
+						}
+					});
+				} else {
+					reloadNewShop();
+				}
+				return;
+			}
+
 			if (this.shopInfo.shop.id) {
 				console.log("query=", 2);
 				this.getShoppingCartList(this.shopInfo.shop.id);
@@ -886,6 +919,13 @@
 			},
 			getShopList() {
 				var _this = this;
+				// 选店优先级（选门店恢复②）：用户手选 > 定位最近。
+				// 扫码堂食由 onShow 的 dineInfo 锁定，不进此分支；定位失败时 loadFallbackShop 兜底。
+				var savedShopId = uni.getStorageSync('currentShopId');
+				if (savedShopId) {
+					this.getShopInfo({ id: savedShopId });
+					return;
+				}
 				// 按定位取最近一家；定位缺失或列表查空（定位距门店超出配送距离等）都走回退，
 				// 不再静默什么都不做（曾导致菜单页一直显示「暂停营业＋暂无商品」）
 				if (!app.globalData.deliveryAndSelfTaking.location) {
@@ -1623,6 +1663,10 @@
 					.exec();
 				console.log(app.globalData.systemInfoSync);
 			},
+			// 选门店入口（选门店恢复①）：头部店名区 → 门店列表页
+			goShopList() {
+				uni.navigateTo({ url: '/pages/shop/shop-list/shop-list' });
+			},
 			selfTap(e) {
 				console.log(e);
 
@@ -2145,7 +2189,8 @@
 
 	.commodity-name {
 		font-size: 28rpx;
-		color: #969696;
+		/* 2026-09-28 用户要求：商品名由灰(#969696)改纯黑，与截图圈注一致 */
+		color: #000000;
 		font-weight: bold;
 	}
 
@@ -3051,6 +3096,8 @@
 		line-height: 2rem;
 		width: 30%;
 		padding: 5rpx;
+		/* 2026-09-28：地址过长时不挤压「堂食/自提」按钮，保证按钮宽度稳定 */
+		flex-shrink: 0;
 	}
 
 	.self_button {
@@ -3069,6 +3116,11 @@
 	.shop_info_view {
 		font-size: 32rpx;
 		width: 70%;
+		/* 2026-09-28 用户要求：地址与右侧「堂食/自提」按钮之间留出间距
+		   （原 70% + 30% 首尾相接，地址文字紧贴按钮）
+		   border-box 保证加右内边距后总宽仍为 70%，不挤压右侧按钮 */
+		box-sizing: border-box;
+		padding-right: 32rpx;
 	}
 
 	.distance_m {
@@ -3126,7 +3178,19 @@
 	}
 
 	.shop-name-text {
-		max-width: 340rpx;
+		max-width: 300rpx;
+	}
+
+	/* 选门店入口标签（选门店恢复①）：浅底描边，主题色 #5f7d22 */
+	.switch-shop-tag {
+		flex-shrink: 0;
+		background: #edf3df;
+		color: #5f7d22;
+		font-size: 22rpx;
+		line-height: 1;
+		padding: 6rpx 16rpx;
+		border-radius: 18rpx;
+		border: 1rpx solid #5f7d22;
 	}
 
 	.dine-table-tag {

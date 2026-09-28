@@ -4,7 +4,8 @@
 			"style": {
 				"navigationBarTitleText": "湖里Lakes",
 				"enablePullDownRefresh": true,
-				"navigationStyle": "custom"
+				"navigationStyle": "custom",
+				"navigationBarTextStyle": "white"
 			}
 		},
 		{
@@ -208,7 +209,7 @@
 		{
 			"path": "pages/address/choose/choose",
 			"style": {
-				"navigationBarTitleText": "配送方式"
+				"navigationBarTitleText": "选择门店"
 			}
 		},
 		{

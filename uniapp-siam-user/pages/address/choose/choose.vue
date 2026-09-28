@@ -1,14 +1,6 @@
 <template>
 	<view>
-		<view class="swiper-tab self-adaption" v-if="pageType != 'orderDetail'">
-			<view class="swiper-tab-item" :data-current="index" @tap="clickTab" hover-class="hover-click-class"
-				v-for="(item, index) in modeList" :key="index">
-				<view :class="'swiper_table_item_view ' + (selfOutActiveIndex == item.modeId ? 'active' : '')"
-					:data-current="index" @tap="clickTab">
-					{{ item.modeName }}
-				</view>
-			</view>
-		</view>
+		<!-- 需求 2026-09-28：页面定位改为纯「选择门店」，自提/配送切换条已移除 -->
 		<swiper :current="selfOutActiveIndex" class="swiper-box" duration="300"
 			:style="'height:' + (winHeight - 5) + 'px'" @change="bindSlideChange">
 			<swiper-item class="swiper-items" v-if="pageType != 'orderDetail'">
@@ -200,7 +192,9 @@
 			var pageType = app.globalData.deliveryAndSelfTaking.pageType;
 			var chooseId = app.globalData.deliveryAndSelfTaking.chooseId;
 			var shopId = app.globalData.deliveryAndSelfTaking.shopId;
-			this.selfOutActiveIndex = chooseIndex;
+			// 需求 2026-09-28：自提/配送切换条已删除，非商城订单流程固定展示门店列表（索引 0）；
+			// 商城订单详情（pageType=orderDetail）仍走配送地址流程，保留原 chooseIndex
+			this.selfOutActiveIndex = pageType == 'orderDetail' ? chooseIndex : 0;
 			this.chooseIndex = actvieIndex;
 			this.pageType = pageType;
 			this.chooseId = chooseId;

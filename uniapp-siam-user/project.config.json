@@ -96,7 +96,7 @@
 					"scene": null
 				},
 				{
-					"name": "配送方式",
+					"name": "选择门店",
 					"pathName": "pages/address/choose/choose",
 					"query": "radioIndex=0",
 					"scene": null
