@@ -253,6 +253,13 @@ public interface MemberService {
     void update(MemberParam param);
 
     /**
+     * 绑定微信：当前登录会员 + wx.login 的 code 换 openid 落库
+     *
+     * @author 暹罗
+     */
+    void bindWx(MemberParam param);
+
+    /**
      * 修改是否需要弹出新人引导提示为否
      *
      * @author 暹罗
@@ -293,4 +300,12 @@ public interface MemberService {
      * @author 暹罗
      */
     void verifyPaymentPassword(MemberParam param);
+
+    /**
+     * 原子扣减会员余额（余额支付场景，2026-09-25 安全加固 S2）
+     * SQL 层 WHERE balance >= amount 保证并发不超扣。
+     *
+     * @return false = 余额不足（影响行数为 0）
+     */
+    boolean deductBalanceForPay(Integer memberId, java.math.BigDecimal amount);
 }

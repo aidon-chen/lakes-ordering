@@ -122,6 +122,11 @@ public class PlatformPayController {
             if(dbOrder == null){
                 throw new StoneCustomerException("该商户单号不存在");
             }
+            //归属校验（2026-09-25 安全加固 S1）：此前 TODO 自认未验证——任意会员可传他人 orderNo，
+            //扣自己的余额、把别人的订单置为已付
+            if(dbOrder.getMemberId() == null || dbOrder.getMemberId().intValue() != loginMember.getId().intValue()){
+                throw new StoneCustomerException("该订单不属于当前用户，无法支付");
+            }
             if(dbOrder.getStatus()!=Quantity.INT_1 && dbOrder.getStatus()==Quantity.INT_10){
                 throw new StoneCustomerException("该笔订单超时未支付，已自动取消，请重新下单");
             }
@@ -224,6 +229,10 @@ public class PlatformPayController {
             orderService.updateById(updateOrder);
         }
 
+        //未设置支付密码（2026-09-25 安全加固 S3）：此前 null 走比对必然失败，且报错误导差
+        if(dbMember.getPaymentPassword() == null || dbMember.getPaymentPasswordSalt() == null){
+            throw new StoneCustomerException("请先设置支付密码后再使用余额支付");
+        }
         //判断支付密码是否正确
         String paymentPassword = Base64Utils.decode(platformPayDto.getPaymentPassword());
         paymentPassword = CommonUtils.genMd5Password(paymentPassword, dbMember.getPaymentPasswordSalt());
@@ -235,12 +244,10 @@ public class PlatformPayController {
         if(dbMember.getBalance().compareTo(platformPayDto.getTotal_fee()) < 0){
             throw new StoneCustomerException("您的余额不足，请选择其它支付方式");
         }
-        //减少用户的余额
-        Member updateMember = new Member();
-        updateMember.setId(dbMember.getId());
-        updateMember.setBalance(dbMember.getBalance().subtract(platformPayDto.getTotal_fee()));
-        updateMember.setTotalConsumeBalance(dbMember.getTotalConsumeBalance().add(platformPayDto.getTotal_fee()));
-        memberService.updateByPrimaryKeySelective(updateMember);
+        //减少用户的余额（2026-09-25 安全加固 S2：SQL 原子扣减，WHERE balance >= 金额，并发不超扣）
+        if(!memberService.deductBalanceForPay(dbMember.getId(), platformPayDto.getTotal_fee())){
+            throw new StoneCustomerException("您的余额不足，请选择其它支付方式或先充值");
+        }
         dbMember = memberService.selectByPrimaryKey(loginMember.getId());
         //添加账单记录
         MemberBillingRecord memberBillingRecord = new MemberBillingRecord();

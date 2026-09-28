@@ -19,6 +19,7 @@
 					<view class="balance-title">今日获得</view>
 				</view>
 			</view>
+			<view class="balance-recharge" @tap="goRecharge">充值</view>
 		</view>
 		<swiper :current="currentTab" class="swiper-box" duration="300" :style="'height:' + (winHeight - 10) + 'px'"
 			@change="bindSlideChange">
@@ -141,6 +142,12 @@
 		 */
 		onShareAppMessage: function() {},
 		methods: {
+			// 充值入口（2026-09-25 用户拍板：余额页加充值）→ C-04 充值页
+			goRecharge() {
+				uni.navigateTo({
+					url: '/pages/mine/member/recharge/recharge'
+				});
+			},
 			getHeight() {
 				//获取用户手机系统信息
 				var that = this;
@@ -252,6 +259,19 @@
 
 	.balance-text {
 		font-size: 28rpx;
+	}
+
+	.balance-recharge {
+		margin: 24rpx auto 0;
+		width: 200rpx;
+		height: 60rpx;
+		line-height: 60rpx;
+		text-align: center;
+		border-radius: 30rpx;
+		background: #ffffff;
+		color: #5F7D22;
+		font-size: 26rpx;
+		font-weight: 500;
 	}
 
 	.balance-detail {

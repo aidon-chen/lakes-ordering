@@ -37,21 +37,26 @@
 		<view class="shopping-commodity-details">
 			<!-- 商品明细卡·门店名：与门店栏一致，取当前门店真实名称 -->
 			<view v-if="shopInfo">{{ shopDisplayName }}</view>
-			<view class="commodity-name-price-detail" v-for="(item, index) in orderDetail.orderDetailList" :key="index">
-				<view class="commodity-name-types">
-					<view class="commodity-name">{{ item.goodsName }}</view>
-					<view class="commodity-types">{{ item.restructure }}</view>
-				</view>
+			<view class="commodity-name-price-detail commodity-item-block" v-for="(item, index) in orderDetail.orderDetailList" :key="index">
+				<view class="commodity-row-main">
+					<view class="commodity-name-types">
+						<view class="commodity-name">{{ item.goodsName }}</view>
+						<view class="commodity-types">{{ item.restructure }}</view>
+					</view>
 
-				<view class="commodity-totalnum-price">
-					<view class="commodity-totalnum">x{{ item.number }}</view>
-					<view class="commodity-price">￥{{ item.totalPrice }}</view>
+					<view class="commodity-totalnum-price">
+						<view class="commodity-totalnum">x{{ item.number }}</view>
+						<view class="commodity-price">￥{{ item.totalPrice }}</view>
+					</view>
 				</view>
+				<!-- C-08 单品备注（09-27 用户要求自底部备注卡迁至商品行内联）：随明细提交落 tb_order_detail.remark -->
+				<input class="item-remark-input" :value="itemRemarkDraft[index]" maxlength="20"
+					placeholder="单品备注（可不填）" placeholder-class="textarea-placeholder"
+					@input="onItemRemarkInput(index, $event)" />
 			</view>
 			<view class="commodity-name-price-detail">
 				<view class="commodity-name-types">
 					<view class="commodity-name">包装费</view>
-					<view class="commodity-types commodity-delivery-tip theme-color">商品包装费</view>
 				</view>
 				<view class="commodity-totalnum-price">
 					<view></view>
@@ -130,11 +135,6 @@
 						:class="'quick-remark-tag-shape ' + (quickRemarkActive(item) ? 'theme-bg-light theme-color' : 'quick-remark-tag-idle')"
 						@tap="toggleQuickRemark(item)">{{ item }}</view>
 				</view>
-				<!-- C-08 单品备注行（设计稿 A-05·单品备注行 163:287） -->
-				<view class="item-remark-view" @tap="openItemRemark">
-					<view class="item-remark-text theme-color">单品备注{{ itemRemarkSummary() ? '　' + itemRemarkSummary() : '　未设置' }}</view>
-					<view class="item-remark-edit theme-color">修改 ›</view>
-				</view>
 				<textarea class="textarea-remarks" :value="remarks" @input="remarksInput" maxlength="30" placeholder="输入其他特殊备注要求（可不填）"
 					placeholder-class="textarea-placeholder"></textarea>
 			</view>
@@ -154,21 +154,6 @@
 				@tap="parseEventDynamicCode($event, isForgetThePassword ? 'showPwdLayer' : 'getRequestSubscribeMessage')">
 				去支付
 			</view>
-		</view>
-		<!-- C-08 单品备注弹层（设计稿 A-05·单品备注行 163:287 的「修改 ›」入口） -->
-		<view class="item-remark-mask" v-if="itemRemarkShow" @tap="closeItemRemark"></view>
-		<view class="item-remark-sheet" v-if="itemRemarkShow">
-			<view class="item-remark-sheet-title">单品备注</view>
-			<view class="item-remark-sheet-tip">可为每件商品单独备注（各 20 字内）</view>
-			<scroll-view scroll-y class="item-remark-sheet-list">
-				<view class="item-remark-sheet-row" v-for="(item, index) in orderDetail.orderDetailList" :key="index">
-					<view class="item-remark-sheet-name">{{ item.goodsName }}</view>
-					<input class="item-remark-sheet-input" :value="itemRemarkDraft[index]" maxlength="20"
-						placeholder="如：加冰、少冰（可不填）" placeholder-class="textarea-placeholder"
-						@input="onItemRemarkInput(index, $event)" />
-				</view>
-			</scroll-view>
-			<view class="item-remark-sheet-save theme-bg" hover-class="hover-class-public" @tap="closeItemRemark">完成</view>
 		</view>
 		<van-dialog use-slot :show="showPayPwdInput" :showConfirmButton="false" :showCancelButton="false" z-index='1'>
 			<view class="flex_between content_box">
@@ -236,9 +221,7 @@
 				remarks: '',
 				//C-08 常用备注快捷标签（对应设计稿 A-05 备注卡·快捷标签行 163:280）
 				quickRemarkOptions: ['冰块少放', '分开下单', '插吸管'],
-				//C-08 单品备注弹层
-				itemRemarkShow: false,
-				//C-08 单品备注草稿（与 orderDetail.orderDetailList 按下标对齐）
+				//C-08 单品备注草稿（与 orderDetail.orderDetailList 按下标对齐，商品行内联填写）
 				itemRemarkDraft: [],
 				// 设计稿 A-05 点餐方式仅「自提 / 点餐」两档 → 模板内直写，不再维护 selfOutItems 数组
 				selfOutActiveIndex: 0,
@@ -246,12 +229,18 @@
 				currentTab: 0,
 				reducedDeliveryPrice: 0,
 				title: '请选择支付方式',
-				// 设计稿 A-05 支付方式卡（5:481）：仅「微信支付」一项，平台余额已移除
+				// 2026-09-25 恢复余额支付（主计划《会员充值与余额系统》决策点 3 拍板）：微信 + 余额两项
 				paymentModes: [{
 					checked: true,
 					value: 1,
 					text: '微信支付',
 					icon: 'wechat-pay',
+					show: true
+				}, {
+					checked: false,
+					value: 2,
+					text: '余额支付',
+					icon: 'gold-coin-o',
 					show: true
 				}],
 				paymentModeIndex: 0,
@@ -555,32 +544,6 @@
 				this.inputLength = value.length;
 			},
 
-			/** C-08 单品备注汇总文案：`商品名：备注`，多条以「；」连接 */
-			itemRemarkSummary() {
-				let list = (this.orderDetail && this.orderDetail.orderDetailList) || [];
-				let parts = [];
-				for (let i = 0; i < list.length; i++) {
-					let remark = this.itemRemarkDraft[i];
-					if (remark) {
-						parts.push(list[i].goodsName + '：' + remark);
-					}
-				}
-				return parts.join('；');
-			},
-
-			/** C-08 打开单品备注弹层（无可点商品时不响应） */
-			openItemRemark() {
-				let list = (this.orderDetail && this.orderDetail.orderDetailList) || [];
-				if (!list.length) {
-					return;
-				}
-				this.itemRemarkShow = true;
-			},
-
-			closeItemRemark() {
-				this.itemRemarkShow = false;
-			},
-
 			/** C-08 单品备注输入：整数组替换以触发视图刷新 */
 			onItemRemarkInput(index, e) {
 				let draft = this.itemRemarkDraft.slice();
@@ -816,7 +779,7 @@
 						console.log("fullPriceReductionfullPriceReductionfullPriceReduction", fullPriceReduction)
 						//orderDetail.fullPriceReduction = fullPriceReduction;
 						this.$nextTick(() => {
-							_this.getFullReductionRule(this.orderDetail);
+							_this.getPsf(this.orderDetail); // [满减规则停用 2026-09-28] 满减规则已并入满减券（商家端「优惠券管理」直接建满减券，顾客领券使用）；原逻辑注释保留，会员权益设计可能复用
 						});
 					}
 				});
@@ -977,9 +940,10 @@
 							}
 							//console.log(this.orderDetail)
 							if (this.orderDetail.fullReductionRuleId) {
-								data.fullReductionRuleId = this.orderDetail.fullReductionRuleId;
-								data.fullReductionRuleDescription = this.orderDetail
-									.fullReductionRuleName;
+								// [满减规则停用 2026-09-28] 满减规则已并入满减券（商家端「优惠券管理」直接建满减券，顾客领券使用）；原逻辑注释保留，会员权益设计可能复用
+								// data.fullReductionRuleId = this.orderDetail.fullReductionRuleId;
+								// data.fullReductionRuleDescription = this.orderDetail
+									// .fullReductionRuleName;
 							}
 						// 会员引导弹窗已删（09-25 拍板）：不再区分会员/非会员，点「去支付」统一直接下单进支付
 						var _this = this;
@@ -999,11 +963,27 @@
 			},
 
 			toPay4Applet(id, orderNo, actualPrice) {
+				// 2026-09-25 恢复余额支付：按支付方式卡选中项分流
+				if (this.paymentModeIndex == 1) {
+					this.balancePayFlow(id, orderNo, actualPrice);
+					return;
+				}
 				toastService.showLoading('正在加载...', true);
 				authService.getOpenId().then((openId) => {
-					// 支付方式仅「微信支付」（设计稿 A-05 支付方式卡 5:481）→ 直接拉起微信支付
 					this.weChatPay(id, orderNo, actualPrice, openId);
 				});
+			},
+
+			/**
+			 * 余额支付流程（2026-09-25 恢复，见《会员余额支付恢复-实施计划》F1）：
+			 * 记录订单上下文 → 弹支付密码层 → inputPwd 满 6 位自动走 balancePay()（既有管线）。
+			 * 余额不足 / 未设支付密码由后端文案驱动（安全加固 S2/S3），在 balancePay 失败分支里引导。
+			 */
+			balancePayFlow(id, orderNo, actualPrice) {
+				this.balanceId = id;
+				this.balanceOrderNo = orderNo;
+				this.balanceActualPrice = actualPrice;
+				this.showPwdLayer();
 			},
 
 			weChatPay(id, orderNo, actualPrice, openId) {
@@ -1130,6 +1110,37 @@
 								.balanceActualPrice, '余额支付');
 							clearTimeout(timeout);
 						}, 1000);
+						return;
+					}
+					// 2026-09-25 恢复余额支付：失败分支（后端安全加固 S2/S3 的文案驱动引导）
+					this.hidePwdLayer();
+					var msg = result.message || '支付失败';
+					if (msg.indexOf('余额不足') !== -1) {
+						uni.showModal({
+							title: '余额不足',
+							content: msg + '，是否前往充值？',
+							success: (res) => {
+								if (res.confirm) {
+									uni.navigateTo({
+										url: '/pages/mine/member/recharge/recharge'
+									});
+								}
+							}
+						});
+					} else if (msg.indexOf('请先设置支付密码') !== -1) {
+						uni.showModal({
+							title: '尚未设置支付密码',
+							content: '使用余额支付需先设置 6 位支付密码，是否前往设置？',
+							success: (res) => {
+								if (res.confirm) {
+									uni.navigateTo({
+										url: '/pages/mine/security/index/index'
+									});
+								}
+							}
+						});
+					} else {
+						toastService.showError(msg, true);
 					}
 				});
 			},
@@ -1285,18 +1296,19 @@
 						// });
 						// totalPrice = utilHelper.toFixed(totalPrice + packingCharges, 2);
 						var fullReductionRulePrice = 0;
-						for (let i = 0; i < result.data.records.length; i++) {
-							//总价格减去配送费大于满减金额则进行满减操作
-							if (fullPriceReduction >= result.data.records[i].limitedPrice) {
-								orderDetail.fullPriceReduction = utilHelper.toFixed(fullPriceReduction - result
-									.data.records[i]
-									.reducedPrice, 2);
-								orderDetail.fullReductionRuleName = result.data.records[i].name;
-								orderDetail.fullReductionRuleId = result.data.records[i].id;
-								orderDetail.fullPriceReductionIsHidden = true;
-								orderDetail.reducedPrice = result.data.records[i].reducedPrice;
-							}
-						}
+						// [满减规则停用 2026-09-28] 满减规则已并入满减券（商家端「优惠券管理」直接建满减券，顾客领券使用）；原逻辑注释保留，会员权益设计可能复用
+						// for (let i = 0; i < result.data.records.length; i++) {
+							// //总价格减去配送费大于满减金额则进行满减操作
+							// if (fullPriceReduction >= result.data.records[i].limitedPrice) {
+								// orderDetail.fullPriceReduction = utilHelper.toFixed(fullPriceReduction - result
+									// .data.records[i]
+									// .reducedPrice, 2);
+								// orderDetail.fullReductionRuleName = result.data.records[i].name;
+								// orderDetail.fullReductionRuleId = result.data.records[i].id;
+								// orderDetail.fullPriceReductionIsHidden = true;
+								// orderDetail.reducedPrice = result.data.records[i].reducedPrice;
+							// }
+						// }
 						//console.log('计算满减金额', totalPrice);
 						this.$nextTick(() => {
 							_this.getPsf(orderDetail);
@@ -1688,93 +1700,25 @@
 		color: #666666;
 	}
 
-	/* C-08 单品备注行（设计稿 A-05·单品备注行 163:287） */
-	.item-remark-view {
+	/* C-08 单品备注（09-27 自底部备注卡迁至商品行内联）：商品行改纵向块，
+	   上行＝「名称规格 ↔ 数量价格」原布局，下行＝单品备注输入框 */
+	.commodity-item-block {
+		display: block;
+	}
+
+	.commodity-row-main {
 		display: flex;
-		flex-direction: row;
 		align-items: center;
 		justify-content: space-between;
-		margin-bottom: 16rpx;
 	}
 
-	.item-remark-text {
-		font-size: 24rpx;
-		flex: 1;
-	}
-
-	.item-remark-edit {
-		font-size: 24rpx;
-		flex-shrink: 0;
-		margin-left: 16rpx;
-	}
-
-	/* C-08 单品备注弹层 */
-	.item-remark-mask {
-		position: fixed;
-		left: 0;
-		top: 0;
-		right: 0;
-		bottom: 0;
-		background: rgba(0, 0, 0, 0.5);
-		z-index: 900;
-	}
-
-	.item-remark-sheet {
-		position: fixed;
-		left: 0;
-		right: 0;
-		bottom: 0;
-		background: #ffffff;
-		border-radius: 24rpx 24rpx 0 0;
-		padding: 32rpx 32rpx 40rpx 32rpx;
-		z-index: 901;
-	}
-
-	.item-remark-sheet-title {
-		font-size: 32rpx;
-		color: #333333;
-		text-align: center;
-		line-height: 48rpx;
-	}
-
-	.item-remark-sheet-tip {
-		font-size: 24rpx;
-		color: #999999;
-		text-align: center;
-		margin: 8rpx 0 16rpx 0;
-	}
-
-	.item-remark-sheet-list {
-		max-height: 560rpx;
-	}
-
-	.item-remark-sheet-row {
-		padding: 16rpx 0;
-		border-bottom: 1rpx solid #f0f0f0;
-	}
-
-	.item-remark-sheet-name {
-		font-size: 28rpx;
-		color: #333333;
-		line-height: 40rpx;
-	}
-
-	.item-remark-sheet-input {
-		margin-top: 12rpx;
-		height: 68rpx;
-		padding: 0 20rpx;
+	.item-remark-input {
+		margin-top: 8rpx;
+		height: 60rpx;
+		padding: 0 16rpx;
 		background: #f5f5f5;
 		border-radius: 8rpx;
-		font-size: 26rpx;
-	}
-
-	.item-remark-sheet-save {
-		margin-top: 24rpx;
-		height: 84rpx;
-		line-height: 84rpx;
-		text-align: center;
-		font-size: 30rpx;
-		border-radius: 42rpx;
+		font-size: 24rpx;
 	}
 
 	.iconwechat_pay {

@@ -253,6 +253,14 @@
 					text: '微信支付',
 					show: true,
 					icon: 'wechat-pay'
+				},
+				{
+					// 余额支付（2）：2026-09-25 恢复（主计划决策点 3 拍板）→
+					// /rest/member/pointsMall/platformPay/byBalance（type=6，含 S1/S2/S3 安全加固）
+					value: 2,
+					text: '余额支付',
+					show: true,
+					icon: 'gold-coin-o'
 				}
 			],
 			paymentModeIndex: 0,
@@ -393,10 +401,29 @@
 
 			/**
 			 * C-10 批次6：加载自提门店（画板 B-05 门店卡）。
-			 * 优先用定位查自提门店列表；定位失败用门店所在地坐标兜底；接口失败不阻塞下单。
+			 * 选店优先级（选门店恢复⑦）：用户手选 currentShopId > 定位最近一家。
+			 * 手选走 detailForPickup（返回 data.shop）；定位失败用门店所在地坐标兜底；接口失败不阻塞下单。
 			 */
 			getPickupShop() {
 				const that = this;
+				// 手选门店优先
+				const savedShopId = uni.getStorageSync('currentShopId');
+				if (savedShopId) {
+					https.request('/rest/shop/detailForPickup', {
+						id: savedShopId
+					}).then((result) => {
+						if (result.success && result.data && result.data.shop) {
+							const shop = result.data.shop;
+							that.pickupShop = {
+								id: shop.id,
+								name: shop.name || '',
+								address: [shop.street, shop.houseNumber].filter(Boolean).join('') ||
+									((shop.province || '') + (shop.city || '') + (shop.area || ''))
+							};
+						}
+					}).catch(() => {});
+					return;
+				}
 				const loadByPosition = (lng, lat) => {
 					https.request('/rest/shop/listForPickup', {
 						position: lng + ',' + lat,
@@ -794,13 +821,11 @@
 
 				if (this.pwdVal.length >= 6) {
 					toastService.showLoading('正在加载...');
-					this.pointsPay();
-					// if(this.data.paymentModes[this.data.paymentModeIndex].value==1){
-					//   this.balancePay();
-					// }
-					// if(this.data.paymentModes[this.data.paymentModeIndex].value==2){
-					//   this.pointsPay();
-					// }
+					// 2026-09-25 恢复余额支付：按选中支付方式分流（2=余额）；
+					// 积分支付按口径（积分仅用于等级成长）维持取消，原 pointsPay 分支与死代码已清。
+					if (this.paymentModes[this.paymentModeIndex] && this.paymentModes[this.paymentModeIndex].value == 2) {
+						this.balancePay();
+					}
 				}
 			},
 
@@ -809,9 +834,9 @@
 				this.pwdVal = '';
 				this.payFocus = true;
 				toastService.showLoading("支付中...");
-				https.request('/rest/member/platformPay/byBalance', {
+				https.request('/rest/member/pointsMall/platformPay/byBalance', {
 					openid: this.balanceOpenId,
-					type: 4,
+					type: 6,
 					paymentMode: 2,
 					paymentPassword: password,
 					out_trade_no: this.balanceOrderNo,
@@ -828,35 +853,37 @@
 							});
 							clearTimeout(timeout);
 						}, 1000);
+						return;
 					}
-				});
-			},
-
-			pointsPay() {
-				var password = Base64.encode(this.pwdVal);
-
-				this.pwdVal = '';
-				this.payFocus = true;
-				toastService.showLoading("支付中...");
-				https.request('/rest/member/pointsMall/platformPay/byPoints', {
-					openid: this.balanceOpenId,
-					type: 4,
-					paymentMode: 3,
-					paymentPassword: password,
-					out_trade_no: this.balanceOrderNo,
-					total_fee: this.data.fullPriceReductionIsHidden ? this.data.fullPriceReduction : this
-						.balanceActualPrice
-				}).then((result) => {
-					toastService.hideLoading();
-					if (result.success) {
-						toastService.showSuccess('支付成功', true);
-						this.hidePwdLayer();
-						let timeout = setTimeout(() => {
-							uni.redirectTo({
-								url: '../../mall/order/detail/detail?id=' + this.balanceId
-							});
-							clearTimeout(timeout);
-						}, 1000);
+					// 2026-09-25 恢复余额支付：失败分支（后端安全加固 S2/S3 文案驱动引导）
+					this.hidePwdLayer();
+					var msg = result.message || '支付失败';
+					if (msg.indexOf('余额不足') !== -1) {
+						uni.showModal({
+							title: '余额不足',
+							content: msg + '，是否前往充值？',
+							success: (res) => {
+								if (res.confirm) {
+									uni.navigateTo({
+										url: '/pages/mine/member/recharge/recharge'
+									});
+								}
+							}
+						});
+					} else if (msg.indexOf('请先设置支付密码') !== -1) {
+						uni.showModal({
+							title: '尚未设置支付密码',
+							content: '使用余额支付需先设置 6 位支付密码，是否前往设置？',
+							success: (res) => {
+								if (res.confirm) {
+									uni.navigateTo({
+										url: '/pages/mine/security/index/index'
+									});
+								}
+							}
+						});
+					} else {
+						toastService.showError(msg, true);
 					}
 				});
 			},

@@ -30,6 +30,17 @@ public interface MemberMapper extends BaseMapper<Member> {
             "m.total_consume_balance, m.invite_reward_amount, " +
             "m.total_withdraw_invite_reward_amount, m.unreceived_invite_reward_amount";
 
+    /**
+     * 原子扣减会员余额（余额支付场景，2026-09-25 安全加固 S2）。
+     * WHERE balance >= #{amount} 把"校验+扣减"放进数据库一条语句：并发两笔支付
+     * 不会读到同一余额，第二笔影响行数为 0 → 上层抛"余额不足"，杜绝超扣为负。
+     * ⚠️ 替代旧写法（selectByPrimaryKey 读 balance → 内存 subtract → update），旧写法并发下会超扣。
+     */
+    @Update("UPDATE tb_member SET balance = balance - #{amount}, " +
+            "total_consume_balance = total_consume_balance + #{amount}, update_time = NOW() " +
+            "WHERE id = #{memberId} AND balance >= #{amount}")
+    int deductBalanceForPay(@Param("memberId") Integer memberId, @Param("amount") java.math.BigDecimal amount);
+
     int countByExample(MemberExample example);
 
     int deleteByExample(MemberExample example);

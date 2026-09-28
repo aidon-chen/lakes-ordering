@@ -15,10 +15,10 @@ import java.math.BigDecimal;
 public class PlatformPayDto {
 
     /**
-     * 交易类型 1=订单付款 (2=会员充值) 3=自取订单改为配送 4=积分商城订单付款
+     * 交易类型 1=订单付款 (2=会员充值) 3=自取订单改为配送 4=积分商城订单付款 6=积分商城订单余额支付
      */
     @NotNull(message = "交易类型不能为空")
-    @Range(min = 1, max = 4, message = "交易类型必须处于[1~4]范围内")
+    @Range(min = 1, max = 6, message = "交易类型必须处于[1~6]范围内")
     private Integer type;
 
     /**

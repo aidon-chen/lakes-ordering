@@ -97,6 +97,10 @@ public class PointsMallPlatformPayController {
             if(dbOrder == null){
                 throw new StoneCustomerException("该商户单号不存在");
             }
+            //归属校验（2026-09-25 安全加固 S1 同款）：此前 TODO 自认未验证
+            if(dbOrder.getMemberId() == null || dbOrder.getMemberId().intValue() != loginMember.getId().intValue()){
+                throw new StoneCustomerException("该订单不属于当前用户，无法支付");
+            }
             if(dbOrder.getStatus()!=Quantity.INT_1 && dbOrder.getStatus()==Quantity.INT_10){
                 throw new StoneCustomerException("该笔订单超时未支付，已自动取消，请重新下单");
             }
@@ -179,6 +183,110 @@ public class PointsMallPlatformPayController {
             //交易类型为积分商城订单付款
             pointsMallOrderService.paymentNotify(outTradeNo);
         }
+
+        basicResult.setSuccess(true);
+        basicResult.setMessage("支付成功");
+        return basicResult;
+    }
+
+    /**
+     * 积分商城订单·余额支付（2026-09-25 新增，见《会员余额支付恢复-实施计划-v1.0.md》S4）
+     * 结构参照 byPoints：积分版按口径维持取消不恢复，本接口承载商城订单的余额支付。
+     * 与堂食版 PlatformPayController#byBalance 同款安全加固：归属校验 / 未设密码报错 / SQL 原子扣减。
+     */
+    @ApiOperation(value = "积分商城订单余额支付")
+    @PostMapping(value = "/byBalance")
+    public BasicResult byBalance(@RequestBody @Validated PlatformPayDto platformPayDto, HttpServletRequest request) {
+        BasicData basicResult = new BasicData();
+        Member loginMember = memberSessionManager.getSession(TokenUtil.getToken());
+        Member dbMember = memberService.selectByPrimaryKey(loginMember.getId());
+
+        if(platformPayDto.getType() != Quantity.INT_6){
+            throw new StoneCustomerException("交易类型错误");
+        }
+        if(platformPayDto.getOut_trade_no() == null){
+            throw new StoneCustomerException("必须填写商户单号");
+        }
+        PointsMallOrder dbOrder = pointsMallOrderService.selectByOrderNo(platformPayDto.getOut_trade_no());
+        if(dbOrder == null){
+            throw new StoneCustomerException("该商户单号不存在");
+        }
+        //归属校验（安全加固 S1）
+        if(dbOrder.getMemberId() == null || dbOrder.getMemberId().intValue() != loginMember.getId().intValue()){
+            throw new StoneCustomerException("该订单不属于当前用户，无法支付");
+        }
+        if(dbOrder.getStatus()!=Quantity.INT_1 && dbOrder.getStatus()==Quantity.INT_10){
+            throw new StoneCustomerException("该笔订单超时未支付，已自动取消，请重新下单");
+        }
+        if(dbOrder.getActualPrice().compareTo(platformPayDto.getTotal_fee()) != 0){
+            basicResult.setSuccess(false);
+            basicResult.setMessage("付款金额错误");
+            return basicResult;
+        }
+        String outTradeNo = platformPayDto.getOut_trade_no();
+
+        //添加用户交易记录（type=6 积分商城订单付款；paymentMode=3 余额，与堂食余额支付口径一致）
+        MemberTradeRecord insertMemberTradeRecord = new MemberTradeRecord();
+        insertMemberTradeRecord.setMemberId(loginMember.getId());
+        insertMemberTradeRecord.setOutTradeNo(outTradeNo);
+        insertMemberTradeRecord.setType(Quantity.INT_6);
+        insertMemberTradeRecord.setPaymentMode(Quantity.INT_3);
+        insertMemberTradeRecord.setAmount(platformPayDto.getTotal_fee());
+        insertMemberTradeRecord.setStatus(Quantity.INT_1);
+        insertMemberTradeRecord.setCreateTime(new Date());
+        insertMemberTradeRecord.setUpdateTime(new Date());
+        memberTradeRecordService.insertSelective(insertMemberTradeRecord);
+
+        //修改订单信息：补填用户交易id（订单 paymentMode=2 余额，与堂食订单口径一致）
+        PointsMallOrder updateOrder = new PointsMallOrder();
+        updateOrder.setId(dbOrder.getId());
+        updateOrder.setTradeId(insertMemberTradeRecord.getId());
+        updateOrder.setPaymentMode(Quantity.INT_2);
+        updateOrder.setUpdateTime(new Date());
+        pointsMallOrderService.updateByPrimaryKeySelective(updateOrder);
+
+        //未设置支付密码（安全加固 S3）
+        if(dbMember.getPaymentPassword() == null || dbMember.getPaymentPasswordSalt() == null){
+            throw new StoneCustomerException("请先设置支付密码后再使用余额支付");
+        }
+        //判断支付密码是否正确
+        String paymentPassword = Base64Utils.decode(platformPayDto.getPaymentPassword());
+        paymentPassword = CommonUtils.genMd5Password(paymentPassword, dbMember.getPaymentPasswordSalt());
+        if(!paymentPassword.equals(dbMember.getPaymentPassword())){
+            throw new StoneCustomerException("支付密码输入错误，请重新输入");
+        }
+
+        //原子扣减余额（安全加固 S2）
+        if(!memberService.deductBalanceForPay(dbMember.getId(), platformPayDto.getTotal_fee())){
+            throw new StoneCustomerException("您的余额不足，请选择其它支付方式或先充值");
+        }
+        dbMember = memberService.selectByPrimaryKey(loginMember.getId());
+        //添加账单记录
+        MemberBillingRecord memberBillingRecord = new MemberBillingRecord();
+        memberBillingRecord.setMemberId(dbMember.getId());
+        memberBillingRecord.setType(MemberBillingRecord.TYPE_ORDER_PAYMENT_BY_BALANCE);
+        memberBillingRecord.setOperateType(MemberBillingRecord.OPERATE_TYPE_SUB);
+        memberBillingRecord.setCoinType(MemberBillingRecord.COIN_TYPE_BALANCE);
+        memberBillingRecord.setNumber(platformPayDto.getTotal_fee());
+        memberBillingRecord.setMessage("积分商城订单使用余额支付");
+        memberBillingRecord.setCreateTime(new Date());
+        memberBillingRecordService.insertSelective(memberBillingRecord);
+
+        MemberTradeRecord dbMemberTradeRecord = memberTradeRecordService.selectByOutTradeNo(outTradeNo);
+        if(dbMemberTradeRecord == null){
+            throw new StoneCustomerException("该商户单号不存在，回调逻辑处理失败");
+        }
+        //为防止重复提交，对交易记录状态进行判断
+        if(dbMemberTradeRecord.getStatus() != Quantity.INT_1){
+            throw new StoneCustomerException("重复提交，商户单号为" + outTradeNo);
+        }
+        MemberTradeRecord updateMemberTradeRecord = new MemberTradeRecord();
+        updateMemberTradeRecord.setId(dbMemberTradeRecord.getId());
+        updateMemberTradeRecord.setStatus(Quantity.INT_2);
+        updateMemberTradeRecord.setUpdateTime(new Date());
+        memberTradeRecordService.updateByPrimaryKeySelective(updateMemberTradeRecord);
+
+        pointsMallOrderService.paymentNotify(outTradeNo);
 
         basicResult.setSuccess(true);
         basicResult.setMessage("支付成功");

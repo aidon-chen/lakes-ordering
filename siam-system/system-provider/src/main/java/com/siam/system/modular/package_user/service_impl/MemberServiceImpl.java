@@ -2,6 +2,7 @@ package com.siam.system.modular.package_user.service_impl;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.google.gson.internal.LinkedTreeMap;
+import com.siam.package_common.constant.BasicResultCode;
 import com.siam.package_common.constant.BusinessType;
 import com.siam.package_common.constant.Quantity;
 import com.siam.package_common.entity.BasicResult;
@@ -1023,6 +1024,43 @@ public class MemberServiceImpl implements MemberService {
     }
 
     @Override
+    public void bindWx(MemberParam param) {
+        //与 MemberIdentityAuthServiceImpl 同款判空：取不到会话直接抛 TOKEN_ERR(2)，让前端清 token 重新登录
+        String token = TokenUtil.getToken();
+        if (token == null || !memberSessionManager.haveSession(token)) {
+            throw new StoneCustomerException(BasicResultCode.TOKEN_ERR, "登录已过期，请重新登录");
+        }
+        Member loginMember = memberSessionManager.getSession(token);
+        if (loginMember == null || loginMember.getId() == null) {
+            throw new StoneCustomerException(BasicResultCode.TOKEN_ERR, "登录已过期，请重新登录");
+        }
+
+        if (param.getCode() == null || param.getCode().trim().length() == 0) {
+            throw new StoneCustomerException("缺少微信登录凭证，请重试");
+        }
+
+        //复用验证码登录同源的 code→openid 通道（jscode2session）；openid 拿不到不静默——绑定失败必须让用户知道
+        WxSession wxSession = WxLoginController.getSessionKeyFromWxByCode(param.getCode().trim());
+        String openid = (wxSession == null) ? null : wxSession.getOpenid();
+        if (openid == null || openid.trim().length() == 0) {
+            throw new StoneCustomerException("获取微信身份失败，请确认小程序 appid/secret 配置后重试");
+        }
+
+        //防一号多绑：该微信已被其它账号绑定时拒绝（open_id 在本表不是唯一索引，必须显式校验）
+        Member existByOpenId = memberMapper.selectByOpenId(openid);
+        if (existByOpenId != null && !existByOpenId.getId().equals(loginMember.getId())) {
+            throw new StoneCustomerException("该微信已绑定其它账号，请先在原账号解绑");
+        }
+
+        Member updateMember = new Member();
+        updateMember.setId(loginMember.getId());
+        updateMember.setOpenId(openid);
+        updateMember.setIsBindWx(true);
+        updateMember.setUpdateTime(new Date());
+        memberMapper.updateByPrimaryKeySelective(updateMember);
+    }
+
+    @Override
     public void updateIsRemindNewPeople(MemberParam param) {
         Member loginMember = memberSessionManager.getSession(TokenUtil.getToken());
 
@@ -1097,6 +1135,15 @@ public class MemberServiceImpl implements MemberService {
         updateMember.setPaymentPassword(paymentPassword);
         updateMember.setPaymentPasswordSalt(paymentPasswordSalt);
         memberMapper.updateByPrimaryKeySelective(updateMember);
+    }
+
+    /**
+     * 原子扣减会员余额（余额支付场景，2026-09-25 安全加固 S2）。
+     * SQL 层 WHERE balance >= amount 保证并发不超扣；返回 false = 余额不足。
+     */
+    @Override
+    public boolean deductBalanceForPay(Integer memberId, BigDecimal amount) {
+        return memberMapper.deductBalanceForPay(memberId, amount) > 0;
     }
 
     @Override
