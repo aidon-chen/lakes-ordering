@@ -19,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import javax.annotation.Resource;
 import java.io.IOException;
 import java.util.*;
 
@@ -32,9 +31,6 @@ public class OrderController {
 
     @Autowired
     private OrderService orderService;
-
-    @Resource(name = "rewardServiceImpl")
-    private RewardService rewardService;
 
     /**
      * 订单列表
@@ -146,17 +142,5 @@ public class OrderController {
     public BasicResult selectTabNumber(@RequestBody @Validated(value = {}) OrderParam param){
         Map map = orderService.selectTabNumber(param);
         return BasicResult.success(map);
-    }
-
-    /**
-     * 查看佣金奖励信息
-     *
-     * @return
-     * @author 暹罗
-     */
-    @PostMapping(value = "/selectCommissionReward")
-    public BasicResult selectCommissionReward(@RequestBody @Validated(value = {}) OrderParam param){
-        String text = rewardService.selectCommissionReward(param);
-        return BasicResult.success(text);
     }
 }

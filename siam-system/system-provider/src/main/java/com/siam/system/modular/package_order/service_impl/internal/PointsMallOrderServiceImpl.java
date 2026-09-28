@@ -16,7 +16,6 @@ import com.siam.system.modular.package_goods.service.*;
 import com.siam.system.modular.package_goods.service.internal.*;
 import com.siam.system.modular.package_user.service.MemberBillingRecordService;
 import com.siam.system.modular.package_user.service.MemberService;
-import com.siam.system.modular.package_user.service.MemberInviteRelationService;
 import com.siam.system.modular.package_user.service.MemberTradeRecordService;
 import com.siam.system.modular.package_order.controller.member.internal.PointsMallWxPayService;
 import com.siam.system.modular.package_order.entity.*;
@@ -100,9 +99,6 @@ public class PointsMallOrderServiceImpl extends ServiceImpl<PointsMallOrderMappe
 
     @Autowired
     private PointsMallOrderRefundService orderRefundService;
-
-    @Autowired
-    private MemberInviteRelationService memberInviteRelationService;
 
     @Autowired
     private PointsMallOrderLogisticsService orderLogisticsService;
@@ -966,55 +962,6 @@ public class PointsMallOrderServiceImpl extends ServiceImpl<PointsMallOrderMappe
             }
         }
 
-        //平台邀请佣金
-        BigDecimal inviteeConsumeCommissionPercent = setting.getPointsMallInviteeConsumeCommission().divide(BigDecimal.valueOf(100), 2, BigDecimal.ROUND_HALF_UP);
-        BigDecimal totalCommissionAmount = dbPointsMallOrder.getActualPrice().multiply(inviteeConsumeCommissionPercent).setScale(Quantity.INT_2, BigDecimal.ROUND_HALF_UP);
-        BigDecimal inviterCommissionPercent, commissionAmount;
-        String message;
-        //给下单用户的邀请人发放佣金
-        Map<String, Integer> inviterMap = memberInviteRelationService.selectInviter(dbPointsMallOrder.getMemberId());
-        if(inviterMap.containsKey("secondLevelInviter")){
-            //有2个上级邀请人
-            //发放下单用户佣金奖励
-            inviterCommissionPercent = setting.getPointsMallCasethreeOwnCommission().divide(BigDecimal.valueOf(100), 2, BigDecimal.ROUND_HALF_UP);
-            commissionAmount = totalCommissionAmount.multiply(inviterCommissionPercent).setScale(Quantity.INT_2, BigDecimal.ROUND_HALF_UP);
-            message = "下单用户佣金奖励，来自" + dbMember.getMobile()+"-"+dbMember.getUsername();
-            giveInviterReward(dbMember.getId(), commissionAmount, MemberBillingRecord.TYPE_OWN_COMMISSION, message, dbPointsMallOrder.getId());
-
-            //发放一级邀请人佣金奖励
-            inviterCommissionPercent = setting.getPointsMallCasethreeFirstLevelInviterCommission().divide(BigDecimal.valueOf(100), 2, BigDecimal.ROUND_HALF_UP);
-            commissionAmount = totalCommissionAmount.multiply(inviterCommissionPercent).setScale(Quantity.INT_2, BigDecimal.ROUND_HALF_UP);
-            message = "一级邀请人佣金奖励，来自" + dbMember.getMobile()+"-"+dbMember.getUsername();
-            giveInviterReward(inviterMap.get("firstLevelInviter"), commissionAmount, MemberBillingRecord.TYPE_FIRST_LEVEL_INVITER_COMMISSION, message, dbPointsMallOrder.getId());
-
-            //发放二级邀请人佣金奖励
-            inviterCommissionPercent = setting.getPointsMallCasethreeSecondLevelInviterCommission().divide(BigDecimal.valueOf(100), 2, BigDecimal.ROUND_HALF_UP);
-            commissionAmount = totalCommissionAmount.multiply(inviterCommissionPercent).setScale(Quantity.INT_2, BigDecimal.ROUND_HALF_UP);
-            message = "二级邀请人佣金，来自" + dbMember.getMobile()+"-"+dbMember.getUsername();
-            giveInviterReward(inviterMap.get("secondLevelInviter"), commissionAmount, MemberBillingRecord.TYPE_SECOND_LEVEL_INVITER_COMMISSION, message, dbPointsMallOrder.getId());
-
-        }else if(inviterMap.containsKey("firstLevelInviter")){
-            //有1个上级邀请人时
-            //发放下单用户佣金奖励
-            inviterCommissionPercent = setting.getPointsMallCasetwoOwnCommission().divide(BigDecimal.valueOf(100), 2, BigDecimal.ROUND_HALF_UP);
-            commissionAmount = totalCommissionAmount.multiply(inviterCommissionPercent).setScale(Quantity.INT_2, BigDecimal.ROUND_HALF_UP);
-            message = "下单用户佣金奖励，来自" + dbMember.getMobile()+"-"+dbMember.getUsername();
-            giveInviterReward(dbMember.getId(), commissionAmount, MemberBillingRecord.TYPE_OWN_COMMISSION, message, dbPointsMallOrder.getId());
-
-            //发放一级邀请人佣金奖励
-            inviterCommissionPercent = setting.getPointsMallCasetwoFirstLevelInviterCommission().divide(BigDecimal.valueOf(100), 2, BigDecimal.ROUND_HALF_UP);
-            commissionAmount = totalCommissionAmount.multiply(inviterCommissionPercent).setScale(Quantity.INT_2, BigDecimal.ROUND_HALF_UP);
-            message = "一级邀请人佣金奖励，来自" + dbMember.getMobile()+"-"+dbMember.getUsername();
-            giveInviterReward(inviterMap.get("firstLevelInviter"), commissionAmount, MemberBillingRecord.TYPE_FIRST_LEVEL_INVITER_COMMISSION, message, dbPointsMallOrder.getId());
-
-        }else if(inviterMap.isEmpty()){
-            //无上级邀请人时
-            //发放下单用户佣金奖励
-            inviterCommissionPercent = setting.getPointsMallCaseoneOwnCommission().divide(BigDecimal.valueOf(100), 2, BigDecimal.ROUND_HALF_UP);
-            commissionAmount = totalCommissionAmount.multiply(inviterCommissionPercent).setScale(Quantity.INT_2, BigDecimal.ROUND_HALF_UP);
-            message = "下单用户佣金奖励，来自" + dbMember.getMobile()+"-"+dbMember.getUsername();
-            giveInviterReward(dbMember.getId(), commissionAmount, MemberBillingRecord.TYPE_OWN_COMMISSION, message, dbPointsMallOrder.getId());
-        }
     }
 
     @Override
@@ -1022,84 +969,6 @@ public class PointsMallOrderServiceImpl extends ServiceImpl<PointsMallOrderMappe
 
     }
 
-    /**
-     * 给邀请人发放佣金
-     *
-     * @return
-     */
-    public void giveInviterReward(Integer inviterId, BigDecimal commissionAmount, Integer type, String message, Long orderId){
-        //规则：如果邀请人不是会员，则不给与佣金奖励；如果邀请人在近30天内无消费，则不给予佣金奖励，不对其它邀请人造成影响；
-        //1、开通会员后的第一笔订单无需判断近30天是否有消费这个条件，直接给与佣金奖励
-        //2、近30天是否有消费这个条件 是指用户下过单(无论什么状态)--只要支付成功过的都算
-        //3、近30天是否有消费这个条件 是指外卖系统、积分商城、(会员充值) 任意有一笔消费即可
-        //4、近30天是否有消费这个条件 需要排除当前支付的订单
-        Member dbMember = memberService.selectByPrimaryKey(inviterId);
-        if(!dbMember.getType().equals(Quantity.INT_2)){
-            log.info("\n\nid为" + inviterId + "的邀请人不是会员，不给予佣金奖励");
-            return;
-        }
-
-        //判断当前订单是否为开通会员后的第一笔订单，如果是，则直接给与佣金奖励
-        //查询当前用户最近一笔支付成功的会员充值记录
-        VipRechargeRecord vipRechargeRecord = vipRechargeRecordService.selectLastestPaid(dbMember.getId());
-        List excludeStatusList = new ArrayList();
-        excludeStatusList.add(1);
-        excludeStatusList.add(10);
-        //查询外卖系统的符合订单数
-        LambdaQueryWrapper<Order> orderLambdaQueryWrapper = new LambdaQueryWrapper<>();
-        orderLambdaQueryWrapper.gt(Order::getCreateTime, vipRechargeRecord.getCreateTime());
-        orderLambdaQueryWrapper.notIn(Order::getStatus, excludeStatusList);
-        int count = orderService.count(orderLambdaQueryWrapper);
-        //查询积分商城的符合订单数
-        PointsMallOrderExample pointsMallOrderExample = new PointsMallOrderExample();
-        pointsMallOrderExample.createCriteria().andIdNotEqualTo(orderId).andCreateTimeGreaterThan(vipRechargeRecord.getCreateTime()).andStatusNotIn(excludeStatusList);
-        Integer count_pointsMall = pointsMallOrderMapper.countByExample(pointsMallOrderExample);
-        int total_count = count + count_pointsMall;
-        if(total_count > 0){
-            //不是第一笔订单，进行近30天是否有消费的条件判断
-            //近30天外卖系统支付成功的订单数
-            OrderParam orderParam = new OrderParam();
-            orderParam.setMemberId(inviterId);
-            orderParam.setStartTime(DateUtilsExtend.getFrontDay(DateUtilsExtend.getDayEnd(), 30));
-            orderParam.setEndTime(DateUtilsExtend.getDayEnd());
-            count = this.orderService.selectCountPaid(orderParam);
-            //近30天积分商城支付成功的订单数
-            PointsMallOrderParam pointsMallOrderParam = new PointsMallOrderParam();
-            pointsMallOrderParam.setMemberId(inviterId);
-            pointsMallOrderParam.setExcludeOrderId(orderId);
-            count_pointsMall = this.pointsMallOrderMapper.selectCountPaid(pointsMallOrderParam, DateUtilsExtend.getFrontDay(DateUtilsExtend.getDayEnd(), 30), DateUtilsExtend.getDayEnd());
-            count_pointsMall = count_pointsMall!=null ? count_pointsMall : 0;
-
-            total_count = count + count_pointsMall;
-            if(total_count == 0){
-                //TODO-可以建立一张表把这些信息存下来的
-                log.info("\n\nid为" + inviterId + "的邀请人在近30天内无消费，不给予佣金奖励");
-                return;
-            }
-        }
-
-        //增加用户的邀请新用户注册奖励金额
-        BigDecimal updateUnreceivedInviteRewardAmount = dbMember.getUnreceivedInviteRewardAmount().add(commissionAmount).setScale(2, BigDecimal.ROUND_HALF_UP);
-
-        Member updateMember = new Member();
-        updateMember.setId(dbMember.getId());
-        updateMember.setUnreceivedInviteRewardAmount(updateUnreceivedInviteRewardAmount);
-        updateMember.setUpdateTime(new Date());
-        memberService.updateByPrimaryKeySelective(updateMember);
-        dbMember = memberService.selectByPrimaryKey(inviterId);
-
-        //增加用户账单记录
-        MemberBillingRecord memberBillingRecord = new MemberBillingRecord();
-        memberBillingRecord.setMemberId(inviterId);
-        memberBillingRecord.setType(type);
-        memberBillingRecord.setOperateType(MemberBillingRecord.OPERATE_TYPE_ADD);
-        memberBillingRecord.setCoinType(MemberBillingRecord.COIN_TYPE_UNRECEIVED_INVITE_REWARD_AMOUNT);
-        memberBillingRecord.setNumber(commissionAmount);
-        memberBillingRecord.setMessage(message);
-        memberBillingRecord.setPointsMallOrderId(orderId);
-        memberBillingRecord.setCreateTime(new Date());
-        memberBillingRecordService.insertSelective(memberBillingRecord);
-    }
 
     @Override
     public Map countOrder(PointsMallOrderParam order) {
@@ -1422,62 +1291,6 @@ public class PointsMallOrderServiceImpl extends ServiceImpl<PointsMallOrderMappe
             //发送服务通知
             wxNotifyService.sendOrderRefundSuccessMessage(orderMember.getOpenId(), dbPointsMallOrder.getShopName(), dbPointsMallOrder.getOrderNo(), dbPointsMallOrder.getDescription(), dbPointsMallOrderRefund.getRefundAmount(), new Date());
 
-            //退回下单佣金奖励
-            List typeList = new ArrayList();
-            typeList.add(MemberBillingRecord.TYPE_FIRST_LEVEL_INVITER_COMMISSION);
-            typeList.add(MemberBillingRecord.TYPE_SECOND_LEVEL_INVITER_COMMISSION);
-            typeList.add(MemberBillingRecord.TYPE_OWN_COMMISSION);
-            MemberBillingRecordExample example = new MemberBillingRecordExample();
-            example.createCriteria().andTypeIn(typeList)
-                    .andOperateTypeEqualTo(MemberBillingRecord.OPERATE_TYPE_ADD)
-                    .andCoinTypeEqualTo(MemberBillingRecord.COIN_TYPE_UNRECEIVED_INVITE_REWARD_AMOUNT)
-                    .andPointsMallOrderIdEqualTo(dbPointsMallOrder.getId());
-            List<MemberBillingRecord> list = memberBillingRecordService.selectByExample(example);
-            if(!list.isEmpty()){
-                for (MemberBillingRecord dbMemberBillingRecord : list) {
-                    Integer type = null;
-                    String message = "";
-                    if(dbMemberBillingRecord.getType().equals(MemberBillingRecord.TYPE_FIRST_LEVEL_INVITER_COMMISSION)){
-                        type = MemberBillingRecord.TYPE_FIRST_LEVEL_INVITER_COMMISSION_RETURN;
-                        message = "订单退款-一级邀请人佣金奖励退回";
-                    }else if(dbMemberBillingRecord.getType().equals(MemberBillingRecord.TYPE_SECOND_LEVEL_INVITER_COMMISSION)){
-                        type = MemberBillingRecord.TYPE_SECOND_LEVEL_INVITER_COMMISSION_RETURN;
-                        message = "订单退款-二级邀请人佣金奖励退回";
-                    }else if(dbMemberBillingRecord.getType().equals(MemberBillingRecord.TYPE_OWN_COMMISSION)){
-                        type = MemberBillingRecord.TYPE_OWN_COMMISSION_RETURN;
-                        message = "订单退款-下单用户佣金奖励退回";
-                    }
-
-                    Member dbMember = memberService.selectByPrimaryKey(dbMemberBillingRecord.getMemberId());
-                    //增加用户的邀请新用户注册奖励金额
-                    BigDecimal updateUnreceivedInviteRewardAmount = dbMember.getUnreceivedInviteRewardAmount().subtract(dbMemberBillingRecord.getNumber()).setScale(2, BigDecimal.ROUND_HALF_UP);
-
-                    Member updateMember = new Member();
-                    updateMember.setId(dbMember.getId());
-                    updateMember.setUnreceivedInviteRewardAmount(updateUnreceivedInviteRewardAmount);
-                    updateMember.setUpdateTime(new Date());
-                    memberService.updateByPrimaryKeySelective(updateMember);
-                    dbMember = memberService.selectByPrimaryKey(dbMemberBillingRecord.getMemberId());
-
-                    //增加用户账单记录
-                    MemberBillingRecord memberBillingRecord = new MemberBillingRecord();
-                    memberBillingRecord.setMemberId(dbMember.getId());
-                    memberBillingRecord.setType(type);
-                    memberBillingRecord.setOperateType(MemberBillingRecord.OPERATE_TYPE_SUB);
-                    memberBillingRecord.setCoinType(MemberBillingRecord.COIN_TYPE_UNRECEIVED_INVITE_REWARD_AMOUNT);
-                    memberBillingRecord.setNumber(dbMemberBillingRecord.getNumber());
-                    memberBillingRecord.setMessage(message);
-                    memberBillingRecord.setPointsMallOrderId(dbPointsMallOrder.getId());
-                    memberBillingRecord.setCreateTime(new Date());
-                    memberBillingRecordService.insertSelective(memberBillingRecord);
-
-                    //之前的账单记录标注已退回
-                    MemberBillingRecord updateMemberBillingRecord = new MemberBillingRecord();
-                    updateMemberBillingRecord.setId(dbMemberBillingRecord.getId());
-                    updateMemberBillingRecord.setIsReturn(true);
-                    memberBillingRecordService.updateByPrimaryKeySelective(updateMemberBillingRecord);
-                }
-            }
         }else if(param.getStatus() == Quantity.INT_2){
             //审核不通过
 
@@ -3031,117 +2844,6 @@ public class PointsMallOrderServiceImpl extends ServiceImpl<PointsMallOrderMappe
         return map;
     }
 
-    @Override
-    public String selectCommissionReward(PointsMallOrderParam param) {
-
-        //C-10 批次6（2026-09-19 口径变更）：返现/返利功能全面取消 → 不返回文案、不发放佣金。
-        //如需恢复，把 REWARD_DISABLED 改为 false 即可（下方原逻辑完整保留）。
-        boolean REWARD_DISABLED = true;
-        if (REWARD_DISABLED) {
-            return "";
-        }
-
-        Member loginMember = memberSessionManager.getSession(TokenUtil.getToken());
-
-        String text = null;
-        BigDecimal commissionAmount = BigDecimal.ZERO;
-
-        Setting setting=settingService.selectCurrent();
-        //平台邀请佣金
-        BigDecimal inviteeConsumeCommissionPercent = setting.getPointsMallInviteeConsumeCommission().divide(BigDecimal.valueOf(100), 2, BigDecimal.ROUND_HALF_UP);
-        BigDecimal totalCommissionAmount = param.getActualPrice().multiply(inviteeConsumeCommissionPercent).setScale(Quantity.INT_2, BigDecimal.ROUND_HALF_UP);
-        BigDecimal inviterCommissionPercent;
-        String message;
-        //给下单用户的邀请人发放佣金
-        Map<String, Integer> inviterMap = memberInviteRelationService.selectInviter(loginMember.getId());
-        if(inviterMap.containsKey("secondLevelInviter")){
-            //有2个上级邀请人
-            //发放下单用户佣金奖励
-            inviterCommissionPercent = setting.getPointsMallCasethreeOwnCommission().divide(BigDecimal.valueOf(100), 2, BigDecimal.ROUND_HALF_UP);
-            commissionAmount = totalCommissionAmount.multiply(inviterCommissionPercent).setScale(Quantity.INT_2, BigDecimal.ROUND_HALF_UP);
-
-//            //发放一级邀请人佣金奖励
-//            inviterCommissionPercent = setting.getPointsMallCasethreeFirstLevelInviterCommission().divide(BigDecimal.valueOf(100), 2, BigDecimal.ROUND_HALF_UP);
-//            commissionAmount = totalCommissionAmount.multiply(inviterCommissionPercent).setScale(Quantity.INT_2, BigDecimal.ROUND_HALF_UP);
-//            message = "一级邀请人佣金奖励，来自" + dbMember.getMobile()+"-"+dbMember.getUsername();
-//            giveInviterReward(inviterMap.get("firstLevelInviter"), commissionAmount, MemberBillingRecord.TYPE_FIRST_LEVEL_INVITER_COMMISSION, message);
-//
-//            //发放二级邀请人佣金奖励
-//            inviterCommissionPercent = setting.getPointsMallCasethreeSecondLevelInviterCommission().divide(BigDecimal.valueOf(100), 2, BigDecimal.ROUND_HALF_UP);
-//            commissionAmount = totalCommissionAmount.multiply(inviterCommissionPercent).setScale(Quantity.INT_2, BigDecimal.ROUND_HALF_UP);
-//            message = "二级邀请人佣金，来自" + dbMember.getMobile()+"-"+dbMember.getUsername();
-//            giveInviterReward(inviterMap.get("secondLevelInviter"), commissionAmount, MemberBillingRecord.TYPE_SECOND_LEVEL_INVITER_COMMISSION, message);
-
-        }else if(inviterMap.containsKey("firstLevelInviter")){
-            //有1个上级邀请人时
-            //发放下单用户佣金奖励
-            inviterCommissionPercent = setting.getPointsMallCasetwoOwnCommission().divide(BigDecimal.valueOf(100), 2, BigDecimal.ROUND_HALF_UP);
-            commissionAmount = totalCommissionAmount.multiply(inviterCommissionPercent).setScale(Quantity.INT_2, BigDecimal.ROUND_HALF_UP);
-
-//            //发放一级邀请人佣金奖励
-//            inviterCommissionPercent = setting.getPointsMallCasetwoFirstLevelInviterCommission().divide(BigDecimal.valueOf(100), 2, BigDecimal.ROUND_HALF_UP);
-//            commissionAmount = totalCommissionAmount.multiply(inviterCommissionPercent).setScale(Quantity.INT_2, BigDecimal.ROUND_HALF_UP);
-//            message = "一级邀请人佣金奖励，来自" + dbMember.getMobile()+"-"+dbMember.getUsername();
-//            giveInviterReward(inviterMap.get("firstLevelInviter"), commissionAmount, MemberBillingRecord.TYPE_FIRST_LEVEL_INVITER_COMMISSION, message);
-
-        }else if(inviterMap.isEmpty()){
-            //无上级邀请人时
-            //发放下单用户佣金奖励
-            inviterCommissionPercent = setting.getPointsMallCaseoneOwnCommission().divide(BigDecimal.valueOf(100), 2, BigDecimal.ROUND_HALF_UP);
-            commissionAmount = totalCommissionAmount.multiply(inviterCommissionPercent).setScale(Quantity.INT_2, BigDecimal.ROUND_HALF_UP);
-        }
-
-        //规则：如果邀请人不是会员，则不给与佣金奖励；如果邀请人在近30天内无消费，则不给予佣金奖励，不对其它邀请人造成影响；
-        //1、开通会员后的第一笔订单无需判断近30天是否有消费这个条件，直接给与佣金奖励
-        //2、近30天是否有消费这个条件 是指用户下过单(无论什么状态)--只要支付成功过的都算
-        //3、近30天是否有消费这个条件 是指外卖系统、积分商城、(会员充值) 任意有一笔消费即可
-        //4、近30天是否有消费这个条件 需要排除当前支付的订单
-        Member dbMember = memberService.selectByPrimaryKey(loginMember.getId());
-        if(!dbMember.getType().equals(Quantity.INT_2)){
-            text = "您现在不是会员，充值会员后，您可得到"+ commissionAmount +"元返利";
-        }else{
-            //判断当前订单是否为开通会员后的第一笔订单，如果是，则直接给与佣金奖励
-            //查询当前用户最近一笔支付成功的会员充值记录
-            VipRechargeRecord vipRechargeRecord = vipRechargeRecordService.selectLastestPaid(dbMember.getId());
-            List excludeStatusList = new ArrayList();
-            excludeStatusList.add(1);
-            excludeStatusList.add(10);
-            //查询外卖系统的符合订单数
-            LambdaQueryWrapper<Order> orderLambdaQueryWrapper = new LambdaQueryWrapper<>();
-            orderLambdaQueryWrapper.gt(Order::getCreateTime, vipRechargeRecord.getCreateTime());
-            orderLambdaQueryWrapper.notIn(Order::getStatus, excludeStatusList);
-            int count = orderService.count(orderLambdaQueryWrapper);
-            //查询积分商城的符合订单数
-            PointsMallOrderExample pointsMallOrderExample = new PointsMallOrderExample();
-            pointsMallOrderExample.createCriteria().andCreateTimeGreaterThan(vipRechargeRecord.getCreateTime()).andStatusNotIn(excludeStatusList);
-            int count_pointsMall = pointsMallOrderMapper.countByExample(pointsMallOrderExample);
-            int total_count = count + count_pointsMall;
-            if(total_count > 0){
-                //不是第一笔订单，进行近30天是否有消费的条件判断
-                //近30天外卖系统支付成功的订单数
-                OrderParam orderParam = new OrderParam();
-                orderParam.setMemberId(loginMember.getId());
-                orderParam.setStartTime(DateUtilsExtend.getFrontDay(DateUtilsExtend.getDayEnd(), 30));
-                orderParam.setEndTime(DateUtilsExtend.getDayEnd());
-                count = this.orderService.selectCountPaid(orderParam);
-                //近30天积分商城支付成功的订单数
-                PointsMallOrderParam pointsMallOrder = new PointsMallOrderParam();
-                pointsMallOrder.setMemberId(loginMember.getId());
-                count_pointsMall = this.pointsMallOrderMapper.selectCountPaid(pointsMallOrder, DateUtilsExtend.getFrontDay(DateUtilsExtend.getDayEnd(), 30), DateUtilsExtend.getDayEnd());
-
-                total_count = count + count_pointsMall;
-                if(total_count == 0){
-                    //TODO-可以建立一张表把这些信息存下来的
-                    /*text = "您在近30天内无消费，该笔订单完成后再次消费，您可得到"+ commissionAmount +"元返利";*/
-                }else{
-                    text = "该笔订单完成后，您可得到"+ commissionAmount +"元返利";
-                }
-            }else{
-                text = "该笔订单完成后，您可得到"+ commissionAmount +"元返利";
-            }
-        }
-        return text;
-    }
 
     public String getRefundReasonText(int refundReason){
         String refundReasonText = "";

@@ -4,9 +4,7 @@ import com.siam.package_common.annoation.ScheduledTaskAnnotation;
 import com.siam.package_common.constant.ScheduledTaskConst;
 import com.siam.system.modular.package_goods.service.CouponsMemberRelationService;
 import com.siam.system.modular.package_goods.service.GoodsService;
-import com.siam.system.modular.package_user.service.MemberBillingRecordService;
 import com.siam.system.modular.package_user.service.MemberService;
-import com.siam.system.modular.package_user.service.MemberWithdrawRecordService;
 import com.siam.system.modular.package_user.service.MerchantService;
 import com.siam.system.modular.package_order.service.OrderService;
 import lombok.extern.slf4j.Slf4j;
@@ -40,20 +38,12 @@ public class ScheduledTaskExecutor {
     @Autowired
     private MerchantService merchantService;
 
-    @Autowired
-    private MemberWithdrawRecordService memberWithdrawRecordService;
-
-    @Autowired
-    private MemberBillingRecordService memberBillingRecordService;
-
     /**
      * 每隔1分钟检测订单超时操作
      */
     @Scheduled(cron = "0 */1 * * * ?")
     @ScheduledTaskAnnotation(code = ScheduledTaskConst.CLOSE_OVERDUE_ORDER)
     public void updateByCloseOverdueOrder_task(){
-        //每隔一分钟检测，如果有符合条件的用户提现记录，则进行自动打款
-        memberWithdrawRecordService.autoPayment();
     }
 
     /**
@@ -112,10 +102,6 @@ public class ScheduledTaskExecutor {
         //此处为最后一个时间段
         //查询微信公众号openid
         memberService.queryWxPublicPlatformOpenId();
-
-        //对未到账的积分、佣金奖励进行结算
-        //结算时间：外卖系统-下单7天后，积分商城-下单25天后
-        memberBillingRecordService.settledReward();
     }
 
     /**

@@ -758,62 +758,6 @@ public class MerchantOrderController {
                 memberBillingRecordService.updateByPrimaryKeySelective(updateMemberBillingRecord);
             }
 
-            //退回下单佣金奖励
-            List typeList = new ArrayList();
-            typeList.add(MemberBillingRecord.TYPE_FIRST_LEVEL_INVITER_COMMISSION);
-            typeList.add(MemberBillingRecord.TYPE_SECOND_LEVEL_INVITER_COMMISSION);
-            typeList.add(MemberBillingRecord.TYPE_OWN_COMMISSION);
-            example = new MemberBillingRecordExample();
-            example.createCriteria().andTypeIn(typeList)
-                    .andOperateTypeEqualTo(MemberBillingRecord.OPERATE_TYPE_ADD)
-                    .andCoinTypeEqualTo(MemberBillingRecord.COIN_TYPE_UNRECEIVED_INVITE_REWARD_AMOUNT)
-                    .andOrderIdEqualTo(dbOrder.getId());
-            list = memberBillingRecordService.selectByExample(example);
-            if(!list.isEmpty()){
-                for (MemberBillingRecord dbMemberBillingRecord : list) {
-                    Integer type = null;
-                    String message = "";
-                    if(dbMemberBillingRecord.getType().equals(MemberBillingRecord.TYPE_FIRST_LEVEL_INVITER_COMMISSION)){
-                        type = MemberBillingRecord.TYPE_FIRST_LEVEL_INVITER_COMMISSION_RETURN;
-                        message = "订单退款-一级邀请人佣金奖励退回";
-                    }else if(dbMemberBillingRecord.getType().equals(MemberBillingRecord.TYPE_SECOND_LEVEL_INVITER_COMMISSION)){
-                        type = MemberBillingRecord.TYPE_SECOND_LEVEL_INVITER_COMMISSION_RETURN;
-                        message = "订单退款-二级邀请人佣金奖励退回";
-                    }else if(dbMemberBillingRecord.getType().equals(MemberBillingRecord.TYPE_OWN_COMMISSION)){
-                        type = MemberBillingRecord.TYPE_OWN_COMMISSION_RETURN;
-                        message = "订单退款-下单用户佣金奖励退回";
-                    }
-
-                    Member dbMember = memberService.selectByPrimaryKey(dbMemberBillingRecord.getMemberId());
-                    //增加用户的邀请新用户注册奖励金额
-                    BigDecimal updateUnreceivedInviteRewardAmount = dbMember.getUnreceivedInviteRewardAmount().subtract(dbMemberBillingRecord.getNumber()).setScale(2, BigDecimal.ROUND_HALF_UP);
-
-                    Member updateMember = new Member();
-                    updateMember.setId(dbMember.getId());
-                    updateMember.setUnreceivedInviteRewardAmount(updateUnreceivedInviteRewardAmount);
-                    updateMember.setUpdateTime(new Date());
-                    memberService.updateByPrimaryKeySelective(updateMember);
-                    dbMember = memberService.selectByPrimaryKey(dbMemberBillingRecord.getMemberId());
-
-                    //增加用户账单记录
-                    MemberBillingRecord memberBillingRecord = new MemberBillingRecord();
-                    memberBillingRecord.setMemberId(dbMember.getId());
-                    memberBillingRecord.setType(type);
-                    memberBillingRecord.setOperateType(MemberBillingRecord.OPERATE_TYPE_SUB);
-                    memberBillingRecord.setCoinType(MemberBillingRecord.COIN_TYPE_UNRECEIVED_INVITE_REWARD_AMOUNT);
-                    memberBillingRecord.setNumber(dbMemberBillingRecord.getNumber());
-                    memberBillingRecord.setMessage(message);
-                    memberBillingRecord.setOrderId(dbOrder.getId());
-                    memberBillingRecord.setCreateTime(new Date());
-                    memberBillingRecordService.insertSelective(memberBillingRecord);
-
-                    //之前的账单记录标注已退回
-                    MemberBillingRecord updateMemberBillingRecord = new MemberBillingRecord();
-                    updateMemberBillingRecord.setId(dbMemberBillingRecord.getId());
-                    updateMemberBillingRecord.setIsReturn(true);
-                    memberBillingRecordService.updateByPrimaryKeySelective(updateMemberBillingRecord);
-                }
-            }
         }else if(orderParam.getStatus() == Quantity.INT_2){
             //审核不通过
 

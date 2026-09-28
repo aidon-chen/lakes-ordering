@@ -123,73 +123,7 @@ public class MemberBillingRecordServiceImpl implements MemberBillingRecordServic
                 updateMemberBillingRecord.setIsSettled(true);
                 this.updateByPrimaryKeySelective(updateMemberBillingRecord);
 
-            }else if(dbMemberBillingRecord.getCoinType().equals(MemberBillingRecord.COIN_TYPE_UNRECEIVED_INVITE_REWARD_AMOUNT)){
-                //获取用户当前佣金
-                Member dbMember = memberService.selectByPrimaryKey(dbMemberBillingRecord.getMemberId());
-                BigDecimal inviteRewardAmountNum = dbMember.getInviteRewardAmount().add(dbMemberBillingRecord.getNumber());
-                BigDecimal unreceivedInviteRewardAmountNum = dbMember.getUnreceivedInviteRewardAmount().subtract(dbMemberBillingRecord.getNumber());
-                //修改用户的佣金
-                Member member = new Member();
-                member.setId(dbMemberBillingRecord.getMemberId());
-                member.setInviteRewardAmount(inviteRewardAmountNum);
-                member.setUnreceivedInviteRewardAmount(unreceivedInviteRewardAmountNum);
-                memberService.updateByPrimaryKeySelective(member);
-                dbMember = memberService.selectByPrimaryKey(dbMemberBillingRecord.getMemberId());
-
-                //添加正式的账单记录
-                MemberBillingRecord memberBillingRecord = new MemberBillingRecord();
-                memberBillingRecord.setMemberId(dbMemberBillingRecord.getMemberId());
-                memberBillingRecord.setCoinType(MemberBillingRecord.COIN_TYPE_INVITE_REWARD_AMOUNT);
-                memberBillingRecord.setType(dbMemberBillingRecord.getType());
-                memberBillingRecord.setOperateType(dbMemberBillingRecord.getOperateType());
-                memberBillingRecord.setNumber(dbMemberBillingRecord.getNumber());
-                memberBillingRecord.setMessage(dbMemberBillingRecord.getMessage());
-                memberBillingRecord.setOrderId(dbMemberBillingRecord.getOrderId());
-                memberBillingRecord.setCreateTime(new Date());
-                this.insertSelective(memberBillingRecord);
-
-                //修改状态为已结算
-                MemberBillingRecord updateMemberBillingRecord = new MemberBillingRecord();
-                updateMemberBillingRecord.setId(dbMemberBillingRecord.getId());
-                updateMemberBillingRecord.setIsSettled(true);
-                this.updateByPrimaryKeySelective(updateMemberBillingRecord);
-            }
         });
 
-        //积分商城-可结算奖励
-        List<MemberBillingRecord> pointsMallList = memberBillingRecordMapper.getListBySettledRewardPointsMall(new MemberBillingRecord());
-        pointsMallList.forEach(dbMemberBillingRecord -> {
-            if(dbMemberBillingRecord.getCoinType().equals(MemberBillingRecord.COIN_TYPE_UNRECEIVED_INVITE_REWARD_AMOUNT)){
-                //获取用户当前佣金
-                Member dbMember = memberService.selectByPrimaryKey(dbMemberBillingRecord.getMemberId());
-                BigDecimal inviteRewardAmountNum = dbMember.getInviteRewardAmount().add(dbMemberBillingRecord.getNumber());
-                BigDecimal unreceivedInviteRewardAmountNum = dbMember.getUnreceivedInviteRewardAmount().subtract(dbMemberBillingRecord.getNumber());
-                //修改用户的佣金
-                Member member = new Member();
-                member.setId(dbMemberBillingRecord.getMemberId());
-                member.setInviteRewardAmount(inviteRewardAmountNum);
-                member.setUnreceivedInviteRewardAmount(unreceivedInviteRewardAmountNum);
-                memberService.updateByPrimaryKeySelective(member);
-                dbMember = memberService.selectByPrimaryKey(dbMemberBillingRecord.getMemberId());
-
-                //添加正式的账单记录
-                MemberBillingRecord memberBillingRecord = new MemberBillingRecord();
-                memberBillingRecord.setMemberId(dbMemberBillingRecord.getMemberId());
-                memberBillingRecord.setCoinType(MemberBillingRecord.COIN_TYPE_INVITE_REWARD_AMOUNT);
-                memberBillingRecord.setType(dbMemberBillingRecord.getType());
-                memberBillingRecord.setOperateType(dbMemberBillingRecord.getOperateType());
-                memberBillingRecord.setNumber(dbMemberBillingRecord.getNumber());
-                memberBillingRecord.setMessage(dbMemberBillingRecord.getMessage());
-                memberBillingRecord.setPointsMallOrderId(dbMemberBillingRecord.getPointsMallOrderId());
-                memberBillingRecord.setCreateTime(new Date());
-                this.insertSelective(memberBillingRecord);
-
-                //修改状态为已结算
-                MemberBillingRecord updateMemberBillingRecord = new MemberBillingRecord();
-                updateMemberBillingRecord.setId(dbMemberBillingRecord.getId());
-                updateMemberBillingRecord.setIsSettled(true);
-                this.updateByPrimaryKeySelective(updateMemberBillingRecord);
-            }
-        });
     }
 }
