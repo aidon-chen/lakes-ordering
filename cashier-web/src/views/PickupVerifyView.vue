@@ -5,6 +5,8 @@
     ⚠️ 与画板的两处差异（都因工程无数据源，不放假按钮/不编文案）：
       ① 反馈条不写「已打印自提小票」—— 打印属批次 G，未实现，写了就是假话
       ② 核销方式（扫码/手输）工程无字段，页面不做该标识
+    ★ 2026-09-27 用户拍板：自提场景摄像头扫码多余 —— 核销以「自提码 + 订单号 + 下单用户」人工核对为准，
+      扫码区整体隐藏（SCAN_ENABLED=false，代码保留，改回 true 即恢复）
   -->
   <div class="flex-1 min-h-0 flex flex-col p-5 gap-3">
     <!-- 核销-双栏 2:1033 -->
@@ -14,8 +16,9 @@
         class="rounded-lg flex flex-col items-center justify-center shrink-0"
         style="width: 680px; padding: 20px; background: #fff; border: 1px solid var(--tc-line); gap: 16px"
       >
-        <!-- 扫码框 420×260 -->
+        <!-- 扫码框 420×260（2026-09-27 起 SCAN_ENABLED=false 隐藏；恢复改 true 即可） -->
         <div
+          v-if="SCAN_ENABLED"
           class="rounded-xl flex flex-col items-center justify-center"
           style="width: 420px; height: 260px; background: #F5F7FA; gap: 12px"
         >
@@ -88,6 +91,8 @@
           >
             <span class="text-[15px] font-bold" style="color: var(--tc-title)">{{ o.pickupCode || '—' }}</span>
             <span class="text-[12px]" style="color: var(--txt)">{{ decodeEntities(o.description) || '—' }}</span>
+            <!-- 订单号：2026-09-27 人工核对三要素之一（自提码/订单号/下单用户），补显便于收银员对单 -->
+            <span v-if="o.orderNo" class="text-[11px]" style="color: var(--tc-hold)">单号 {{ o.orderNo }}</span>
             <div class="flex items-center" style="height: 28px">
               <span class="text-[12px]" style="color: var(--tc-sub)">
                 ¥{{ money(o.actualPrice) }} · {{ hhmm(o.createTime) }} 下单<template v-if="phoneTail(o.contactPhone)">
@@ -127,6 +132,9 @@ import {
 } from '@/api/pickup'
 import { decodeEntities } from '@/utils/text'
 
+/** 扫码开关（2026-09-27 用户拍板：自提码扫码多余，先隐藏；改回 true 整体恢复，含摄像头逻辑） */
+const SCAN_ENABLED = false
+
 const rows = ref<PickupOrderRow[]>([])
 const loading = ref(true)
 const busy = ref(false)
@@ -135,7 +143,7 @@ const inputCode = ref('')
 /** 反馈条：成功=主色浅底+成功色竖条；失败=危险浅底+危险色竖条 */
 const feedback = ref<{ kind: 'idle' | 'ok' | 'fail'; text: string }>({
   kind: 'idle',
-  text: '等待核销 —— 扫码或手输自提码后在此显示结果（小票打印属批次 G，本期未实现）'
+  text: '等待核销 —— 手输自提码或核对右侧待核销单（自提码/单号/尾号）后点「核销」，结果在此显示（小票打印属批次 G，本期未实现）'
 })
 
 const fb = computed(() => {

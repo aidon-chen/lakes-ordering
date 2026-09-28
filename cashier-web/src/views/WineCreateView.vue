@@ -136,6 +136,52 @@
         <button class="text-[12px]" style="color: var(--p)" @click="goList">去存酒列表 →</button>
       </div>
     </div>
+
+    <!-- ===================== 提交结果弹窗（成功清空输入 / 失败保留，防同一瓶酒重复登记） ===================== -->
+    <Teleport to="body">
+      <div
+        v-if="resultDlg"
+        class="flex items-center justify-center"
+        style="position: fixed; inset: 0; z-index: 60; background: rgba(0, 0, 0, .45)"
+        @click.self="resultDlg = null"
+      >
+        <div class="bg-white rounded-lg flex flex-col items-center" style="width: 360px; max-width: 92vw; padding: 24px 20px 20px; gap: 10px">
+          <!-- 状态图标：成功橄榄绿 ✓ / 失败警示橙 ! -->
+          <div
+            class="flex items-center justify-center rounded-full font-bold"
+            style="width: 52px; height: 52px; font-size: 26px"
+            :style="{ background: resultDlg.ok ? '#EDF2DE' : '#FDEEE5', color: resultDlg.ok ? 'var(--p)' : 'var(--warn)' }"
+          >{{ resultDlg.ok ? '✓' : '!' }}</div>
+
+          <span class="text-[16px] font-bold" style="color: var(--tc-title)">{{ resultDlg.title }}</span>
+          <span class="text-[12px] text-center" style="color: var(--tc-sub)">{{ resultDlg.detail }}</span>
+          <span v-if="!resultDlg.ok" class="text-[11px] text-center" style="color: var(--tc-hold)">
+            填写内容已保留，核对修正后可直接重新提交，勿重复点击登记
+          </span>
+
+          <div class="flex items-center" style="gap: 10px; margin-top: 6px; width: 100%">
+            <template v-if="resultDlg.ok">
+              <button
+                class="rounded text-[13px] font-medium text-white"
+                style="flex: 1; height: 40px; background: var(--p)"
+                @click="resultDlg = null"
+              >继续登记</button>
+              <button
+                class="rounded text-[13px]"
+                style="flex: 1; height: 40px; border: 1px solid var(--tc-line); color: var(--tc-gray)"
+                @click="onGoList"
+              >去存酒列表</button>
+            </template>
+            <button
+              v-else
+              class="rounded text-[13px] font-medium text-white"
+              style="flex: 1; height: 40px; background: var(--warn)"
+              @click="resultDlg = null"
+            >知道了</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -152,6 +198,9 @@ const looking = ref(false)
 const lookupErr = ref('')
 const submitting = ref(false)
 const created = ref(false)
+
+/** 提交结果弹窗（null=不显示）。成功→清空表单防一酒多存；失败→保留表单便于修正重试 */
+const resultDlg = ref<{ ok: boolean; title: string; detail: string } | null>(null)
 
 /** 默认 90 天，与后端 DEFAULT_EXPIRE_DAYS 一致 */
 const DEFAULT_DAYS = 90
@@ -211,13 +260,39 @@ async function doCreate() {
       remark: form.value.remark || undefined,
       expireDays: expireDays.value
     })
+    // 先用当前值拼成功摘要，再清表单（顺序不能反）
+    resultDlg.value = {
+      ok: true,
+      title: '存酒成功',
+      detail: `「${form.value.goodsName}」×${Number(form.value.bottleCount) || 1} 瓶已写入 ${memberTag.value} 的存酒账户`
+    }
     created.value = true
+    resetForm() // 成功即清空输入与会员查询态，同一瓶酒无法被原样再提交
   } catch (e) {
     console.error('[wine-create] 登记失败', e)
-    alert((e as Error).message || '登记失败')
+    // 失败保留全部输入，弹窗给原因，避免用 alert 打断收银动线
+    resultDlg.value = {
+      ok: false,
+      title: '存酒失败',
+      detail: (e as Error).message || '登记失败，请稍后重试'
+    }
   } finally {
     submitting.value = false
   }
+}
+
+/** 清空登记表单与会员查询状态；有效期重置回默认 90 天（下一单从干净表单开始） */
+function resetForm() {
+  form.value = { memberPhone: '', goodsName: '', bottleCount: 1, location: '', remark: '' }
+  member.value = null
+  lookupErr.value = ''
+  expireDate.value = toDateInput(addDays(new Date(), DEFAULT_DAYS))
+}
+
+/** 成功弹窗里的「去存酒列表」：先收弹窗再跳转 */
+function onGoList() {
+  resultDlg.value = null
+  goList()
 }
 
 function goList() {

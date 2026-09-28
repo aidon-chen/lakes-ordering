@@ -222,7 +222,12 @@ async function load() {
 
     // 明细（品项）按需拉取：只为看板会显示的订单取，避免全量 N+1
     // 2026-09-24：已出品(3)也拉明细 —— 否则已出品卡的品项串回落成「N 件」，出品员没法对单
-    const needDetail = orders.value.filter(o => [1, 2, 3].includes(o.productionStatus ?? 1))
+    // 2026-09-27：已出品列只保留当天 ⇒ 明细也只拉当天的，历史单不再浪费请求
+    const needDetail = orders.value.filter(o => {
+      const ps = psOf(o)
+      if (ps === 1 || ps === 2) return true
+      return ps === 3 && isToday(o.createTime)
+    })
     const results = await Promise.all(
       needDetail.map(async o => {
         try {
@@ -245,14 +250,20 @@ async function load() {
 /** 三列：待制作 / 出品中 / 已出品（列名与计数口径见画板 2:992~2:997） */
 const columns = computed(() => {
   // ⚠️ productionStatus 可能为 null（后端列未就绪时）→ 按 DB 默认值 1=待制作 兜底，避免看板三列全空
-  const psOf = (o: MerchantOrderRow) => o.productionStatus ?? 1
   const pick = (s: number) => orders.value.filter(o => psOf(o) === s).map(o => item(o))
+  // 2026-09-27 拍板：已出品列只保留**当天**的单 —— 历史出品单不进看板，列头「今日」计数才名副其实
+  const doneToday = orders.value.filter(o => psOf(o) === 3 && isToday(o.createTime)).map(o => item(o))
   return [
     { key: 'todo', title: `待制作（${pick(1).length}）`, items: pick(1), nextLabel: '开始出品', btnLabel: '开始出品' },
     { key: 'doing', title: `出品中（${pick(2).length}）`, items: pick(2), nextLabel: '标记已出品', btnLabel: '标记已出品' },
-    { key: 'done', title: `已出品（${pick(3).length} 今日）`, items: pick(3), nextLabel: '已出品', btnLabel: '已出品' }
+    { key: 'done', title: `已出品（${doneToday.length} 今日）`, items: doneToday, nextLabel: '已出品', btnLabel: '已出品' }
   ]
 })
+
+/** productionStatus 兜底：null 按 DB 默认 1=待制作（列过滤与明细拉取共用同一口径） */
+function psOf(o: MerchantOrderRow): number {
+  return o.productionStatus ?? 1
+}
 
 function item(o: MerchantOrderRow): KanbanItem {
   return { order: o, details: detailMap.value[o.id] ?? [] }
@@ -359,10 +370,10 @@ async function advance(o: MerchantOrderRow, key: string) {
   }
 }
 
-/** 最近完成（画板底部说明口径）：取已出品订单按更新时间倒序前 5 */
+/** 最近完成（画板底部说明口径）：2026-09-27 与「已出品」列口径同步 —— 只列当天，最多 5 条 */
 const noteText = computed(() => {
   const done = orders.value
-    .filter(o => (o.productionStatus ?? 1) === 3)
+    .filter(o => psOf(o) === 3 && isToday(o.createTime))
     .slice(0, 5)
     .map(o => `${o.queueNo ?? o.tableNo ?? '—'} ${hhmm(o.createTime)}`)
   const head = done.length ? `最近出品：${done.join(' ｜ ')}` : '暂无已出品订单'
@@ -375,6 +386,15 @@ function parseTime(v: string | null): number | null {
   if (m) return new Date(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}`).getTime()
   const t = new Date(String(v)).getTime()
   return Number.isNaN(t) ? null : t
+}
+
+/** 是否当天（本地时区）：时间戳落在今日 00:00 起 24h 内即为当天（「已出品」列的过滤口径） */
+function isToday(v: string | null): boolean {
+  const t = parseTime(v)
+  if (!t) return false
+  const now = new Date()
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  return t >= start && t < start + 86400000
 }
 
 function hhmm(v: string | null): string {
