@@ -4,7 +4,7 @@
 		<view class="shop-list">
 			<view class="shop-card" :class="{ 'is-current': isCurrent(item) }" v-for="(item, index) in shopList"
 				:key="index" @tap="tapShop(item)">
-				<image class="shop-logo" :src="formatImg(item.shopLogoImg)" mode="aspectFill"></image>
+				<image class="shop-logo" :src="shopThemeLogo" mode="aspectFill"></image>
 				<view class="shop-info">
 					<view class="shop-name-row">
 						<text class="shop-name">{{ item.name }}</text>
@@ -32,7 +32,6 @@
 
 <script>
 	import https from '../../../utils/http';
-	import GlobalConfig from '../../../utils/global-config';
 	import toastService from '../../../utils/toast.service';
 
 	export default {
@@ -42,7 +41,10 @@
 				isLoading: true,
 				location: '',
 				currentShopId: null,
-				currentShopName: ''
+				currentShopName: '',
+				// 店标固定用主题 logo mark（21:5x 用户拍板：不再取接口 shopLogoImg，
+				// 与首页品牌行 home-brand-mark 同源）
+				shopThemeLogo: '/static/assets/icons/home-brand-mark.png'
 			};
 		},
 		onShow() {
@@ -128,10 +130,6 @@
 					// 选门店恢复⑤：无上级页（直接打开）时回落点餐 tab，保证手选生效
 					uni.switchTab({ url: '/pages/menu/index/index' });
 				}
-			},
-			formatImg(path) {
-				if (!path) return '/static/assets/images/user-head.png';
-				return path.indexOf('http') === 0 ? path : GlobalConfig.ossUrl + path;
 			},
 			formatAddress(item) {
 				return (item.province || '') + (item.city || '') + (item.area || '') + (item.street || '');
