@@ -170,6 +170,19 @@ public class MemberController {
     }
 
     /**
+     * 绑定微信（当前登录会员 + wx.login 的 code 换 openid）。
+     * 此前「绑定微信」没有可用入口：唯一写 is_bind_wx 的路径是微信登录，
+     * 而登录页的微信手机号登录被禁（需手机号快速验证组件 + 旧解密流已废弃）→ 用户永远停在「未绑定」。
+     *
+     * @author 暹罗
+     */
+    @PostMapping(value = "/bindWx")
+    public BasicResult bindWx(@RequestBody @Validated(value = {}) MemberParam param) {
+        memberService.bindWx(param);
+        return BasicResult.success();
+    }
+
+    /**
      * 修改是否需要弹出新人引导提示为否
      *
      * @author 暹罗

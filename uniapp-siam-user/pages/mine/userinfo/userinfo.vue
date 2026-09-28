@@ -36,7 +36,9 @@
 				<van-icon name="arrow" />
 			</view>
 		</view>
-		<view class="userinfo-item" @tap="parseEventDynamicCode($event, data.isBindWx ? 'bindWx' : '')"
+		<!-- 绑定微信：已绑定 → 原解绑流程；未绑定 → 2026-09-27 新增绑定流程
+		     （原先未绑定时点击是空操作，用户永远无法变成「已绑定」） -->
+		<view class="userinfo-item" @tap="tapBindWx"
 			:data-mobile="data.mobile" :data-isBindWx="data.isBindWx">
 			<text class="title-text">绑定微信</text>
 			<view class="bind-wx">
@@ -336,6 +338,45 @@
 			},
 
 			// 仅「已绑定」时才会被 parseEventDynamicCode 派发到这里（解绑）
+			// 绑定微信行点击分流：已绑定 → 原解绑流程；未绑定 → 新绑定流程
+			tapBindWx(e) {
+				if (this.data.isBindWx) {
+					this.bindWx(e);
+				} else {
+					this.bindWxNow();
+				}
+			},
+
+			// 绑定微信：uni.login 拿 code → 后端 jscode2session 换 openid → 绑到当前登录会员。
+			// ⚠ 不复用 /weChat/silence/login 做绑定：那接口按 openid 找不到会员时会**自动注册新号并切登录态**，语义是登录不是绑定。
+			bindWxNow() {
+				toastService.showModal(null, '确定绑定当前微信账号吗？', () => {
+					uni.login({
+						provider: 'weixin',
+						success: (loginRes) => {
+							if (!loginRes.code) {
+								toastService.showToast('获取微信凭证失败，请重试');
+								return;
+							}
+							https.request('/rest/member/bindWx', {
+								code: loginRes.code
+							}).then((result) => {
+								if (result && result.success) {
+									toastService.showToast('绑定成功');
+									this.data.isBindWx = true;
+									this.getUserInfo();
+								} else {
+									toastService.showToast((result && result.message) || '绑定失败');
+								}
+							});
+						},
+						fail: () => {
+							toastService.showToast('获取微信凭证失败，请重试');
+						}
+					});
+				});
+			},
+
 			bindWx(e) {
 				toastService.showModal(null, '确定解除与微信账号的关联关系吗？', () => {
 					https.request('/rest/member/removeBindingWx', {
