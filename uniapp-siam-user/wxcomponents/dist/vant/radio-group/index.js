@@ -1,22 +1,22 @@
-import { VantComponent } from '../common/component';
-import { useChildren } from '../common/relation';
-VantComponent({
-    field: true,
-    relation: useChildren('radio'),
-    props: {
-        value: {
-            type: null,
-            observer: 'updateChildren',
-        },
-        direction: String,
-        disabled: {
-            type: Boolean,
-            observer: 'updateChildren',
-        },
+var import_component = require("../common/component");
+var import_relation = require("../common/relation");
+(0, import_component.VantComponent)({
+  field: true,
+  relation: (0, import_relation.useChildren)("radio"),
+  props: {
+    value: {
+      type: null,
+      observer: "updateChildren"
     },
-    methods: {
-        updateChildren() {
-            this.children.forEach((child) => child.updateFromParent());
-        },
-    },
+    direction: String,
+    disabled: {
+      type: Boolean,
+      observer: "updateChildren"
+    }
+  },
+  methods: {
+    updateChildren() {
+      this.children.forEach((child) => child.updateFromParent());
+    }
+  }
 });
