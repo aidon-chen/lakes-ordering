@@ -563,9 +563,11 @@ export default {
 		.logo {
 			//width:230px;
 			height: 48px;
-			font-size: 22px;
-			padding-left: 20px;
-			padding-right: 20px;
+			// 标题「湖里Lakes-商家中心」在 230px 宽度内放不下 22px 字号，降到 18px 并收窄内边距，防止末字被截断
+			font-size: 18px;
+			padding-left: 12px;
+			padding-right: 12px;
+			white-space: nowrap;
 			border-color: rgba(238, 241, 146, 0.3);
 			border-right-width: 1px;
 			border-right-style: solid;

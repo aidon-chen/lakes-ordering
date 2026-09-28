@@ -109,7 +109,7 @@ module.exports = {
     devServer: {
         contentBase: path.join(__dirname, "dist"),
         host: 'localhost',   
-        port: 8001,  //端口
+        port: 5271,  //端口（2026-09-28 由 8001 迁出——8001 让给用户其他服务）
         open: true,  //自动打开页面
         hot: true,   //开启热更新
         inline: true,
