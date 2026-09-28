@@ -681,23 +681,24 @@ https.request('/rest/member/pointsMall/couponsMemberRelation/list', {
 						fullPriceReductionBefore -= this.afterDiscount.price;
 						this.prevData.fullPriceReduction = fullPriceReductionBefore;
 						console.log('获取优惠券后的金额===》' + fullPriceReductionBefore);
-						for (let i = 0; i < result.data.records.length; i++) {
-							//总价格减去配送费大于满减金额则进行满减操作
-							if (Number(fullPriceReductionBefore) >= result.data.records[i].limitedPrice) {
-								//判断当前满减价格limitedPrice和上一个满减价格对比，如果大于就进行认证
-								if (result.data.records[i].limitedPrice > this.prevData.limitedPrice) {
-									this.prevData.limitedPrice = result.data.records[i].limitedPrice;
-									console.log(result.data.records[i].reducedPrice);
-									this.prevData.fullPriceReduction = utilHelper.toFixed(
-										fullPriceReductionBefore - result.data.records[i].reducedPrice, 2);
-									this.prevData.fullReductionRuleName = result.data.records[i].name;
-									this.prevData.fullReductionRuleId = result.data.records[i].id;
-									this.prevData.fullPriceReductionIsHidden = true;
-									this.prevData.fullPriceReductionAfter = utilHelper.toFixed(this.prevData
-										.fullPriceReduction - result.data.records[i].reducedPrice, 2);
-								}
-							}
-						}
+						// [满减规则停用 2026-09-28] 满减规则已并入满减券（商家端「优惠券管理」直接建满减券，顾客领券使用）；原逻辑注释保留，会员权益设计可能复用
+						// for (let i = 0; i < result.data.records.length; i++) {
+							// //总价格减去配送费大于满减金额则进行满减操作
+							// if (Number(fullPriceReductionBefore) >= result.data.records[i].limitedPrice) {
+								// //判断当前满减价格limitedPrice和上一个满减价格对比，如果大于就进行认证
+								// if (result.data.records[i].limitedPrice > this.prevData.limitedPrice) {
+									// this.prevData.limitedPrice = result.data.records[i].limitedPrice;
+									// console.log(result.data.records[i].reducedPrice);
+									// this.prevData.fullPriceReduction = utilHelper.toFixed(
+										// fullPriceReductionBefore - result.data.records[i].reducedPrice, 2);
+									// this.prevData.fullReductionRuleName = result.data.records[i].name;
+									// this.prevData.fullReductionRuleId = result.data.records[i].id;
+									// this.prevData.fullPriceReductionIsHidden = true;
+									// this.prevData.fullPriceReductionAfter = utilHelper.toFixed(this.prevData
+										// .fullPriceReduction - result.data.records[i].reducedPrice, 2);
+								// }
+							// }
+						// }
 						console.log('获取满减后的金额===》' + this.prevData.fullPriceReduction);
 						if (app.globalData.deliveryAndSelfTaking.currentTab == 0) {
 							this.prevData.fullPriceReduction = utilHelper.toFixed(this.prevData
@@ -741,23 +742,24 @@ https.request('/rest/member/pointsMall/couponsMemberRelation/list', {
 						fullPriceReductionBefore -= this.afterDiscount.price;
 						this.prevData.fullPriceReduction = fullPriceReductionBefore;
 						console.log('获取优惠券后的金额===》' + fullPriceReductionBefore);
-						for (let i = 0; i < result.data.records.length; i++) {
-							//总价格减去配送费大于满减金额则进行满减操作
-							if (Number(fullPriceReductionBefore) >= result.data.records[i].limitedPrice) {
-								//判断当前满减价格limitedPrice和上一个满减价格对比，如果大于就进行认证
-								if (result.data.records[i].limitedPrice > this.prevData.limitedPrice) {
-									this.prevData.limitedPrice = result.data.records[i].limitedPrice;
-									console.log(result.data.records[i].reducedPrice);
-									this.prevData.fullPriceReduction = utilHelper.toFixed(
-										fullPriceReductionBefore - result.data.records[i].reducedPrice, 2);
-									this.prevData.fullReductionRuleName = result.data.records[i].name;
-									this.prevData.fullReductionRuleId = result.data.records[i].id;
-									this.prevData.fullPriceReductionIsHidden = true;
-									this.prevData.fullPriceReductionAfter = utilHelper.toFixed(this.prevData
-										.fullPriceReduction - result.data.records[i].reducedPrice, 2);
-								}
-							}
-						}
+						// [满减规则停用 2026-09-28] 满减规则已并入满减券（商家端「优惠券管理」直接建满减券，顾客领券使用）；原逻辑注释保留，会员权益设计可能复用
+						// for (let i = 0; i < result.data.records.length; i++) {
+							// //总价格减去配送费大于满减金额则进行满减操作
+							// if (Number(fullPriceReductionBefore) >= result.data.records[i].limitedPrice) {
+								// //判断当前满减价格limitedPrice和上一个满减价格对比，如果大于就进行认证
+								// if (result.data.records[i].limitedPrice > this.prevData.limitedPrice) {
+									// this.prevData.limitedPrice = result.data.records[i].limitedPrice;
+									// console.log(result.data.records[i].reducedPrice);
+									// this.prevData.fullPriceReduction = utilHelper.toFixed(
+										// fullPriceReductionBefore - result.data.records[i].reducedPrice, 2);
+									// this.prevData.fullReductionRuleName = result.data.records[i].name;
+									// this.prevData.fullReductionRuleId = result.data.records[i].id;
+									// this.prevData.fullPriceReductionIsHidden = true;
+									// this.prevData.fullPriceReductionAfter = utilHelper.toFixed(this.prevData
+										// .fullPriceReduction - result.data.records[i].reducedPrice, 2);
+								// }
+							// }
+						// }
 						console.log('获取价格====' + this.prevData.fullPriceReductionBefore);
 						// vue3 下 prevPage 也没有 setData → 直接赋值（this.prevData 是 data 字段，整体替换）
 						prevPage.data = this.prevData;
@@ -803,24 +805,25 @@ https.request('/rest/member/pointsMall/couponsMemberRelation/list', {
 						console.log('获取商家支付后的配送费====' + reducedDeliveryPrice);
 						console.log('获取价格====' + this.prevData.fullPriceReductionBefore);
 						this.prevData.fullPriceReduction = this.prevData.fullPriceReductionBefore;
-						for (let i = 0; i < result.data.records.length; i++) {
-							//总价格减去配送费大于满减金额则进行满减操作
-							if (Number(this.prevData.fullPriceReductionBefore) >= result.data.records[i]
-								.limitedPrice) {
-								//判断当前满减价格limitedPrice和上一个满减价格对比，如果大于就进行认证
-								if (result.data.records[i].limitedPrice > this.prevData.limitedPrice) {
-									this.prevData.limitedPrice = result.data.records[i].limitedPrice;
-									this.prevData.fullPriceReduction = utilHelper.toFixed(this.prevData
-										.fullPriceReductionBefore - result.data.records[i].reducedPrice, 2);
-									this.prevData.fullReductionRuleName = result.data.records[i].name;
-									this.prevData.fullReductionRuleId = result.data.records[i].id;
-									this.prevData.fullPriceReductionIsHidden = true;
-									this.prevData.fullPriceReductionAfter = utilHelper.toFixed(this.prevData
-										.fullPriceReductionBefore - result.data.records[i].reducedPrice, 2);
-									//console.log(this.data.prevData.fullPriceReduction)
-								}
-							}
-						}
+						// [满减规则停用 2026-09-28] 满减规则已并入满减券（商家端「优惠券管理」直接建满减券，顾客领券使用）；原逻辑注释保留，会员权益设计可能复用
+						// for (let i = 0; i < result.data.records.length; i++) {
+							// //总价格减去配送费大于满减金额则进行满减操作
+							// if (Number(this.prevData.fullPriceReductionBefore) >= result.data.records[i]
+								// .limitedPrice) {
+								// //判断当前满减价格limitedPrice和上一个满减价格对比，如果大于就进行认证
+								// if (result.data.records[i].limitedPrice > this.prevData.limitedPrice) {
+									// this.prevData.limitedPrice = result.data.records[i].limitedPrice;
+									// this.prevData.fullPriceReduction = utilHelper.toFixed(this.prevData
+										// .fullPriceReductionBefore - result.data.records[i].reducedPrice, 2);
+									// this.prevData.fullReductionRuleName = result.data.records[i].name;
+									// this.prevData.fullReductionRuleId = result.data.records[i].id;
+									// this.prevData.fullPriceReductionIsHidden = true;
+									// this.prevData.fullPriceReductionAfter = utilHelper.toFixed(this.prevData
+										// .fullPriceReductionBefore - result.data.records[i].reducedPrice, 2);
+									// //console.log(this.data.prevData.fullPriceReduction)
+								// }
+							// }
+						// }
 
 						console.log('获取最终配送金额=====' + reducedDeliveryPrice);
 						console.log('获取最终优惠金额=====' + this.prevData.fullPriceReduction);
@@ -864,24 +867,25 @@ https.request('/rest/member/pointsMall/couponsMemberRelation/list', {
 						this.prevData.fullPriceReductionIsHidden = this.prevData.fullPriceReductionIsHidden;
 						this.prevData.limitedPrice = 0;
 						this.prevData.fullPriceReduction = this.prevData.fullPriceReductionBefore;
-						for (let i = 0; i < result.data.records.length; i++) {
-							//总价格减去配送费大于满减金额则进行满减操作
-							if (Number(this.prevData.fullPriceReductionBefore) >= result.data.records[i]
-								.limitedPrice) {
-								//判断当前满减价格limitedPrice和上一个满减价格对比，如果大于就进行认证
-								if (result.data.records[i].limitedPrice > this.prevData.limitedPrice) {
-									this.prevData.limitedPrice = result.data.records[i].limitedPrice;
-									this.prevData.fullPriceReduction = utilHelper.toFixed(this.prevData
-										.fullPriceReductionBefore - result.data.records[i].reducedPrice, 2);
-									this.prevData.fullReductionRuleName = result.data.records[i].name;
-									this.prevData.fullReductionRuleId = result.data.records[i].id;
-									this.prevData.fullPriceReductionIsHidden = true;
-									this.prevData.fullPriceReductionAfter = utilHelper.toFixed(this.prevData
-										.fullPriceReductionBefore - result.data.records[i].reducedPrice, 2);
-									//console.log(this.data.prevData.fullPriceReduction)
-								}
-							}
-						}
+						// [满减规则停用 2026-09-28] 满减规则已并入满减券（商家端「优惠券管理」直接建满减券，顾客领券使用）；原逻辑注释保留，会员权益设计可能复用
+						// for (let i = 0; i < result.data.records.length; i++) {
+							// //总价格减去配送费大于满减金额则进行满减操作
+							// if (Number(this.prevData.fullPriceReductionBefore) >= result.data.records[i]
+								// .limitedPrice) {
+								// //判断当前满减价格limitedPrice和上一个满减价格对比，如果大于就进行认证
+								// if (result.data.records[i].limitedPrice > this.prevData.limitedPrice) {
+									// this.prevData.limitedPrice = result.data.records[i].limitedPrice;
+									// this.prevData.fullPriceReduction = utilHelper.toFixed(this.prevData
+										// .fullPriceReductionBefore - result.data.records[i].reducedPrice, 2);
+									// this.prevData.fullReductionRuleName = result.data.records[i].name;
+									// this.prevData.fullReductionRuleId = result.data.records[i].id;
+									// this.prevData.fullPriceReductionIsHidden = true;
+									// this.prevData.fullPriceReductionAfter = utilHelper.toFixed(this.prevData
+										// .fullPriceReductionBefore - result.data.records[i].reducedPrice, 2);
+									// //console.log(this.data.prevData.fullPriceReduction)
+								// }
+							// }
+						// }
 
 						console.log('获取最终价格====' + this.prevData.fullPriceReduction);
 						prevPage.data = this.prevData;

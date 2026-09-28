@@ -374,6 +374,10 @@
 							fullPriceReductionIsHidden = false,
 							limitedPrice = 0;
 						for (let i = 0; i < result.data.records.length; i++) {
+							// [2026-09-28 满减规则并入券体系] 顾客端已改走满减券链路；收银端保留规则计算，停用(status!=1)规则不参与（接口不过滤 status，须前端自拦）
+							if (result.data.records[i].status != 1) {
+								continue;
+							}
 							if (this.totalPrice >= result.data.records[i].limitedPrice) {
 								if (result.data.records[i].limitedPrice > limitedPrice) {
 									limitedPrice = result.data.records[i].limitedPrice;

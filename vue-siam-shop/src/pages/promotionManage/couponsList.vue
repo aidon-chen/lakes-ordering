@@ -751,14 +751,11 @@
 								return false							
 							}						
 							delete param.validDays;			
-							//处理下时间格式(本来传递一个时间戳就可以了的，但是后台配置有问题，所以先用字符串传参)
-							let validStartTime = new Date(param.validStartTime);
-							let str = this.$utils.formatDate(validStartTime, 'yyyy/MM/dd');
-							param.validStartTime = str;
+							//处理下时间格式：后端 Coupons.validStartTime/validEndTime 是 Date，
+							//Jackson 只认毫秒时间戳或 ISO 格式，yyyy/MM/dd 字符串会反序列化 500（「系统异常」）→ 改传毫秒时间戳
+							param.validStartTime = new Date(param.validStartTime).getTime();
 
-							let validEndTime = new Date(param.validEndTime);
-							str = this.$utils.formatDate(validEndTime, 'yyyy/MM/dd');
-							param.validEndTime = str;										
+							param.validEndTime = new Date(param.validEndTime).getTime();
 						}else if(param.validType == 2){
 							if(param.validDays == ''){
 								vue.$message({
@@ -944,14 +941,11 @@
 								return false							
 							}						
 							delete param.validDays;			
-							//处理下时间格式(本来传递一个时间戳就可以了的，但是后台配置有问题，所以先用字符串传参)
-							let validStartTime = new Date(param.validStartTime);
-							let str = this.$utils.formatDate(validStartTime, 'yyyy/MM/dd');
-							param.validStartTime = str;
+							//处理下时间格式：后端 Coupons.validStartTime/validEndTime 是 Date，
+							//Jackson 只认毫秒时间戳或 ISO 格式，yyyy/MM/dd 字符串会反序列化 500（「系统异常」）→ 改传毫秒时间戳
+							param.validStartTime = new Date(param.validStartTime).getTime();
 
-							let validEndTime = new Date(param.validEndTime);
-							str = this.$utils.formatDate(validEndTime, 'yyyy/MM/dd');
-							param.validEndTime = str;										
+							param.validEndTime = new Date(param.validEndTime).getTime();
 						}else if(param.validType == 2){
 							if(param.validDays == ''){
 								vue.$message({

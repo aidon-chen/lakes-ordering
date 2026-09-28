@@ -22,6 +22,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.Objects;
 
 @RestController
 @RequestMapping(value = "/rest/merchant/fullReductionRule")
@@ -77,7 +78,8 @@ public class MerchantFullReductionRuleController {
         //获取当前登录用户绑定的门店编号
         Merchant loginMerchant = merchantSessionManager.getSession(TokenUtil.getToken());
 
-        if (loginMerchant.getShopId() != fullReductionRule.getShopId()){
+        //Integer 用 != 是引用比较（shopId>127 的装箱对象必不等）→ 必须用 Objects.equals 按值比较
+        if (!Objects.equals(loginMerchant.getShopId(), fullReductionRule.getShopId())){
             throw new StoneCustomerException("您没有权限操作该满减规则");
         }
 
@@ -104,7 +106,7 @@ public class MerchantFullReductionRuleController {
         FullReductionRule dbFullReductionRule = fullReductionRuleService.selectByPrimaryKey(param.getId());
         if (dbFullReductionRule == null){
             throw new StoneCustomerException("该满减规则不存在");
-        } else if (loginMerchant.getShopId() != dbFullReductionRule.getShopId()){
+        } else if (!Objects.equals(loginMerchant.getShopId(), dbFullReductionRule.getShopId())){
             throw new StoneCustomerException("您没有权限操作该满减规则");
         }
 
