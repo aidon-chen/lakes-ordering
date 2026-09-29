@@ -276,21 +276,10 @@
 				}
 				console.log(specListString);
 				let totalPrice = price * this.commodityNum;
+				// 自动满减已下线（2026-09-29 A 批）：商城优惠统一走满减券；字段保留默认值，模板 v-if 恒不触发
 				let fullPriceReduction = 0;
 				let fullReductionRuleName = '';
 				let fullPriceReductionIsHidden = false;
-				let limitedPrice = 0;
-				for (let i = 0; i < this.fullReductionRuleList.length; i++) {
-					//console.log(this.data.fullReductionRuleList[i].limitedPrice)
-					if (totalPrice >= this.fullReductionRuleList[i].limitedPrice) {
-						if (this.fullReductionRuleList[i].limitedPrice > limitedPrice) {
-							limitedPrice = this.fullReductionRuleList[i].limitedPrice;
-							fullPriceReduction = totalPrice + 0 - this.fullReductionRuleList[i].reducedPrice;
-							fullReductionRuleName = this.fullReductionRuleList[i].name;
-							fullPriceReductionIsHidden = true;
-						}
-					}
-				}
 				this.setData({
 					specList: specList,
 					specListString: specListString,
@@ -492,39 +481,6 @@
 				});
 			},
 
-			//获取满减规则
-			getFullReductionRule(commodityDetails) {
-				https.request('/rest/pointsMall/fullReductionRule/list', {
-					pageNo: -1,
-					pageSize: 1
-				}).then((result) => {
-					if (result.success) {
-						let fullPriceReduction = 0;
-						let fullReductionRuleName = '';
-						let fullPriceReductionIsHidden = false;
-						let limitedPrice = 0;
-						let totalPrice = commodityDetails.price + 0;
-						for (let i = 0; i < result.data.records.length; i++) {
-							if (totalPrice >= result.data.records[i].limitedPrice) {
-								if (result.data.records[i].limitedPrice > limitedPrice) {
-									limitedPrice = result.data.records[i].limitedPrice;
-									fullPriceReduction = totalPrice - result.data.records[i].reducedPrice;
-									fullReductionRuleName = result.data.records[i].name;
-									fullPriceReductionIsHidden = true;
-								}
-							}
-						}
-						this.setData({
-							fullPriceReduction: utilHelper.toFixed(fullPriceReduction, 2),
-							fullReductionRuleName: fullReductionRuleName,
-							fullPriceReductionIsHidden: fullPriceReductionIsHidden,
-							fullReductionRuleList: result.data.records,
-							totalPrice: commodityDetails.price
-						});
-					}
-				});
-			},
-
 			getCommodityDetails(id) {
 				https.request('/rest/pointsMall/goods/selectById', {
 					id: id
@@ -557,7 +513,6 @@
 							priceAfter: result.data.price
 						});
 						this.selectByGoodsId(id);
-						this.getFullReductionRule(result.data);
 						this.chooseSpecifications();
 					} else {
 						//静默失败兜底：接口异常时给出提示，避免详情页无任何反馈地全空

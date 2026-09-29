@@ -163,11 +163,12 @@
 		},
 		methods: {
 			/**
-			 * 统一重算：金额 / 包装费 / 角标 / 满减。
+			 * 统一重算：金额 / 包装费 / 角标。
 			 * C-10 批次6：原实现把这段逻辑散在 initData / checkboxChange / 点击减号 / 点击加号 四处，
 			 * 极易算错；且 vue3 运行时未挂载小程序数据刷新方法（调用即抛错并中断后续语句）→ 统一为响应式赋值。
+			 * （满减逻辑已于 2026-09-29 A 批下线，原 skipFullReduction 形参一并移除）
 			 */
-			recalc(skipFullReduction) {
+			recalc() {
 				let total = 0;
 				let packing = 0;
 				let num = 0;
@@ -182,9 +183,7 @@
 				this.packingCharges = packing;
 				this.setTabBarBadge(num);
 				this.items = this.items.slice();
-				if (!skipFullReduction) {
-					this.getFullReductionRule(total, packing);
-				}
+				// 自动满减已下线（2026-09-29 A 批）：商城优惠统一走满减券，不再拉取/套用满减规则
 			},
 
 			/** 初始化：默认全选（失效商品不可选） */
@@ -360,36 +359,6 @@
 						});
 						this.items = records;
 						this.initData();
-					}
-				});
-			},
-
-			/** 满减规则（金额口径沿用工程现状：totalPrice + packingCharges 达门槛） */
-			getFullReductionRule(total, packing) {
-				const totalPrice = total === undefined ? Number(this.totalPrice) : total;
-				const packingCharges = packing === undefined ? this.packingCharges : packing;
-				https.request('/rest/pointsMall/fullReductionRule/list', {
-					pageNo: -1,
-					pageSize: 1
-				}).then((result) => {
-					if (result.success) {
-						let fullPriceReduction = 0;
-						let fullReductionRuleName = '';
-						let fullPriceReductionIsHidden = false;
-						let limitedPrice = 0;
-						for (let i = 0; i < result.data.records.length; i++) {
-							if (totalPrice + packingCharges >= result.data.records[i].limitedPrice) {
-								if (result.data.records[i].limitedPrice > limitedPrice) {
-									limitedPrice = result.data.records[i].limitedPrice;
-									fullPriceReduction = totalPrice - result.data.records[i].reducedPrice;
-									fullReductionRuleName = result.data.records[i].name;
-									fullPriceReductionIsHidden = true;
-								}
-							}
-						}
-						this.fullPriceReduction = fullPriceReduction;
-						this.fullReductionRuleName = fullReductionRuleName;
-						this.fullPriceReductionIsHidden = fullPriceReductionIsHidden;
 					}
 				});
 			},

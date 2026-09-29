@@ -297,8 +297,11 @@ public class PointsMallOrderServiceImpl extends ServiceImpl<PointsMallOrderMappe
                 ? Quantity.INT_1
                 : PointsMallOrder.PAYMENT_MODE_OF_PAY_AT_STORE;
         insertOrder.setPaymentMode(paymentMode);
-        insertOrder.setFullReductionRuleId(param.getFullReductionRuleId());
-        insertOrder.setFullReductionRuleDescription(param.getFullReductionRuleDescription());
+        // A 批（2026-09-29）：自动满减下线，订单不再落 fullReductionRuleId/Description（列保留兼容历史单）。
+        // 注意：insert 内「规则套用校验」段（param.getFullReductionRuleId() != null 分支）暂保留——
+        // 老版小程序仍会上传规则 ID，先删会令其触发「订单实付款计算错误」；待新前端全量后随 B 批清场一并移除。
+        // insertOrder.setFullReductionRuleId(param.getFullReductionRuleId());
+        // insertOrder.setFullReductionRuleDescription(param.getFullReductionRuleDescription());
         insertOrder.setCouponsId(param.getCouponsId());
         insertOrder.setCouponsMemberRelationId(param.getCouponsMemberRelationId());
         insertOrder.setCouponsDescription(param.getCouponsDescription());

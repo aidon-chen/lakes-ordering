@@ -218,7 +218,8 @@ let routes = [
           { path: '/pointsMall_goodsList', component: mallGoodsList, name: '商城商品' },
           { path: '/pointsMall_stockList', component: mallStockList, name: '商城库存' },
           { path: '/pointsMall_orderList', component: mallOrderList, name: '商城订单' },
-          { path: '/pointsMall_fullReductionRuleList', component: mallFullReductionRuleList, name: '满减规则' },
+          // 满减规则菜单已下线（2026-09-29 A 批）：满减统一走券体系（PointsMallCoupons.preferentialType=2），页面文件保留未删（先例同「数据中心」）
+          // { path: '/pointsMall_fullReductionRuleList', component: mallFullReductionRuleList, name: '满减规则' },
           { path: '/pointsMall_carouselList', component: mallCarouselList, name: '商城轮播' },//商城首页顶部轮播（type=3）
           // 隐藏路由（弹层外置页）：路径名沿用 admin 源页内的跳转目标，保证页面内导航零改动
           { path: '/pointsMall_addMenu', component: mallAddMenu, name: '新增分类', hidden: true },

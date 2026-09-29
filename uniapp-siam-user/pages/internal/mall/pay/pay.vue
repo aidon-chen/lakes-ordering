@@ -748,8 +748,7 @@
 								fullPriceReduction, 2);
 							this.data.couponsIsHidden = true;
 						}
-						//调用满减优惠券方法（先试用优惠券再满减）
-						this.getFullReductionRule(prePageData);
+						// 自动满减已下线（2026-09-29 A 批）：不再「先券后满减」叠加，优惠仅来自所选优惠券
 					}
 				});
 			},
@@ -763,7 +762,8 @@
 				afterDiscount.fullPriceReductionAfter = this.data.fullPriceReductionAfter;
 				afterDiscount.limitedPrice = this.data.limitedPrice;
 				afterDiscount.fullReductionRuleName = this.data.fullReductionRuleName;
-				afterDiscount.fullReductionRuleId = this.data.fullReductionRuleId;
+				// 自动满减已下线（2026-09-29 A 批）：不再向选券页透传 fullReductionRuleId
+				// afterDiscount.fullReductionRuleId = this.data.fullReductionRuleId;
 				afterDiscount.fullPriceReductionIsHidden = this.data.fullPriceReductionIsHidden;
 				// afterDiscount.packingCharges = this.data.data.packingCharges;
 				afterDiscount.type = 2;
@@ -970,10 +970,7 @@
 					data.couponsDescription = this.afterDiscount.couponsName;
 				}
 				//console.log(this.data)
-				if (this.data.fullReductionRuleId) {
-					data.fullReductionRuleId = this.data.fullReductionRuleId;
-					data.fullReductionRuleDescription = this.data.fullReductionRuleName;
-				}
+				// 自动满减已下线（2026-09-29 A 批）：不再向订单写入 fullReductionRuleId（后端同步停写，列保留兼容历史单）
 				var _this = this;
 				// toastService.showModal("积分商城订单", "订单确认后将无法更改!\r\n确认下单吗?", function comfirm() {
 
@@ -1140,61 +1137,7 @@
 			//     toastService.showToast("登录用户错误，请重新登录");
 			//   });
 			// },
-			//获取满减规则
-			getFullReductionRule(data) {
-				console.log(data);
-				toastService.showLoading();
-				https.request('/rest/pointsMall/fullReductionRule/list', {
-					pageNo: -1,
-					pageSize: 1
-				}).then((result) => {
-					toastService.hideLoading();
-					if (result.success) {
-						//this.getCouponsMemberRelation();
-						//获取配送费，配送费不作为满减条件
-						let feeData = 0;
-
-						// if (!this.data.isPreviousPage) {
-						//   data.packingCharges = 0;
-						//   for (var key in data.orderDetailList) {
-						//     //data.orderDetailList[key].price = data.orderDetailList[key].price * data.orderDetailList[key].number;
-						//     data.packingCharges = data.packingCharges + (data.orderDetailList[key].packingCharges * data.orderDetailList[key].number);
-						//   }
-						// }
-
-						data.actualPrice = data.actualPrice;
-						data.fullPriceReductionAfter = data.actualPrice;
-						data.discountPrice = 0;
-						data.fullPriceReduction = data.fullPriceReduction;
-						data.actualFullPriceReduction = data.actualFullPriceReduction;
-						data.fullPriceReductionIsHidden = false;
-						data.limitedPrice = 0;
-						console.log(data.actualFullPriceReduction);
-						for (let i = 0; i < result.data.records.length; i++) {
-							//console.log(result.data.records[i].limitedPrice)
-							//总价格减去配送费大于满减金额则进行满减操作（配送费不计算入内）
-							if (Number(data.actualFullPriceReduction - feeData) >= result.data.records[i]
-								.limitedPrice) {
-								//判断当前满减价格limitedPrice和上一个满减价格对比，如果大于就进行认证
-								if (result.data.records[i].limitedPrice > data.limitedPrice) {
-									data.limitedPrice = result.data.records[i].limitedPrice;
-									data.fullPriceReduction = data.actualFullPriceReduction ?
-										utilHelper.toFixed(data.actualFullPriceReduction - result.data.records[i]
-											.reducedPrice, 2) :
-										data.actualFullPriceReduction;
-									data.fullReductionRuleName = result.data.records[i].name;
-									data.fullReductionRuleId = result.data.records[i].id;
-									data.fullPriceReductionIsHidden = true;
-									data.fullPriceReductionAfter = utilHelper.toFixed(data
-										.actualFullPriceReduction - result.data.records[i].reducedPrice, 2);
-								}
-							}
-						}
-						this.data = data;
-					}
-				});
-			},
-
+			// 自动满减已下线（2026-09-29 A 批）：原 getFullReductionRule 方法删除，商城优惠统一走满减券
 			customerServiceWechat() {
 				console.log('占位：函数 customerServiceWechat 未声明');
 			},
