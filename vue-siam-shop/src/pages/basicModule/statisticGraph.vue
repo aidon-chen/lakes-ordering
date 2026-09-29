@@ -83,12 +83,13 @@
               <el-tag type="danger" class="section-item-tag">{{todayList.handleOrderRefundCount || 0}}</el-tag>
             </div>
           </el-col>
-          <el-col :span="12">
+          <!-- 评价体系不在一期范围，入口一并隐藏（2026-09-29）；恢复时取消注释即可 -->
+          <!-- <el-col :span="12">
             <div class="section-item" @click="gotoPage('/appraiseList')">
               <span class="font-medium">待处理评价回复</span>
               <el-tag type="warning" class="section-item-tag">{{todayList.waitReplyAppraiseCount || 0}}</el-tag>
             </div>
-          </el-col>
+          </el-col> -->
         </el-row>
       </div>
     </div>

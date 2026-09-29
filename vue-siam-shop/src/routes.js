@@ -177,7 +177,8 @@ let routes = [
           // { path: '/forHereTabsChild2', component: forHereTabsChild2, name: '已完成订单' },       
           { path: '/refundOrderList', component: refundOrderList, name: '售后订单' },
           { path: '/invoiceApprovalList', component: invoiceApprovalList, name: '发票审批' },
-          { path: '/appraiseList', component: appraiseList, name: '评价管理' },
+          // 评价体系不在一期范围（后端接口在但无数据闭环，顾客端评价未产生数据）：隐藏菜单，保留页面与路由
+          { path: '/appraiseList', component: appraiseList, name: '评价管理', hidden: true },
           // { path: '/forHereTabsChild3', component: forHereTabsChild3, name: '已取消订单' },          
           { path: '/orderDetail', component: orderDetail, name: '查看订单详情', hidden: true },   
          // { path: '/CoreImage', component: CoreImage, name: '裁剪图片' },        
