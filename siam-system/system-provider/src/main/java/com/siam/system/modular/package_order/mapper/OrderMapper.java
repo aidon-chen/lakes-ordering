@@ -110,10 +110,13 @@ public interface OrderMapper extends BaseMapper<Order> {
             "<if test=\"order.isChangeToDelivery != null\"> AND o.is_change_to_delivery = #{order.isChangeToDelivery} </if>" +
             "<if test=\"order.changeToDeliveryOutTradeNo != null and order.changeToDeliveryOutTradeNo !=''\"> AND o.change_to_delivery_out_trade_no like '%${order.changeToDeliveryOutTradeNo}%' </if>" +
             "<if test=\"order.changeToDeliveryTradeId != null\"> AND o.change_to_delivery_trade_id = #{order.changeToDeliveryTradeId} </if>" +
+            /* ===== 订单中心三分类（2026-09-28 重建；旧 waitReceived/waitPickedUp/afterSales 分支已删，
+               测试版不留兼容——旧值一律不再过滤，等同全量）=====
+               未付款=1；待处理=2,3（在途：待处理/待自提）；已完成=6,7,8,9,10,11（含售后与取消终态）。
+               4/5 为基座配送遗留态（本项目纯堂食+到店自提，支付回调不产生 4/5），未覆盖不再保留。 */
             "<if test=\"order.tabType != null and order.tabType =='waitPayment'\"> AND o.status in (1) </if>" +
-            "<if test=\"order.tabType != null and order.tabType =='waitReceived'\"> AND o.status in (4, 5) </if>" +
-            "<if test=\"order.tabType != null and order.tabType =='waitPickedUp'\"> AND o.status in (2, 3) </if>" +
-            "<if test=\"order.tabType != null and order.tabType =='afterSales'\"> AND o.status in (7, 8, 9, 11) </if>" +
+            "<if test=\"order.tabType != null and order.tabType =='processing'\"> AND o.status in (2, 3) </if>" +
+            "<if test=\"order.tabType != null and order.tabType =='finished'\"> AND o.status in (6, 7, 8, 9, 10, 11) </if>" +
             "<if test=\"order.keyWords != null and order.keyWords !=''\"> AND (o.contact_phone like '%${order.keyWords}%' or o.order_no like '%${order.keyWords}%') </if>" +
             "<if test=\"order.startCreateTime != null\"> AND DATE_FORMAT(o.create_time, '%Y/%m/%d') &gt;= #{order.startCreateTime} </if>" +
             "<if test=\"order.endCreateTime != null\"> AND DATE_FORMAT(o.create_time, '%Y/%m/%d') &lt;= #{order.endCreateTime} </if>" +

@@ -1,13 +1,22 @@
 <template>
 	<view class="page">
-		<!-- 顶部分栏Tabs（C-11）：状态子Tab（全部/待付款/待自提/退款售后）已按 2026-09-24 拍板移除，
-		     只保留「点单订单/商城订单」主 Tab，列表固定拉全量 -->
+		<!-- 顶部分栏Tabs（C-11）：主 Tab「点单订单/商城订单」+ 状态子 Tab 行（2026-09-28 重建）；
+		     点单=未付款/待处理/已完成，商城=未付款/待自提/已完成；默认不选中=全量，
+		     同一子 Tab 再点一次取消筛选回全量 -->
 		<view class="top-tabs">
 			<view class="main-tabs">
 				<view class="main-tab-item" v-for="(item, index) in tabList" :key="index" @tap="clickTab(index)">
 					<!-- ⚠️ 条件类名不能用 active：app.wxss 有全局 .active{border-bottom:4rpx}，会撞出第二道下划线 -->
 					<text :class="'main-tab-text ' + (currentTab == index ? 'main-tab-on' : '')">{{ item.modeName }}</text>
 					<view class="tab-indicator" v-if="currentTab == index"></view>
+				</view>
+			</view>
+			<!-- 状态子 Tab 行：两个主 Tab 各自一套口径（点单「待处理」≠ 商城「待自提」）；
+			     组件与主 Tab 同款＝文字＋下划线指示条（复用 .tab-indicator），不用胶囊（09-29 00:0x 用户拍板） -->
+			<view class="sub-tabs">
+				<view class="sub-tab-item" v-for="(sub, sIdx) in activeSubTabs" :key="sIdx" @tap="clickSubTab(sIdx)">
+					<text :class="'sub-tab-text ' + (currentSubIndex == sIdx ? 'sub-tab-on' : '')">{{ sub.name }}</text>
+					<view class="tab-indicator" v-if="currentSubIndex == sIdx"></view>
 				</view>
 			</view>
 		</view>
@@ -92,9 +101,39 @@
 						modeName: '商城订单'
 					}
 				],
-				// 状态子Tab（全部/待付款/待自提/退款售后 等）已按 2026-09-24 拍板移除：
-				// 列表固定 tabType='all' 拉全量，后端 tabType 口径见 OrderMapper（waitPayment=status1、
-				// waitPickedUp=status2/3、afterSales=7/8/9/11），后续若恢复筛选直接复用该口径
+				/* 状态子 Tab（2026-09-28 重建，各主 Tab 一套口径；tabType 后端分支同批重写、旧值已删）：
+				   点单：未付款=waitPayment(1) / 待处理=processing(2,3) / 已完成=finished(6,7,8,9,10,11)
+				   商城：未付款=waitPayment(1) / 待自提=waitPickup(2,3,4) / 已完成=finished(5,6,7,8,9,10,11)
+				   subTabIndex 按主 Tab 分槽记忆；-1=不筛选（拉全量） */
+				subTabList: [
+					[{
+							name: '未付款',
+							tabType: 'waitPayment'
+						},
+						{
+							name: '待处理',
+							tabType: 'processing'
+						},
+						{
+							name: '已完成',
+							tabType: 'finished'
+						}
+					],
+					[{
+							name: '未付款',
+							tabType: 'waitPayment'
+						},
+						{
+							name: '待自提',
+							tabType: 'waitPickup'
+						},
+						{
+							name: '已完成',
+							tabType: 'finished'
+						}
+					]
+				],
+				subTabIndex: [-1, -1],
 				list: [],
 				mallList: [],
 				pageNo: 1,
@@ -105,6 +144,13 @@
 		computed: {
 			activeList() {
 				return this.currentTab == 0 ? this.list : this.mallList;
+			},
+			// 当前主 Tab 的子 Tab 定义与选中下标（-1=全量）
+			activeSubTabs() {
+				return this.subTabList[this.currentTab] || [];
+			},
+			currentSubIndex() {
+				return this.subTabIndex[this.currentTab];
 			}
 		},
 		onLoad: function(options) {
@@ -113,7 +159,7 @@
 		},
 		onShow: function() {
 			// tabBar 页后续每次进入只触发 onShow：消费经 globalData 传入的入口状态。
-			// 状态子Tab已移除（09-24 拍板），旧入口参数里的 modeType/currentOrderTab 不再消费
+			// 子 Tab（未付款/待处理|待自提/已完成）由页面内点选，入口参数不消费
 			const app = getApp();
 			const entry = app.globalData.orderCenterEntry;
 			if (entry) {
@@ -156,7 +202,8 @@
 				}
 				return '';
 			},
-			// 解析入口状态：只保留主 Tab（点单/商城）；旧参数 modeType/currentOrderTab 兼容但不消费
+			// 解析入口状态：只保留主 Tab（点单/商城）；子 Tab 由页面内点选不消费入口参数
+			// （「我的」页订单入口卡已于 09-23 移除，orderCenterEntry 现无生产方，保留仅为兼容旧链接）
 			applyEntry(entry) {
 				this.currentTab = Number(entry.currentTab) || 0;
 			},
@@ -175,10 +222,12 @@
 				this.isLoading = true;
 				const isShop = this.currentTab == 0;
 				const url = isShop ? '/rest/member/order/list' : '/rest/member/pointsMall/order/list';
+				const sub = this.activeSubTabs[this.currentSubIndex];
 				https.request(url, {
 					pageNo: this.pageNo,
 					pageSize: PAGE_SIZE,
-					tabType: 'all',
+					// 未选子 Tab（-1）传 all=拉全量；选中则传对应 tabType（旧值已删，无匹配分支时等同全量）
+					tabType: sub ? sub.tabType : 'all',
 					keyWords: ''
 				}).then((result) => {
 					this.isLoading = false;
@@ -200,7 +249,13 @@
 			},
 			clickTab(index) {
 				if (this.currentTab === index) return;
+				// 主 Tab 切换：沿用该主 Tab 各自记忆的子 Tab 选中（subTabIndex 分槽存储）
 				this.currentTab = index;
+				this.reload();
+			},
+			// 子 Tab 点击：同一项再点一次取消筛选回全量（-1）
+			clickSubTab(sIdx) {
+				this.subTabIndex[this.currentTab] = this.currentSubIndex == sIdx ? -1 : sIdx;
 				this.reload();
 			},
 		// 订单卡按钮（2026-09-25 商城同步复刻 + grill 裁决）：两套 tab 按钮矩阵完全一致
@@ -361,8 +416,6 @@
 		display: flex;
 		background: #ffffff;
 		height: 88rpx;
-		/* 状态子Tab行已移除（09-24 拍板），分隔线收进主 Tab 行自身 */
-		border-bottom: 1rpx solid #f0f0f0;
 	}
 
 	.main-tab-item {
@@ -392,7 +445,33 @@
 		margin-top: 8rpx;
 	}
 
-	/* ===== 状态子Tab样式已随该行一并移除（09-24 拍板） ===== */
+	/* ===== 状态子 Tab 行（2026-09-28 重建；09-29 00:0x 改版：与主 Tab 同款文字＋下划线，弃胶囊） ===== */
+	.sub-tabs {
+		display: flex;
+		background: #ffffff;
+		/* 分隔线从主 Tab 行下移到这里（与列表区分隔） */
+		border-bottom: 1rpx solid #f0f0f0;
+	}
+
+	.sub-tab-item {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		height: 72rpx;
+	}
+
+	.sub-tab-text {
+		font-size: 26rpx;
+		color: #666666;
+	}
+
+	/* 指示条复用主 Tab 的 .tab-indicator（48×6 r4 #5f7d22） */
+	.sub-tab-text.sub-tab-on {
+		color: #5f7d22;
+		font-weight: 500;
+	}
 
 	/* ===== 订单卡（C-11 163:78/163:89） ===== */
 	.order-list {

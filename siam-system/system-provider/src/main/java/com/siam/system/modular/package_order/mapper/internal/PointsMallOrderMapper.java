@@ -128,10 +128,12 @@ public interface PointsMallOrderMapper extends BaseMapper<PointsMallOrder> {
             "<if test=\"order.isChangeToDelivery != null\"> AND o.is_change_to_delivery = #{order.isChangeToDelivery} </if>" +
             "<if test=\"order.changeToDeliveryOutTradeNo != null and order.changeToDeliveryOutTradeNo !=''\"> AND o.change_to_delivery_out_trade_no like '%${order.changeToDeliveryOutTradeNo}%' </if>" +
             "<if test=\"order.changeToDeliveryTradeId != null\"> AND o.change_to_delivery_trade_id = #{order.changeToDeliveryTradeId} </if>" +
+            /* ===== 订单中心三分类（2026-09-28 重建；旧 waitDelivered/waitReceived/afterSales 分支已删，
+               测试版不留兼容——旧值一律不再过滤，等同全量）=====
+               未付款=1；待自提=2,3,4（待处理2 + 待自提3/4，未取货的在途态）；已完成=5,6,7,8,9,10,11。 */
             "<if test=\"order.tabType != null and order.tabType =='waitPayment'\"> AND o.status in (1) </if>" +
-            "<if test=\"order.tabType != null and order.tabType =='waitDelivered'\"> AND o.status in (4) </if>" +
-            "<if test=\"order.tabType != null and order.tabType =='waitReceived'\"> AND o.status in (5) </if>" +
-            "<if test=\"order.tabType != null and order.tabType =='afterSales'\"> AND o.status in (7, 8, 9, 11) </if>" +
+            "<if test=\"order.tabType != null and order.tabType =='waitPickup'\"> AND o.status in (2, 3, 4) </if>" +
+            "<if test=\"order.tabType != null and order.tabType =='finished'\"> AND o.status in (5, 6, 7, 8, 9, 10, 11) </if>" +
             "<if test=\"order.keyWords != null and order.keyWords !=''\"> AND (o.contact_phone like '%${order.keyWords}%' or o.order_no like '%${order.keyWords}%') </if>" +
             /* ===== 批次 E（收银端 W-15/W-16 自提核销与核销记录）新增筛选 =====
                说明：以下均为**追加**分支，既有调用方不传这些参数时行为完全不变（保持向后兼容）。
