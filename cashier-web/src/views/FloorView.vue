@@ -22,12 +22,6 @@
       <button class="h-[36px] px-5 rounded text-[13px] font-medium text-white" style="background: var(--p)" @click="pos.keyword = pos.keyword">
         查询
       </button>
-      <button
-        class="ml-auto h-[32px] px-3 rounded border bg-white text-[12px]"
-        style="border-color: var(--tc-line); color: var(--tc-gray)"
-      >
-        开台记录
-      </button>
     </div>
 
     <!-- 图例行 2:597（批次 C 三态：空闲 / 占用 / 待清台） -->
