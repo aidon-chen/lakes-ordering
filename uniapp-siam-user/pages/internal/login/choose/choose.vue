@@ -51,7 +51,6 @@
 		},
 		data() {
 			return {
-				inviterId: '',
 				agreed: true,
 				avatarUrl: '',
 				nickname: '',
@@ -69,14 +68,6 @@
 			app = getApp();
 			const opts = options || {};
 			console.log(opts.scene);
-			let inviterId = opts.inviterId || '';
-			//扫码进入时 scene 形如 xxx%3D<inviterId>
-			if (opts.scene) {
-				const parts = String(opts.scene).split('%3D');
-				if (parts.length > 1) inviterId = parts[1];
-			}
-			this.inviterId = inviterId;
-			console.log('options.inviterId = ' + inviterId);
 			this.syncUser();
 		},
 		onShow() {
@@ -122,7 +113,7 @@
 			codeLogin() {
 				if (!this.checkAgreed()) return;
 				uni.navigateTo({
-					url: '../code/code?inviterId=' + this.inviterId
+					url: '../code/code'
 				});
 			}
 		}

@@ -94,13 +94,11 @@ const mallCarouselList = () => import( './pages/mallManage/advertisementManage/m
 const statisticGraph = () => import( './pages/basicModule/statisticGraph.vue')
 
 //财务报表
-const accountInfo = () => import( './pages/accountModule/accountInfo.vue')
-const merchantWithdrawRecord = () => import( './pages/accountModule/merchantWithdrawRecord.vue')
 const merchantBillingRecord = () => import( './pages/accountModule/merchantBillingRecord.vue')
 //A-07 报表与营收统计
 const revenueList = () => import( './pages/accountModule/revenueList.vue')
 const vipRechargeRecord = () => import( './pages/accountModule/vipRechargeRecord.vue')
-const memberWithdrawRecord = () => import( './pages/accountModule/memberWithdrawRecord.vue')
+//（2026-09-28 奖励金/分销体系整体下线：memberWithdrawRecord 页面与菜单已删）
 //C-17 会员身份认证审核（身份证与身份材料双图同屏）
 const memberIdentityAuth = () => import( './pages/accountModule/memberIdentityAuth.vue')
 
@@ -263,11 +261,9 @@ let routes = [
       iconCls: 'el-icon-user',
       children: [
           // 营收统计已提升为一级菜单（2026-09-22）
-          { path: '/accountInfo', component: accountInfo, name: '账户信息' },          
           { path: '/merchantBillingRecord', component: merchantBillingRecord, name: '账单记录' },//交易明细          
-          { path: '/merchantWithdrawRecord', component: merchantWithdrawRecord, name: '提现记录' },
           { path: '/vipRechargeRecord', component: vipRechargeRecord, name: '会员充值记录' },
-          { path: '/memberWithdrawRecord', component: memberWithdrawRecord, name: '奖励金提现记录' },
+          //（2026-09-28 删「奖励金提现记录」memberWithdrawRecord——分销/奖励金体系已整体下线）
           // 身份认证审核已迁至「用户管理」分组（2026-09-27）
       ]
     },        

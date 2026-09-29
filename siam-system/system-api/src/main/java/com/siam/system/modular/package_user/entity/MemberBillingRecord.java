@@ -24,13 +24,6 @@ public class MemberBillingRecord {
     public static final Integer TYPE_ORDER_REWARD_POINTS = 2;
     public static final Integer TYPE_REGISTER_REWARD_POINTS = 3;
     public static final Integer TYPE_VIP_RECHARGE_REWARD_BALANCE = 4;
-    public static final Integer TYPE_INVITE_REGISTER_REWARD_INVITE_REWARD_AMOUNT = 5;
-    public static final Integer TYPE_INVITE_REWARD_AMOUNT_WITHDRAW = 6;
-    public static final Integer TYPE_INVITE_REWARD_AMOUNT_WITHDRAW_FAIL_RETURN = 7;
-    public static final Integer TYPE_FIRST_LEVEL_INVITER_COMMISSION = 8;
-    public static final Integer TYPE_SECOND_LEVEL_INVITER_COMMISSION = 9;
-    public static final Integer TYPE_OWN_COMMISSION = 10;
-    public static final Integer TYPE_REGISTER_REWARD_INVITE_REWARD_AMOUNT = 11;
     public static final Integer TYPE_ORDER_PAYMENT_BY_BALANCE = 12;
     public static final Integer TYPE_ORDER_CANCEL_RETURN_BALANCE = 13;
     public static final Integer TYPE_ORDER_REFUND_RETURN_BALANCE = 14;
@@ -39,18 +32,13 @@ public class MemberBillingRecord {
     public static final Integer TYPE_POINTSMALL_ORDER_DELIVERED_REFUND_RETURN_POINTS = 17;
     public static final Integer TYPE_VIP_RECHARGE_PRICE_SWITCH_TO_BALANCE = 18;
     public static final Integer TYPE_ORDER_REWARD_POINTS_RETURN = 19;
-    public static final Integer TYPE_FIRST_LEVEL_INVITER_COMMISSION_RETURN = 20;
-    public static final Integer TYPE_SECOND_LEVEL_INVITER_COMMISSION_RETURN = 21;
-    public static final Integer TYPE_OWN_COMMISSION_RETURN = 22;
 
     /**
      * 货币类型 1=积分 2=余额 3=邀请新用户注册奖励金额 4=未到账-积分 5=未到账-邀请新用户注册奖励金额
      */
     public static final Integer COIN_TYPE_POINTS = 1;
     public static final Integer COIN_TYPE_BALANCE = 2;
-    public static final Integer COIN_TYPE_INVITE_REWARD_AMOUNT = 3;
     public static final Integer COIN_TYPE_UNRECEIVED_POINTS = 4;
-    public static final Integer COIN_TYPE_UNRECEIVED_INVITE_REWARD_AMOUNT = 5;
 
     /**
      * 操作类型 1-加，2-减

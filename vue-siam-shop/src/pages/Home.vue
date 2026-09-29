@@ -20,7 +20,6 @@
 					<el-dropdown-menu slot="dropdown">
 						<!-- <el-dropdown-item>我的消息</el-dropdown-item>
 						-->
-						<el-dropdown-item @click.native="goAccountInfo">账户信息</el-dropdown-item>
 						<el-dropdown-item @click.native="showDialog">修改密码</el-dropdown-item>
 						<el-dropdown-item divided @click.native="logout">退出登录</el-dropdown-item>
 					</el-dropdown-menu>
@@ -352,9 +351,6 @@ export default {
 				(error, data) => {
 
 				})
-		},
-		goAccountInfo() {
-			this.$router.push({ path: 'accountInfo' })
 		},
 		showDialog() {
 			this.changePasswordForm = true

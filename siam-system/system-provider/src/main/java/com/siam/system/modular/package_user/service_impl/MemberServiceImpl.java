@@ -24,14 +24,12 @@ import com.siam.system.modular.package_user.auth.cache.MemberSessionManager;
 import com.siam.system.modular.package_user.controller.member.WxLoginController;
 import com.siam.system.modular.package_user.entity.Member;
 import com.siam.system.modular.package_user.entity.MemberBillingRecord;
-import com.siam.system.modular.package_user.entity.MemberInviteRelation;
 import com.siam.system.modular.package_user.mapper.MemberMapper;
 import com.siam.system.modular.package_user.model.dto.MemberBillingRecordDto;
 import com.siam.system.modular.package_user.model.example.MemberExample;
 import com.siam.system.modular.package_user.model.param.MemberParam;
 import com.siam.system.modular.package_user.model.result.MemberResult;
 import com.siam.system.modular.package_user.service.MemberBillingRecordService;
-import com.siam.system.modular.package_user.service.MemberInviteRelationService;
 import com.siam.system.modular.package_user.service.MemberService;
 import com.siam.system.util.TokenUtil;
 import com.siam.package_weixin_basic.config.WxSession;
@@ -103,8 +101,6 @@ public class MemberServiceImpl implements MemberService {
     @Autowired
     private CouponsService couponsService;
 
-    @Autowired
-    private MemberInviteRelationService memberInviteRelationService;
 
     @Autowired
     private WxQrCodeUtils wxQrCodeUtils;
@@ -590,7 +586,6 @@ public class MemberServiceImpl implements MemberService {
     @Override
     public MemberResult verificationLogin(MemberParam param) {
         MemberResult memberResult = new MemberResult();
-        log.debug("\n\n邀请者id : " + param.getInviterId());
 
         if("123456".equals(param.getMobileCode())){
             //万能验证码，放行
@@ -693,7 +688,6 @@ public class MemberServiceImpl implements MemberService {
     @Override
     public MemberResult wxSilenceLogin(MemberParam param) {
         MemberResult memberResult = new MemberResult();
-        log.debug("\n\n邀请者id : " + param.getInviterId());
 
         // 判断是否已经注册
         Member dbMember = memberMapper.selectByOpenId(param.getOpenId());
@@ -744,8 +738,6 @@ public class MemberServiceImpl implements MemberService {
         BigDecimal registrationRewardPoints = setting.getRegistrationRewardPoints();
         registrationRewardPoints = registrationRewardPoints == null ? BigDecimal.ZERO : registrationRewardPoints;
 
-        //新用户注册赠送邀请新用户注册奖励金额
-        BigDecimal registrationRewardInviteRewardAmount = setting.getRegistrationRewardInviteRewardAmount();
 
         //默认密码为123456
         String passwordSalt = CommonUtils.genSalt();
@@ -784,7 +776,6 @@ public class MemberServiceImpl implements MemberService {
         insertMember.setIsNewPeople(true);
         insertMember.setIsRemindNewPeople(true);
         insertMember.setRegisterWay(Quantity.INT_1);
-        insertMember.setInviteRewardAmount(registrationRewardInviteRewardAmount);
         insertMember.setTotalPoints(registrationRewardPoints);
         insertMember.setCreateTime(new Date());
         insertMember.setUpdateTime(new Date());
@@ -794,15 +785,6 @@ public class MemberServiceImpl implements MemberService {
         //从数据库中获取注册好的用户信息
         Member dbMember = memberMapper.selectByMobile(param.getMobile());
 
-        //生成邀请分享太阳码
-        String path = "data/images/invite_suncode/v1.0";
-        String fileName = "suncode_" + insertMember.getId() + ".png";
-        String savePath = path + "/" + fileName;
-        wxQrCodeUtils.generateSunCode(PAGE, "inviterId="+insertMember.getId(), savePath);
-        Member updateMember = new Member();
-        updateMember.setId(insertMember.getId());
-        updateMember.setInviteSuncode(savePath);
-        memberMapper.updateByPrimaryKeySelective(updateMember);
 
         //生成积分账单
         if (registrationRewardPoints.compareTo(BigDecimal.ZERO) > 0) {
@@ -814,18 +796,6 @@ public class MemberServiceImpl implements MemberService {
             memberBillingRecord.setNumber(registrationRewardPoints);
             memberBillingRecord.setCreateTime(new Date());
             memberBillingRecord.setMessage("新用户注册赠送积分");
-            memberBillingRecordService.insertSelective(memberBillingRecord);
-        }
-        if(registrationRewardInviteRewardAmount.compareTo(BigDecimal.ZERO) > 0){
-            //增加用户账单记录
-            MemberBillingRecord memberBillingRecord = new MemberBillingRecord();
-            memberBillingRecord.setMemberId(insertMember.getId());
-            memberBillingRecord.setType(MemberBillingRecord.TYPE_REGISTER_REWARD_INVITE_REWARD_AMOUNT);
-            memberBillingRecord.setOperateType(MemberBillingRecord.OPERATE_TYPE_ADD);
-            memberBillingRecord.setCoinType(MemberBillingRecord.COIN_TYPE_INVITE_REWARD_AMOUNT);
-            memberBillingRecord.setNumber(registrationRewardInviteRewardAmount);
-            memberBillingRecord.setMessage("新用户注册赠送奖励金额");
-            memberBillingRecord.setCreateTime(new Date());
             memberBillingRecordService.insertSelective(memberBillingRecord);
         }
 
@@ -840,41 +810,6 @@ public class MemberServiceImpl implements MemberService {
             log.error("系统默认优惠券-新人3折卷不存在");
         }
 
-        log.debug("邀请者id:" + param.getInviterId());
-        if (param.getInviterId() != null && !param.getInviterId().equals("") && !param.getInviterId().equals("undefined")) {
-            Member inviter = memberMapper.selectByPrimaryKey(Integer.valueOf(param.getInviterId()));
-            log.debug("通过id获取邀请者对象:"+inviter);
-            if (inviter != null && inviter.getId() != null) {
-                log.debug("邀请者id:"+inviter.getId());
-                log.debug("start-------创建用户邀请关系");
-                //创建用户邀请关系
-                MemberInviteRelation memberInviteRelation = new MemberInviteRelation();
-                memberInviteRelation.setInviterId(Integer.valueOf(param.getInviterId()));
-                memberInviteRelation.setMemberId(insertMember.getId());
-                memberInviteRelation.setCreateTime(new Date());
-                memberInviteRelationService.insertSelective(memberInviteRelation);
-                log.debug("end-------创建用户邀请关系");
-
-                log.debug("start-------发送邀请优惠卷");
-                //发送邀请卷
-                Coupons inviteCoupons = couponsService.selectByPrimaryKey(BusinessType.INVITE_NEW_PEOPLE_COUPONS_ID);
-                if (inviteCoupons != null) {
-                    CouponsMemberRelation inviteCouponsMemberRelation = new CouponsMemberRelation();
-                    inviteCouponsMemberRelation.setCouponsId(BusinessType.INVITE_NEW_PEOPLE_COUPONS_ID);
-                    inviteCouponsMemberRelation.setMemberId(Integer.valueOf(param.getInviterId()));
-                    couponsMemberRelationService.insertSelective(inviteCouponsMemberRelation);
-                }else{
-                    log.error("系统默认优惠券-推荐新人3折卷不存在");
-                }
-                log.debug("end-------发送邀请优惠卷");
-
-                //将注册方式改为邀请注册
-                updateMember = new Member();
-                updateMember.setId(insertMember.getId());
-                updateMember.setRegisterWay(Member.REGISTER_WAY_OF_INVITE);
-                memberMapper.updateByPrimaryKeySelective(updateMember);
-            }
-        }
 
         //积分体系：新用户注册赠送积分（分值走积分规则配置表，活动类 biz_type=2）
         Integer registerPoints = memberPointsSettingService.getInt(MemberPointsSetting.KEY_REGISTER_POINTS, 50);
@@ -914,18 +849,11 @@ public class MemberServiceImpl implements MemberService {
         memberBillingRecordDto.setCoinType(MemberBillingRecord.COIN_TYPE_POINTS);
         BigDecimal daySumPoints = memberBillingRecordService.selectSumNumber(memberBillingRecordDto, DateUtilsExtend.getDayBegin(), DateUtilsExtend.getDayEnd());
 
-        //昨日收益-邀请新用户注册奖励金额/佣金
-        memberBillingRecordDto = new MemberBillingRecordDto();
-        memberBillingRecordDto.setMemberId(loginMember.getId());
-        memberBillingRecordDto.setOperateType(MemberBillingRecord.OPERATE_TYPE_ADD);
-        memberBillingRecordDto.setCoinType(MemberBillingRecord.COIN_TYPE_INVITE_REWARD_AMOUNT);
-        BigDecimal daySumInviteRewardAmount = memberBillingRecordService.selectSumNumber(memberBillingRecordDto, DateUtilsExtend.getBeginDayOfYesterday(), DateUtilsExtend.getEndDayOfYesterDay());
 
         //处理返回结构
         BeanUtils.copyProperties(member, memberResult);
         memberResult.setTotayGainBalance(daySumBalance);
         memberResult.setTotayGainPoints(daySumPoints);
-        memberResult.setYesterdayGainInviteRewardAmount(daySumInviteRewardAmount);
         return memberResult;
     }
 

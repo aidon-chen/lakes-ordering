@@ -173,16 +173,4 @@ public class PointsMallOrderController {
         Map map = orderService.selectTabNumber(param);
         return BasicResult.success(map);
     }
-
-    /**
-     * 查看佣金奖励信息
-     *
-     * @return
-     * @author 暹罗
-     */
-    @PostMapping(value = "/selectCommissionReward")
-    public BasicResult selectCommissionReward(@RequestBody @Validated(value = {}) PointsMallOrderParam param){
-        String text = orderService.selectCommissionReward(param);
-        return BasicResult.success(text);
-    }
 }

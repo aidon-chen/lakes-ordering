@@ -234,6 +234,5 @@ public interface PointsMallOrderService extends IService<PointsMallOrder> {
 
     Map selectTabNumber(PointsMallOrderParam param);
 
-    String selectCommissionReward(PointsMallOrderParam param);
 
 }

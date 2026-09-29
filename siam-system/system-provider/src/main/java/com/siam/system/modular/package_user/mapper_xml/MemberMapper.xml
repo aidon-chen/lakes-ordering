@@ -34,19 +34,15 @@
     <result column="wx_public_platform_open_id" property="wxPublicPlatformOpenId" jdbcType="VARCHAR" />
     <result column="is_request_wx_notify" property="isRequestWxNotify" jdbcType="BIT" />
     <result column="last_request_wx_notify_time" property="lastRequestWxNotifyTime" jdbcType="TIMESTAMP" />
-    <result column="invite_reward_amount" property="inviteRewardAmount" jdbcType="DECIMAL" />
     <result column="real_name" property="realName" jdbcType="VARCHAR" />
     <result column="total_balance" property="totalBalance" jdbcType="DECIMAL" />
     <result column="total_consume_balance" property="totalConsumeBalance" jdbcType="DECIMAL" />
     <result column="total_points" property="totalPoints" jdbcType="DECIMAL" />
     <result column="total_consume_points" property="totalConsumePoints" jdbcType="DECIMAL" />
     <result column="growth" property="growth" jdbcType="INTEGER" />
-    <result column="total_withdraw_invite_reward_amount" property="totalWithdrawInviteRewardAmount" jdbcType="DECIMAL" />
     <result column="payment_password" property="paymentPassword" jdbcType="VARCHAR" />
     <result column="payment_password_salt" property="paymentPasswordSalt" jdbcType="VARCHAR" />
-    <result column="invite_suncode" property="inviteSuncode" jdbcType="VARCHAR" />
     <result column="unreceived_points" property="unreceivedPoints" jdbcType="DECIMAL" />
-    <result column="unreceived_invite_reward_amount" property="unreceivedInviteRewardAmount" jdbcType="DECIMAL" />
     <result column="create_time" property="createTime" jdbcType="TIMESTAMP" />
     <result column="update_time" property="updateTime" jdbcType="TIMESTAMP" />
     <result column="last_login_time" property="lastLoginTime" jdbcType="TIMESTAMP" />
@@ -84,19 +80,15 @@
     <result column="wx_public_platform_open_id" property="wxPublicPlatformOpenId" jdbcType="VARCHAR" />
     <result column="is_request_wx_notify" property="isRequestWxNotify" jdbcType="BIT" />
     <result column="last_request_wx_notify_time" property="lastRequestWxNotifyTime" jdbcType="TIMESTAMP" />
-    <result column="invite_reward_amount" property="inviteRewardAmount" jdbcType="DECIMAL" />
     <result column="real_name" property="realName" jdbcType="VARCHAR" />
     <result column="total_balance" property="totalBalance" jdbcType="DECIMAL" />
     <result column="total_consume_balance" property="totalConsumeBalance" jdbcType="DECIMAL" />
     <result column="total_points" property="totalPoints" jdbcType="DECIMAL" />
     <result column="total_consume_points" property="totalConsumePoints" jdbcType="DECIMAL" />
     <result column="growth" property="growth" jdbcType="INTEGER" />
-    <result column="total_withdraw_invite_reward_amount" property="totalWithdrawInviteRewardAmount" jdbcType="DECIMAL" />
     <result column="payment_password" property="paymentPassword" jdbcType="VARCHAR" />
     <result column="payment_password_salt" property="paymentPasswordSalt" jdbcType="VARCHAR" />
-    <result column="invite_suncode" property="inviteSuncode" jdbcType="VARCHAR" />
     <result column="unreceived_points" property="unreceivedPoints" jdbcType="DECIMAL" />
-    <result column="unreceived_invite_reward_amount" property="unreceivedInviteRewardAmount" jdbcType="DECIMAL" />
     <result column="create_time" property="createTime" jdbcType="TIMESTAMP" />
     <result column="update_time" property="updateTime" jdbcType="TIMESTAMP" />
     <result column="last_login_time" property="lastLoginTime" jdbcType="TIMESTAMP" />
@@ -164,10 +156,7 @@
     head_img, roles, sex, email, is_disabled, is_deleted, open_id, is_bind_wx, points,
     vip_status, vip_type, vip_start_time, vip_end_time, type, vip_no, is_new_people,
     is_remind_new_people, last_use_time, last_use_address, register_way, wx_public_platform_open_id,
-    is_request_wx_notify, last_request_wx_notify_time, invite_reward_amount, real_name,
     total_balance, total_consume_balance, total_points, total_consume_points, growth,
-    total_withdraw_invite_reward_amount,
-    payment_password, payment_password_salt, invite_suncode, unreceived_points, unreceived_invite_reward_amount,
     create_time, update_time, last_login_time
   </sql>
   <select id="selectByExample" resultMap="BaseResultMap" parameterType="com.siam.system.modular.package_user.model.example.MemberExample" >
@@ -300,9 +289,6 @@
       <if test="lastRequestWxNotifyTime != null" >
         last_request_wx_notify_time,
       </if>
-      <if test="inviteRewardAmount != null" >
-        invite_reward_amount,
-      </if>
       <if test="realName != null" >
         real_name,
       </if>
@@ -321,23 +307,14 @@
       <if test="growth != null" >
         growth,
       </if>
-      <if test="totalWithdrawInviteRewardAmount != null" >
-        total_withdraw_invite_reward_amount,
-      </if>
       <if test="paymentPassword != null" >
         payment_password,
       </if>
       <if test="paymentPasswordSalt != null" >
         payment_password_salt,
       </if>
-      <if test="inviteSuncode != null" >
-        invite_suncode,
-      </if>
       <if test="unreceivedPoints != null" >
         unreceived_points,
-      </if>
-      <if test="unreceivedInviteRewardAmount != null" >
-        unreceived_invite_reward_amount,
       </if>
       <if test="createTime != null" >
         create_time,
@@ -446,9 +423,6 @@
       <if test="lastRequestWxNotifyTime != null" >
         #{lastRequestWxNotifyTime,jdbcType=TIMESTAMP},
       </if>
-      <if test="inviteRewardAmount != null" >
-        #{inviteRewardAmount,jdbcType=DECIMAL},
-      </if>
       <if test="realName != null" >
         #{realName,jdbcType=VARCHAR},
       </if>
@@ -467,23 +441,14 @@
       <if test="growth != null" >
         #{growth,jdbcType=INTEGER},
       </if>
-      <if test="totalWithdrawInviteRewardAmount != null" >
-        #{totalWithdrawInviteRewardAmount,jdbcType=DECIMAL},
-      </if>
       <if test="paymentPassword != null" >
         #{paymentPassword,jdbcType=VARCHAR},
       </if>
       <if test="paymentPasswordSalt != null" >
         #{paymentPasswordSalt,jdbcType=VARCHAR},
       </if>
-      <if test="inviteSuncode != null" >
-        #{inviteSuncode,jdbcType=VARCHAR},
-      </if>
       <if test="unreceivedPoints != null" >
         #{unreceivedPoints,jdbcType=DECIMAL},
-      </if>
-      <if test="unreceivedInviteRewardAmount != null" >
-        #{unreceivedInviteRewardAmount,jdbcType=DECIMAL},
       </if>
       <if test="createTime != null" >
         #{createTime,jdbcType=TIMESTAMP},
@@ -601,9 +566,6 @@
       <if test="record.lastRequestWxNotifyTime != null" >
         last_request_wx_notify_time = #{record.lastRequestWxNotifyTime,jdbcType=TIMESTAMP},
       </if>
-      <if test="record.inviteRewardAmount != null" >
-        invite_reward_amount = #{record.inviteRewardAmount,jdbcType=DECIMAL},
-      </if>
       <if test="record.realName != null" >
         real_name = #{record.realName,jdbcType=VARCHAR},
       </if>
@@ -622,23 +584,14 @@
       <if test="record.growth != null" >
         growth = #{record.growth,jdbcType=INTEGER},
       </if>
-      <if test="record.totalWithdrawInviteRewardAmount != null" >
-        total_withdraw_invite_reward_amount = #{record.totalWithdrawInviteRewardAmount,jdbcType=DECIMAL},
-      </if>
       <if test="record.paymentPassword != null" >
         payment_password = #{record.paymentPassword,jdbcType=VARCHAR},
       </if>
       <if test="record.paymentPasswordSalt != null" >
         payment_password_salt = #{record.paymentPasswordSalt,jdbcType=VARCHAR},
       </if>
-      <if test="record.inviteSuncode != null" >
-        invite_suncode = #{record.inviteSuncode,jdbcType=VARCHAR},
-      </if>
       <if test="record.unreceivedPoints != null" >
         unreceived_points = #{record.unreceivedPoints,jdbcType=DECIMAL},
-      </if>
-      <if test="record.unreceivedInviteRewardAmount != null" >
-        unreceived_invite_reward_amount = #{record.unreceivedInviteRewardAmount,jdbcType=DECIMAL},
       </if>
       <if test="record.createTime != null" >
         create_time = #{record.createTime,jdbcType=TIMESTAMP},
@@ -688,19 +641,15 @@
     wx_public_platform_open_id = #{record.wxPublicPlatformOpenId,jdbcType=VARCHAR},
     is_request_wx_notify = #{record.isRequestWxNotify,jdbcType=BIT},
     last_request_wx_notify_time = #{record.lastRequestWxNotifyTime,jdbcType=TIMESTAMP},
-    invite_reward_amount = #{record.inviteRewardAmount,jdbcType=DECIMAL},
     real_name = #{record.realName,jdbcType=VARCHAR},
     total_balance = #{record.totalBalance,jdbcType=DECIMAL},
     total_consume_balance = #{record.totalConsumeBalance,jdbcType=DECIMAL},
     total_points = #{record.totalPoints,jdbcType=DECIMAL},
     total_consume_points = #{record.totalConsumePoints,jdbcType=DECIMAL},
     growth = #{record.growth,jdbcType=INTEGER},
-    total_withdraw_invite_reward_amount = #{record.totalWithdrawInviteRewardAmount,jdbcType=DECIMAL},
     payment_password = #{record.paymentPassword,jdbcType=VARCHAR},
     payment_password_salt = #{record.paymentPasswordSalt,jdbcType=VARCHAR},
-    invite_suncode = #{record.inviteSuncode,jdbcType=VARCHAR},
     unreceived_points = #{record.unreceivedPoints,jdbcType=DECIMAL},
-    unreceived_invite_reward_amount = #{record.unreceivedInviteRewardAmount,jdbcType=DECIMAL},
     create_time = #{record.createTime,jdbcType=TIMESTAMP},
     update_time = #{record.updateTime,jdbcType=TIMESTAMP},
     last_login_time = #{record.lastLoginTime,jdbcType=TIMESTAMP}
@@ -804,9 +753,6 @@
       <if test="lastRequestWxNotifyTime != null" >
         last_request_wx_notify_time = #{lastRequestWxNotifyTime,jdbcType=TIMESTAMP},
       </if>
-      <if test="inviteRewardAmount != null" >
-        invite_reward_amount = #{inviteRewardAmount,jdbcType=DECIMAL},
-      </if>
       <if test="realName != null" >
         real_name = #{realName,jdbcType=VARCHAR},
       </if>
@@ -825,23 +771,14 @@
       <if test="growth != null" >
         growth = #{growth,jdbcType=INTEGER},
       </if>
-      <if test="totalWithdrawInviteRewardAmount != null" >
-        total_withdraw_invite_reward_amount = #{totalWithdrawInviteRewardAmount,jdbcType=DECIMAL},
-      </if>
       <if test="paymentPassword != null" >
         payment_password = #{paymentPassword,jdbcType=VARCHAR},
       </if>
       <if test="paymentPasswordSalt != null" >
         payment_password_salt = #{paymentPasswordSalt,jdbcType=VARCHAR},
       </if>
-      <if test="inviteSuncode != null" >
-        invite_suncode = #{inviteSuncode,jdbcType=VARCHAR},
-      </if>
       <if test="unreceivedPoints != null" >
         unreceived_points = #{unreceivedPoints,jdbcType=DECIMAL},
-      </if>
-      <if test="unreceivedInviteRewardAmount != null" >
-        unreceived_invite_reward_amount = #{unreceivedInviteRewardAmount,jdbcType=DECIMAL},
       </if>
       <if test="createTime != null" >
         create_time = #{createTime,jdbcType=TIMESTAMP},
@@ -888,19 +825,15 @@
       wx_public_platform_open_id = #{wxPublicPlatformOpenId,jdbcType=VARCHAR},
       is_request_wx_notify = #{isRequestWxNotify,jdbcType=BIT},
       last_request_wx_notify_time = #{lastRequestWxNotifyTime,jdbcType=TIMESTAMP},
-      invite_reward_amount = #{inviteRewardAmount,jdbcType=DECIMAL},
       real_name = #{realName,jdbcType=VARCHAR},
       total_balance = #{totalBalance,jdbcType=DECIMAL},
       total_consume_balance = #{totalConsumeBalance,jdbcType=DECIMAL},
       total_points = #{totalPoints,jdbcType=DECIMAL},
       total_consume_points = #{totalConsumePoints,jdbcType=DECIMAL},
       growth = #{growth,jdbcType=INTEGER},
-      total_withdraw_invite_reward_amount = #{totalWithdrawInviteRewardAmount,jdbcType=DECIMAL},
       payment_password = #{paymentPassword,jdbcType=VARCHAR},
       payment_password_salt = #{paymentPasswordSalt,jdbcType=VARCHAR},
-      invite_suncode = #{inviteSuncode,jdbcType=VARCHAR},
       unreceived_points = #{unreceivedPoints,jdbcType=DECIMAL},
-      unreceived_invite_reward_amount = #{unreceivedInviteRewardAmount,jdbcType=DECIMAL},
       create_time = #{createTime,jdbcType=TIMESTAMP},
       update_time = #{updateTime,jdbcType=TIMESTAMP},
       last_login_time = #{lastLoginTime,jdbcType=TIMESTAMP}

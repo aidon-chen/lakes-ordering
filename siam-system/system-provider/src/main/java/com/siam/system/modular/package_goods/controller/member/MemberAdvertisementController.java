@@ -73,36 +73,7 @@ public class MemberAdvertisementController {
 
         Page<Advertisement> page = advertisementService.getListByPage(advertisement);
 
-        if(advertisement.getType().equals(Quantity.INT_4)){
-            //截取个人邀请分享太阳码的文件名
-            int suncode_index = loginMember.getInviteSuncode().lastIndexOf("/");
-            String suncode_fileName = loginMember.getInviteSuncode().substring(suncode_index+1);
-
-            //如果类型为分享页面生成美图，则需要合成个人邀请二维码
-            page.getRecords().forEach(dbAdvertisement -> {
-                int index = dbAdvertisement.getImagePath().lastIndexOf("/");
-                String poster_fileName = dbAdvertisement.getImagePath().substring(index+1);
-                String fileName = suncode_fileName + "--" + poster_fileName;
-                String filePath = "data/images/invite_poster_compose/" + loginMember.getId() + "/" + fileName;
-                Boolean isExist = ossUtils.doesObjectExist(filePath);
-                if (isExist){
-                    filePath = filePath + "?time="+ DateUtil.current();
-                    dbAdvertisement.setImagePath(filePath);
-                } else {
-                    //合成并上传图片
-                    String compose_path = "data/images/invite_poster_compose/" + loginMember.getId();
-                    String compose_fileName = suncode_fileName + "--" + poster_fileName;
-                    String savePath = compose_path + "/" + compose_fileName;
-                    try {
-                        imageComposeUtils.compoundImage(BusinessType.OSS_PREFIX + dbAdvertisement.getImagePath(), BusinessType.OSS_PREFIX + loginMember.getInviteSuncode(), savePath, loginMember.getVipNo());
-                        savePath = savePath + "?time="+ DateUtil.current();
-                        dbAdvertisement.setImagePath(savePath);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-            });
-        }
+        //（type=4 分享海报已于 2026-09-25 拍板废弃；其个人太阳码合成逻辑随邀请奖励金体系一并移除）
 
         return BasicResult.success(page);
     }

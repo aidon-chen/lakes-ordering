@@ -53,14 +53,11 @@
 			return {
 				brandName: '湖里Lakes',
 				slogan: '一杯敬深夜 · 一场敬热爱',
-				inviterId: '',
 				agreed: true
 			};
 		},
 		onLoad(options) {
 			app = getApp();
-			this.inviterId = (options && options.inviterId) ? options.inviterId : '';
-			console.log('{获取用户信息页面},options.inviterId = ' + this.inviterId);
 		},
 		methods: {
 			//未勾选协议时统一拦截
@@ -72,7 +69,7 @@
 
 			goChoose() {
 				uni.redirectTo({
-					url: '../choose/choose?inviterId=' + this.inviterId
+					url: '../choose/choose'
 				});
 			},
 
@@ -103,7 +100,7 @@
 			phoneLogin() {
 				if (!this.checkAgreed()) return;
 				uni.navigateTo({
-					url: '../code/code?inviterId=' + this.inviterId
+					url: '../code/code'
 				});
 			}
 		}

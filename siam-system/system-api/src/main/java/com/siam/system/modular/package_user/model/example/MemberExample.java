@@ -2156,65 +2156,17 @@ public class MemberExample {
             return (Criteria) this;
         }
 
-        public Criteria andInviteRewardAmountIsNull() {
-            addCriterion("invite_reward_amount is null");
-            return (Criteria) this;
-        }
 
-        public Criteria andInviteRewardAmountIsNotNull() {
-            addCriterion("invite_reward_amount is not null");
-            return (Criteria) this;
-        }
 
-        public Criteria andInviteRewardAmountEqualTo(BigDecimal value) {
-            addCriterion("invite_reward_amount =", value, "inviteRewardAmount");
-            return (Criteria) this;
-        }
 
-        public Criteria andInviteRewardAmountNotEqualTo(BigDecimal value) {
-            addCriterion("invite_reward_amount <>", value, "inviteRewardAmount");
-            return (Criteria) this;
-        }
 
-        public Criteria andInviteRewardAmountGreaterThan(BigDecimal value) {
-            addCriterion("invite_reward_amount >", value, "inviteRewardAmount");
-            return (Criteria) this;
-        }
 
-        public Criteria andInviteRewardAmountGreaterThanOrEqualTo(BigDecimal value) {
-            addCriterion("invite_reward_amount >=", value, "inviteRewardAmount");
-            return (Criteria) this;
-        }
 
-        public Criteria andInviteRewardAmountLessThan(BigDecimal value) {
-            addCriterion("invite_reward_amount <", value, "inviteRewardAmount");
-            return (Criteria) this;
-        }
 
-        public Criteria andInviteRewardAmountLessThanOrEqualTo(BigDecimal value) {
-            addCriterion("invite_reward_amount <=", value, "inviteRewardAmount");
-            return (Criteria) this;
-        }
 
-        public Criteria andInviteRewardAmountIn(List<BigDecimal> values) {
-            addCriterion("invite_reward_amount in", values, "inviteRewardAmount");
-            return (Criteria) this;
-        }
 
-        public Criteria andInviteRewardAmountNotIn(List<BigDecimal> values) {
-            addCriterion("invite_reward_amount not in", values, "inviteRewardAmount");
-            return (Criteria) this;
-        }
 
-        public Criteria andInviteRewardAmountBetween(BigDecimal value1, BigDecimal value2) {
-            addCriterion("invite_reward_amount between", value1, value2, "inviteRewardAmount");
-            return (Criteria) this;
-        }
 
-        public Criteria andInviteRewardAmountNotBetween(BigDecimal value1, BigDecimal value2) {
-            addCriterion("invite_reward_amount not between", value1, value2, "inviteRewardAmount");
-            return (Criteria) this;
-        }
 
         public Criteria andRealNameIsNull() {
             addCriterion("real_name is null");
@@ -2526,65 +2478,17 @@ public class MemberExample {
             return (Criteria) this;
         }
 
-        public Criteria andTotalWithdrawInviteRewardAmountIsNull() {
-            addCriterion("total_withdraw_invite_reward_amount is null");
-            return (Criteria) this;
-        }
 
-        public Criteria andTotalWithdrawInviteRewardAmountIsNotNull() {
-            addCriterion("total_withdraw_invite_reward_amount is not null");
-            return (Criteria) this;
-        }
 
-        public Criteria andTotalWithdrawInviteRewardAmountEqualTo(BigDecimal value) {
-            addCriterion("total_withdraw_invite_reward_amount =", value, "totalWithdrawInviteRewardAmount");
-            return (Criteria) this;
-        }
 
-        public Criteria andTotalWithdrawInviteRewardAmountNotEqualTo(BigDecimal value) {
-            addCriterion("total_withdraw_invite_reward_amount <>", value, "totalWithdrawInviteRewardAmount");
-            return (Criteria) this;
-        }
 
-        public Criteria andTotalWithdrawInviteRewardAmountGreaterThan(BigDecimal value) {
-            addCriterion("total_withdraw_invite_reward_amount >", value, "totalWithdrawInviteRewardAmount");
-            return (Criteria) this;
-        }
 
-        public Criteria andTotalWithdrawInviteRewardAmountGreaterThanOrEqualTo(BigDecimal value) {
-            addCriterion("total_withdraw_invite_reward_amount >=", value, "totalWithdrawInviteRewardAmount");
-            return (Criteria) this;
-        }
 
-        public Criteria andTotalWithdrawInviteRewardAmountLessThan(BigDecimal value) {
-            addCriterion("total_withdraw_invite_reward_amount <", value, "totalWithdrawInviteRewardAmount");
-            return (Criteria) this;
-        }
 
-        public Criteria andTotalWithdrawInviteRewardAmountLessThanOrEqualTo(BigDecimal value) {
-            addCriterion("total_withdraw_invite_reward_amount <=", value, "totalWithdrawInviteRewardAmount");
-            return (Criteria) this;
-        }
 
-        public Criteria andTotalWithdrawInviteRewardAmountIn(List<BigDecimal> values) {
-            addCriterion("total_withdraw_invite_reward_amount in", values, "totalWithdrawInviteRewardAmount");
-            return (Criteria) this;
-        }
 
-        public Criteria andTotalWithdrawInviteRewardAmountNotIn(List<BigDecimal> values) {
-            addCriterion("total_withdraw_invite_reward_amount not in", values, "totalWithdrawInviteRewardAmount");
-            return (Criteria) this;
-        }
 
-        public Criteria andTotalWithdrawInviteRewardAmountBetween(BigDecimal value1, BigDecimal value2) {
-            addCriterion("total_withdraw_invite_reward_amount between", value1, value2, "totalWithdrawInviteRewardAmount");
-            return (Criteria) this;
-        }
 
-        public Criteria andTotalWithdrawInviteRewardAmountNotBetween(BigDecimal value1, BigDecimal value2) {
-            addCriterion("total_withdraw_invite_reward_amount not between", value1, value2, "totalWithdrawInviteRewardAmount");
-            return (Criteria) this;
-        }
 
         public Criteria andPaymentPasswordIsNull() {
             addCriterion("payment_password is null");
@@ -2726,75 +2630,19 @@ public class MemberExample {
             return (Criteria) this;
         }
 
-        public Criteria andInviteSuncodeIsNull() {
-            addCriterion("invite_suncode is null");
-            return (Criteria) this;
-        }
 
-        public Criteria andInviteSuncodeIsNotNull() {
-            addCriterion("invite_suncode is not null");
-            return (Criteria) this;
-        }
 
-        public Criteria andInviteSuncodeEqualTo(String value) {
-            addCriterion("invite_suncode =", value, "inviteSuncode");
-            return (Criteria) this;
-        }
 
-        public Criteria andInviteSuncodeNotEqualTo(String value) {
-            addCriterion("invite_suncode <>", value, "inviteSuncode");
-            return (Criteria) this;
-        }
 
-        public Criteria andInviteSuncodeGreaterThan(String value) {
-            addCriterion("invite_suncode >", value, "inviteSuncode");
-            return (Criteria) this;
-        }
 
-        public Criteria andInviteSuncodeGreaterThanOrEqualTo(String value) {
-            addCriterion("invite_suncode >=", value, "inviteSuncode");
-            return (Criteria) this;
-        }
 
-        public Criteria andInviteSuncodeLessThan(String value) {
-            addCriterion("invite_suncode <", value, "inviteSuncode");
-            return (Criteria) this;
-        }
 
-        public Criteria andInviteSuncodeLessThanOrEqualTo(String value) {
-            addCriterion("invite_suncode <=", value, "inviteSuncode");
-            return (Criteria) this;
-        }
 
-        public Criteria andInviteSuncodeLike(String value) {
-            addCriterion("invite_suncode like", value, "inviteSuncode");
-            return (Criteria) this;
-        }
 
-        public Criteria andInviteSuncodeNotLike(String value) {
-            addCriterion("invite_suncode not like", value, "inviteSuncode");
-            return (Criteria) this;
-        }
 
-        public Criteria andInviteSuncodeIn(List<String> values) {
-            addCriterion("invite_suncode in", values, "inviteSuncode");
-            return (Criteria) this;
-        }
 
-        public Criteria andInviteSuncodeNotIn(List<String> values) {
-            addCriterion("invite_suncode not in", values, "inviteSuncode");
-            return (Criteria) this;
-        }
 
-        public Criteria andInviteSuncodeBetween(String value1, String value2) {
-            addCriterion("invite_suncode between", value1, value2, "inviteSuncode");
-            return (Criteria) this;
-        }
 
-        public Criteria andInviteSuncodeNotBetween(String value1, String value2) {
-            addCriterion("invite_suncode not between", value1, value2, "inviteSuncode");
-            return (Criteria) this;
-        }
 
         public Criteria andUnreceivedPointsIsNull() {
             addCriterion("unreceived_points is null");
@@ -2856,65 +2704,17 @@ public class MemberExample {
             return (Criteria) this;
         }
 
-        public Criteria andUnreceivedInviteRewardAmountIsNull() {
-            addCriterion("unreceived_invite_reward_amount is null");
-            return (Criteria) this;
-        }
 
-        public Criteria andUnreceivedInviteRewardAmountIsNotNull() {
-            addCriterion("unreceived_invite_reward_amount is not null");
-            return (Criteria) this;
-        }
 
-        public Criteria andUnreceivedInviteRewardAmountEqualTo(BigDecimal value) {
-            addCriterion("unreceived_invite_reward_amount =", value, "unreceivedInviteRewardAmount");
-            return (Criteria) this;
-        }
 
-        public Criteria andUnreceivedInviteRewardAmountNotEqualTo(BigDecimal value) {
-            addCriterion("unreceived_invite_reward_amount <>", value, "unreceivedInviteRewardAmount");
-            return (Criteria) this;
-        }
 
-        public Criteria andUnreceivedInviteRewardAmountGreaterThan(BigDecimal value) {
-            addCriterion("unreceived_invite_reward_amount >", value, "unreceivedInviteRewardAmount");
-            return (Criteria) this;
-        }
 
-        public Criteria andUnreceivedInviteRewardAmountGreaterThanOrEqualTo(BigDecimal value) {
-            addCriterion("unreceived_invite_reward_amount >=", value, "unreceivedInviteRewardAmount");
-            return (Criteria) this;
-        }
 
-        public Criteria andUnreceivedInviteRewardAmountLessThan(BigDecimal value) {
-            addCriterion("unreceived_invite_reward_amount <", value, "unreceivedInviteRewardAmount");
-            return (Criteria) this;
-        }
 
-        public Criteria andUnreceivedInviteRewardAmountLessThanOrEqualTo(BigDecimal value) {
-            addCriterion("unreceived_invite_reward_amount <=", value, "unreceivedInviteRewardAmount");
-            return (Criteria) this;
-        }
 
-        public Criteria andUnreceivedInviteRewardAmountIn(List<BigDecimal> values) {
-            addCriterion("unreceived_invite_reward_amount in", values, "unreceivedInviteRewardAmount");
-            return (Criteria) this;
-        }
 
-        public Criteria andUnreceivedInviteRewardAmountNotIn(List<BigDecimal> values) {
-            addCriterion("unreceived_invite_reward_amount not in", values, "unreceivedInviteRewardAmount");
-            return (Criteria) this;
-        }
 
-        public Criteria andUnreceivedInviteRewardAmountBetween(BigDecimal value1, BigDecimal value2) {
-            addCriterion("unreceived_invite_reward_amount between", value1, value2, "unreceivedInviteRewardAmount");
-            return (Criteria) this;
-        }
 
-        public Criteria andUnreceivedInviteRewardAmountNotBetween(BigDecimal value1, BigDecimal value2) {
-            addCriterion("unreceived_invite_reward_amount not between", value1, value2, "unreceivedInviteRewardAmount");
-            return (Criteria) this;
-        }
 
         public Criteria andCreateTimeIsNull() {
             addCriterion("create_time is null");

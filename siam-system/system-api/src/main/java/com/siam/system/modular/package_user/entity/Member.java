@@ -82,7 +82,6 @@ public class Member {
 
     private Date lastRequestWxNotifyTime;
 
-    private BigDecimal inviteRewardAmount;
 
     private String realName;
 
@@ -97,17 +96,14 @@ public class Member {
     //累计成长值（只增不减，仅用于判定会员等级；对应「积分体系改会员成长值」口径）
     private Integer growth;
 
-    private BigDecimal totalWithdrawInviteRewardAmount;
 
     private String paymentPassword;
 
     private String paymentPasswordSalt;
 
-    private String inviteSuncode;
 
     private BigDecimal unreceivedPoints;
 
-    private BigDecimal unreceivedInviteRewardAmount;
 
     private Date createTime;
 

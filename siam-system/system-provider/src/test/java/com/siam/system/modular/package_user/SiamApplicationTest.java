@@ -2,9 +2,7 @@ package com.siam.system.modular.package_user;
 
 import com.siam.system.modular.package_user.auth.cache.MemberSessionManager;
 import com.siam.system.modular.package_user.entity.Member;
-import com.siam.system.modular.package_user.entity.MemberWithdrawRecord;
 import com.siam.system.modular.package_user.service.MemberService;
-import com.siam.system.modular.package_user.service.MemberWithdrawRecordService;
 import com.siam.system.util.TokenUtil;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -27,7 +25,6 @@ public class SiamApplicationTest {
     private MemberService memberService;
 
     @Autowired
-    MemberWithdrawRecordService memberWithdrawRecordService;
 
     @Test
     public void testGetMaxVipNo(){
@@ -57,17 +54,5 @@ public class SiamApplicationTest {
 //        memberService.selectByExample(new MemberExample());
 
         System.out.println(TokenUtil.getToken());
-    }
-
-
-    @Test
-    public void testInsertMemberWithdrawRecord(){
-        MemberWithdrawRecord memberWithdrawRecord = new MemberWithdrawRecord();
-        memberWithdrawRecord.setMemberId(1);
-        memberWithdrawRecord.setOrderNo("1");
-        memberWithdrawRecord.setCoinType(1);
-        memberWithdrawRecord.setWithdrawAmount(BigDecimal.ZERO);
-        memberWithdrawRecord.setPlatformFee(BigDecimal.ZERO);
-        memberWithdrawRecordService.save(memberWithdrawRecord);
     }
 }

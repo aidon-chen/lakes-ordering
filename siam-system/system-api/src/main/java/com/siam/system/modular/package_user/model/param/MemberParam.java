@@ -20,8 +20,6 @@ public class MemberParam extends Member {
     //微信code
     private String code;
 
-    //邀请者id
-    private String inviterId;
 
     //开始日期
     private Date startCreateTime;

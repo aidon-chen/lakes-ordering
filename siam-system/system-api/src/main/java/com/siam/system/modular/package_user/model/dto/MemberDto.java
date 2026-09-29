@@ -15,7 +15,6 @@ public class MemberDto extends Member {
     private BigDecimal totayGainPoints;
 
     //昨日收益-邀请新用户注册奖励金额/佣金
-    private BigDecimal yesterdayGainInviteRewardAmount;
 
     //优惠券数量
     private Integer couponsNumber;

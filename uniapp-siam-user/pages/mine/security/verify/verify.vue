@@ -98,7 +98,6 @@
 				if (!this.userInfo.mobile) {
 					return;
 				}
-				//this.onLoad({options:{inviterId:this.data.inviterId}});
 				let phone = this.userInfo.mobile;
 				let isMobile = utils.verifyPhone(phone);
 				//电话号码输入有误，弹出模态框提示

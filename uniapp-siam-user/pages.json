@@ -145,21 +145,6 @@
 			}
 		},
 		{
-			"path": "pages/mine/share/index/index",
-			"style": {
-				"navigationBarTitleText": "全民参与 · 邀请好友",
-				"navigationBarBackgroundColor": "#edf3df"
-			}
-		},
-		{
-			"path": "pages/mine/share/reward/reward",
-			"style": {
-				"navigationBarTitleText": "我的奖励",
-				"navigationBarBackgroundColor": "#5f7d22",
-				"navigationBarTextStyle": "white"
-			}
-		},
-		{
 			"path": "pages/menu/index/index",
 			"style": {
 				"navigationBarTitleText": "菜单"
@@ -285,18 +270,6 @@
 			"style": {
 				"usingComponents": {},
 				"navigationBarTitleText": "隐私政策"
-			}
-		},
-		{
-			"path": "pages/mine/share/withdrawal/index/index",
-			"style": {
-				"navigationBarTitleText": "奖励提现"
-			}
-		},
-		{
-			"path": "pages/mine/share/withdrawal/detail/detail",
-			"style": {
-				"navigationBarTitleText": "提现记录"
 			}
 		},
 		{

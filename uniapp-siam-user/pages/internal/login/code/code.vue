@@ -77,7 +77,6 @@
 				time: '获取验证码',
 				currentTime: 60,
 				counting: false,
-				inviterId: '',
 				userInfo: '',
 				timestamp: '',
 				phone: '',
@@ -101,10 +100,6 @@
 		onLoad(options) {
 			app = getApp();
 			const opts = options || {};
-			if (opts.inviterId) {
-				this.inviterId = opts.inviterId;
-			}
-			console.log('options.inviterId = ' + this.inviterId);
 			if (app.globalData.userInfo) {
 				this.userInfo = app.globalData.userInfo;
 			} else {
@@ -223,8 +218,7 @@
 					headImg: info.avatarUrl,
 					username: info.nickName,
 					sex: info.gender,
-					code: code,
-					inviterId: this.inviterId ? this.inviterId : ''
+					code: code
 				}).then((result) => {
 					//无论成功失败都要收起 loading，否则失败时页面会一直卡在遮罩上
 					toastService.hideLoading();
@@ -232,6 +226,12 @@
 						authService.setToken(result.data.token);
 						authService.setOpenId(result.data.openId);
 						authService.setPhoneNumber(this.phone);
+						// 本次为自动注册（手机号首次登录）→ 落到「我的」后弹一次「完善个人资料」。
+						// isNewPeople 由后端在自动注册分支回传；老版本后端不返该字段时为 undefined → 不弹（安全降级）。
+						// 存量用户不打扰，改资料走「我的 → 个人资料」。
+						if (result.data && result.data.isNewPeople) {
+							app.globalData.needProfileSetup = true;
+						}
 						app.globalData.getUserInfo();
 						toastService.showSuccess('登录成功');
 						const timeout = setTimeout(() => {

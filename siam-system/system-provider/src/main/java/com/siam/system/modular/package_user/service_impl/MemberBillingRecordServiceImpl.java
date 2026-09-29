@@ -122,7 +122,7 @@ public class MemberBillingRecordServiceImpl implements MemberBillingRecordServic
                 updateMemberBillingRecord.setId(dbMemberBillingRecord.getId());
                 updateMemberBillingRecord.setIsSettled(true);
                 this.updateByPrimaryKeySelective(updateMemberBillingRecord);
-
+            }
         });
 
     }
