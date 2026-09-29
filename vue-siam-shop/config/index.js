@@ -25,13 +25,12 @@ module.exports = {
     rootPath: '',
     name: 'siam-shop',
     http:{
-      //baseUrl: 'http://localhost:9411/siam-server', // 本地联调
-      //cashierBaseUrl: 'http://127.0.0.1:5174' // 本地收银台
+      //baseUrl: 'http://localhost:9411/siam-server', // 本地联调（勿用于 build：production 构建产物直连此处）
 
       //生产：云托管 bar-mvp 公网域名（2026-09-18 部署接入）
       baseUrl: 'https://bar-mvp-315579-12-1488393615.sh.run.tcloudbase.com/siam-server', // production
       baseUrl4Test: 'https://bar-mvp-315579-12-1488393615.sh.run.tcloudbase.com/siam-server', // production_test
-      developmentBaseUrl: 'https://bar-mvp-315579-12-1488393615.sh.run.tcloudbase.com/siam-server', // development（本地联调：本地后端 9411）
+      developmentBaseUrl: 'http://localhost:9411/siam-server', // development（09-29 切回本地 9411；验证营收看板双窗口修复）
       cashierBaseUrl: '/cashier' // 收银台静态托管子目录（同域相对路径，如改独立域名则填完整 URL）
     },
     oss:{
