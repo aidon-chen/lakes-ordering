@@ -478,32 +478,46 @@ public class StatisticsServiceImpl implements StatisticsService {
     public Map revenueStatistic(StatisticsParam param) {
         Map resultMap = new HashMap();
 
-        //1、维度与统计区间（缺省区间：日=近30天、周=近12周、月=近12月）
+        //1、维度与时间格式（日/周/月 → 趋势分桶粒度）
         String timeType = (param.getTimeType() == null || param.getTimeType().trim().isEmpty())
                 ? "DAY" : param.getTimeType().trim().toUpperCase();
-        String dateFormat;
+        // 趋势分桶粒度：日→按小时、周/月→按天，使所选时段内的曲线有可看的形状
+        String trendDateFormat;
         if ("WEEK".equals(timeType)) {
-            dateFormat = "%x-W%v";
+            trendDateFormat = "%Y-%m-%d";
         } else if ("MONTH".equals(timeType)) {
-            dateFormat = "%Y-%m";
+            trendDateFormat = "%Y-%m-%d";
         } else {
             timeType = "DAY";
-            dateFormat = "%Y-%m-%d";
+            trendDateFormat = "%Y-%m-%d %H:00";
         }
-        Date endTime = (param.getEndCreateTime() != null) ? param.getEndCreateTime() : DateUtilsExtend.getDayEnd();
-        Date startTime = param.getStartCreateTime();
-        if (startTime == null) {
-            Calendar calendar = Calendar.getInstance();
-            calendar.setTime(endTime);
+
+        //1a、当期窗口（4 卡片 + 趋势/分布/Top10 统一使用）：日=今日、周=本周、月=本月；
+        //   手动选区间则统一用所选区间（cardStart/cardEnd）。曲线严格按所选时段绘制。
+        Date cardStart;
+        Date cardEnd;
+        if (param.getStartCreateTime() != null && param.getEndCreateTime() != null) {
+            cardStart = param.getStartCreateTime();
+            cardEnd = dayEndOf(param.getEndCreateTime());
+        } else {
             if ("WEEK".equals(timeType)) {
-                calendar.add(Calendar.DAY_OF_MONTH, -7 * 12);
+                // 上一周：上周一 00:00 ~ 上周日 23:59:59（完整自然周；用户口径「周=上一周，不是下一周」）
+                cardStart = DateUtilsExtend.getBeginDayOfLastWeek();
+                cardEnd = DateUtilsExtend.getEndDayOfLastWeek();
             } else if ("MONTH".equals(timeType)) {
-                calendar.add(Calendar.MONTH, -12);
+                // 本月：1 日 00:00 ~ 月末 23:59:59（完整自然月）
+                cardStart = DateUtilsExtend.getBeginDayOfMonth();
+                cardEnd = DateUtilsExtend.getEndDayOfMonth();
             } else {
-                calendar.add(Calendar.DAY_OF_MONTH, -30);
+                // 今日：00:00 ~ 23:59:59
+                cardStart = DateUtilsExtend.getDayBegin();
+                cardEnd = DateUtilsExtend.getDayEnd();
             }
-            startTime = calendar.getTime();
         }
+
+        //1b、趋势/分布/Top10 复用当期窗口（撤销原先独立的"历史窗口"），避免图表与标签范围错配
+        Date histStart = cardStart;
+        Date histEnd = cardEnd;
 
         //2、取数门店：管理端经桥接的商家会话取当前门店（单店口径）
         Merchant loginMerchant = merchantSessionManager.getSession(TokenUtil.getToken());
@@ -512,14 +526,14 @@ public class StatisticsServiceImpl implements StatisticsService {
         //3、核心指标：营业额 = 店内单 + 商城自提单；订单数同理
         OrderParam orderParam = new OrderParam();
         orderParam.setShopId(shopId);
-        orderParam.setStartTime(startTime);
-        orderParam.setEndTime(endTime);
+        orderParam.setStartTime(cardStart);
+        orderParam.setEndTime(cardEnd);
         int shopOrderCount = orderService.selectCountCompleted(orderParam);
         BigDecimal shopOrderAmount = orderService.selectSumActualPrice(orderParam);
 
         PointsMallOrderParam mallParam = new PointsMallOrderParam();
-        int mallOrderCount = pointsMallOrderService.selectCountCompleted(mallParam, startTime, endTime);
-        BigDecimal mallOrderAmount = pointsMallOrderService.selectSumActualPrice(mallParam, startTime, endTime);
+        int mallOrderCount = pointsMallOrderService.selectCountCompleted(mallParam, cardStart, cardEnd);
+        BigDecimal mallOrderAmount = pointsMallOrderService.selectSumActualPrice(mallParam, cardStart, cardEnd);
 
         int totalOrderCount = shopOrderCount + mallOrderCount;
         BigDecimal totalOrderAmount = shopOrderAmount.add(mallOrderAmount).setScale(2, BigDecimal.ROUND_HALF_UP);
@@ -531,25 +545,25 @@ public class StatisticsServiceImpl implements StatisticsService {
 
         //退款额 = 售后处理完成(status=7)的退款金额合计（原路退回 + 退至平台余额/积分）
         OrderRefund orderRefund = new OrderRefund();
-        BigDecimal refundAmount = orderRefundService.selectSumRefundAmount(orderRefund, startTime, endTime)
-                .add(orderRefundService.selectSumRefundAmountByPlatformCoin(orderRefund, startTime, endTime))
+        BigDecimal refundAmount = orderRefundService.selectSumRefundAmount(orderRefund, cardStart, cardEnd)
+                .add(orderRefundService.selectSumRefundAmountByPlatformCoin(orderRefund, cardStart, cardEnd))
                 .setScale(2, BigDecimal.ROUND_HALF_UP);
 
         //4、趋势折线：店内单与商城单按同一维度分桶后合并
         Map<String, Map<String, Object>> trendMap = new LinkedHashMap<>();
-        for (Map<String, Object> row : orderService.selectRevenueTrend(shopId, startTime, endTime, dateFormat)) {
+        for (Map<String, Object> row : orderService.selectRevenueTrend(shopId, histStart, histEnd, trendDateFormat)) {
             mergeTrendRow(trendMap, row);
         }
-        for (Map<String, Object> row : pointsMallOrderService.selectRevenueTrend(startTime, endTime, dateFormat)) {
+        for (Map<String, Object> row : pointsMallOrderService.selectRevenueTrend(histStart, histEnd, trendDateFormat)) {
             mergeTrendRow(trendMap, row);
         }
 
         //5、支付方式分布（饼图）：payment_mode 为空按「到店支付」归类
         Map<Integer, Map<String, Object>> paymentMap = new LinkedHashMap<>();
-        for (Map<String, Object> row : orderService.selectRevenuePaymentDistribution(shopId, startTime, endTime)) {
+        for (Map<String, Object> row : orderService.selectRevenuePaymentDistribution(shopId, histStart, histEnd)) {
             mergeDistributionRow(paymentMap, row, "paymentMode");
         }
-        for (Map<String, Object> row : pointsMallOrderService.selectRevenuePaymentDistribution(startTime, endTime)) {
+        for (Map<String, Object> row : pointsMallOrderService.selectRevenuePaymentDistribution(histStart, histEnd)) {
             mergeDistributionRow(paymentMap, row, "paymentMode");
         }
         List<Map<String, Object>> paymentModeList = new ArrayList<>();
@@ -561,7 +575,7 @@ public class StatisticsServiceImpl implements StatisticsService {
 
         //6、订单类型分布（环形图）：1=堂食、2=自提（tb_order.order_scene），商城自提单单列一类
         Map<Integer, Map<String, Object>> sceneMap = new LinkedHashMap<>();
-        for (Map<String, Object> row : orderService.selectRevenueSceneDistribution(shopId, startTime, endTime)) {
+        for (Map<String, Object> row : orderService.selectRevenueSceneDistribution(shopId, histStart, histEnd)) {
             mergeDistributionRow(sceneMap, row, "orderScene");
         }
         List<Map<String, Object>> orderSceneList = new ArrayList<>();
@@ -580,10 +594,10 @@ public class StatisticsServiceImpl implements StatisticsService {
 
         //7、商品销售 TOP10：店内单与商城单按商品名合并后取前10
         Map<String, Map<String, Object>> goodsMap = new LinkedHashMap<>();
-        for (Map<String, Object> row : orderService.selectRevenueTopGoods(shopId, startTime, endTime)) {
+        for (Map<String, Object> row : orderService.selectRevenueTopGoods(shopId, histStart, histEnd)) {
             mergeTopGoodsRow(goodsMap, row);
         }
-        for (Map<String, Object> row : pointsMallOrderService.selectRevenueTopGoods(startTime, endTime)) {
+        for (Map<String, Object> row : pointsMallOrderService.selectRevenueTopGoods(histStart, histEnd)) {
             mergeTopGoodsRow(goodsMap, row);
         }
         List<Map<String, Object>> topGoodsList = new ArrayList<>(goodsMap.values());
@@ -594,8 +608,8 @@ public class StatisticsServiceImpl implements StatisticsService {
         }
 
         resultMap.put("timeType", timeType);
-        resultMap.put("startTime", startTime);
-        resultMap.put("endTime", endTime);
+        resultMap.put("startTime", cardStart);
+        resultMap.put("endTime", cardEnd);
         resultMap.put("orderAmount", totalOrderAmount);
         resultMap.put("orderCount", totalOrderCount);
         resultMap.put("perCustomerTransaction", perCustomerTransaction);
@@ -605,6 +619,20 @@ public class StatisticsServiceImpl implements StatisticsService {
         resultMap.put("orderSceneList", orderSceneList);
         resultMap.put("topGoodsList", topGoodsList);
         return resultMap;
+    }
+
+    /**
+     * 归一到当天 23:59:59.000：前端营收统计页手动选区间用 el-date-picker(daterange, 无 value-format)，
+     * 产物为结束日当天 00:00:00，直接用会把结束日整天订单排除在窗口外
+     */
+    private Date dayEndOf(Date date) {
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(date);
+        cal.set(Calendar.HOUR_OF_DAY, 23);
+        cal.set(Calendar.MINUTE, 59);
+        cal.set(Calendar.SECOND, 59);
+        cal.set(Calendar.MILLISECOND, 0);
+        return cal.getTime();
     }
 
     /**
