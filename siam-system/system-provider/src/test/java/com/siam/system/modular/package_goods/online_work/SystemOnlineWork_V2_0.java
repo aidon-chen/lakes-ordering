@@ -145,7 +145,6 @@
 //        tb_vip_recharge_record
 //        tb_shop_change_record
 //        tb_merchant_billing_record
-//        tb_merchant_recommend_goods
 //        tb_merchant_token
 //        tb_merchant_trade_record
 //        tb_merchant_withdraw_record*/
@@ -165,7 +164,6 @@
 //        TRUNCATE TABLE tb_vip_recharge_record;
 //        TRUNCATE TABLE tb_shop_change_record;
 //        TRUNCATE TABLE tb_merchant_billing_record;
-//        TRUNCATE TABLE tb_merchant_recommend_goods;
 //        TRUNCATE TABLE tb_merchant_token;
 //        TRUNCATE TABLE tb_merchant_trade_record;
 //        TRUNCATE TABLE tb_merchant_withdraw_record;*/

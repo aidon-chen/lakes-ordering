@@ -26,7 +26,6 @@ const rawmaterialList = () => import( './pages/goodsManage/rawmaterialList.vue')
 const goodsRawmaterialRelationList = () => import( './pages/goodsManage/goodsRawmaterialRelationList.vue')
 const specificationList = () => import( './pages/goodsManage/specificationList.vue')
 const stockList = () => import( './pages/goodsManage/stockList.vue')
-const recommendGoods = () => import( './pages/goodsManage/recommendGoods.vue')
 
 //用户管理（会员管理）
 const memberList = () => import( './pages/memberManage/memberList.vue')
@@ -200,7 +199,6 @@ let routes = [
           { path: '/goodsList', component: goodsList, name: '商品列表' },
           { path: '/addGoods', component: addGoods, name: '新增商品', hidden: true },
           { path: '/editGoods', component: editGoods, name: '编辑商品', hidden: true },
-          { path: '/recommendGoods', component: recommendGoods, name: '商家推荐' },
           // { path: '/goodsAccessoriesList', component: goodsAccessoriesList, name: '商品辅料' },          
           // { path: '/rawmaterialList', component: rawmaterialList, name: '商品原料' },  
           // { path: '/goodsRawmaterialRelationList', component: goodsRawmaterialRelationList, name: '原料配比' },  
