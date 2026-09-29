@@ -3,10 +3,21 @@
 		<!-- 行序对齐画板 21:191：头像 / 用户名 / 绑定手机 / 性别 / 邮箱 / 绑定微信 / 认证身份 -->
 		<!-- 头像 / 用户名：2026-09-25 放开编辑（原先两行只读，用户报「没法编辑我的头像和用户名」）。
 		     头像走 /rest/member/uploadHeadImg（multipart，字段名 file）；用户名走 /rest/member/update。 -->
-		<view class="userinfo-item" @tap="chooseHeadImg">
+		<!-- 头像行（2026-09-28）：点头像 = 使用微信头像（button open-type="chooseAvatar"，
+		     微信要求用户手势落在 button 上）；拍照/相册保留为右侧文字入口。
+		     微信返回的 avatarUrl 是本地临时文件，统一走 uploadHeadImg 上传后才入库。 -->
+		<view class="userinfo-item">
 			<text class="title-text">头像</text>
 			<view class="input-image">
-				<image class="userinfo-avatar" :src="headImgUrl" mode="cover"></image>
+				<!-- #ifdef MP-WEIXIN -->
+				<button class="ua-avatar-btn" open-type="chooseAvatar" @chooseavatar="onChooseAvatar">
+					<image class="userinfo-avatar" :src="headImgUrl" mode="cover"></image>
+				</button>
+				<!-- #endif -->
+				<!-- #ifndef MP-WEIXIN -->
+				<image class="userinfo-avatar" :src="headImgUrl" mode="cover" @tap="chooseHeadImg"></image>
+				<!-- #endif -->
+				<text class="ua-album-link" @tap="chooseHeadImg">拍照/相册</text>
 				<van-icon name="arrow" />
 			</view>
 		</view>
@@ -121,8 +132,12 @@
 			<view class="content_box">
 				<scroll-view scroll-y style="height: 52vh">
 					<view class="content_box">
-						<input class="userinfo-text input-email" placeholder="请输入用户名（20 字以内）"
+						<!-- type="nickname"（2026-09-28）：聚焦后微信键盘上方出现「使用微信昵称」，
+						     点了即自动填入。这是目前唯一合法的微信昵称获取途径
+						     （getUserInfo/getUserProfile 只返回「微信用户」）。 -->
+						<input class="userinfo-text input-email" type="nickname" placeholder="请输入用户名（20 字以内）"
 							:value="usernameInput" maxlength="20" @input="bindInputUsername" />
+						<view class="ua-nickname-hint">聚焦输入框，可在键盘上方选择「使用微信昵称」</view>
 					</view>
 				</scroll-view>
 				<view class="flex_between">
@@ -243,6 +258,16 @@
 			},
 
 			// ===== 头像 =====
+			// 微信头像填写能力：e.detail.avatarUrl 是本地临时文件，直接入库会失效 → 走统一上传
+			onChooseAvatar(e) {
+				const url = e && e.detail && e.detail.avatarUrl;
+				if (!url) {
+					toastService.showToast('未获取到微信头像');
+					return;
+				}
+				this.uploadHeadImg(url);
+			},
+
 			chooseHeadImg() {
 				if (this.headUploading) {
 					return;
@@ -520,6 +545,36 @@
 		justify-content: space-between;
 		padding: 20rpx 30rpx;
 		border-bottom: 1rpx solid #f5f5f5;
+	}
+
+	/* 微信「头像填写能力」必须挂在 button 上：抹掉按钮默认样式，只留圆形头像本身 */
+	.ua-avatar-btn {
+		padding: 0;
+		margin: 0;
+		background: transparent;
+		line-height: 1;
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.ua-avatar-btn::after {
+		border: none;
+	}
+
+	/* 拍照/相册次级入口：点头像本体已经是「微信头像」，这里保留原有两条路径 */
+	.ua-album-link {
+		margin-right: 12rpx;
+		font-size: 24rpx;
+		color: #5f7d22;
+	}
+
+	.ua-nickname-hint {
+		margin-top: 12rpx;
+		font-size: 22rpx;
+		color: #999999;
+		text-align: center;
 	}
 
 	.userinfo-avatar {

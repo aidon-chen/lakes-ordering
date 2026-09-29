@@ -135,6 +135,15 @@
 				</view>
 			</view>
 		</view>
+
+		<!-- 登录后「完善个人资料」弹窗（2026-09-28 新增）：
+		     仅本次登录为自动注册（新账号）时由登录页置位触发，可跳过（用户拍板）。
+		     存量用户不受打扰，改资料走「我的 → 个人资料」页（那里同样能用微信头像/昵称）。 -->
+		<profile-setup
+			v-if="profileSetupShow"
+			:member="member"
+			@close="onProfileSetupClose"
+			@saved="onProfileSetupSaved" />
 	</view>
 </template>
 
@@ -144,9 +153,15 @@
 	import systemStatus from '../../../utils/system-status';
 	import memberLevel from '../../../utils/member-level';
 	import memberBenefit from '../../../utils/member-benefit';
+	// .vue 组件必须在脚本里 import + components 注册（本工程 easycom.autoscan=false，
+	// pages.json 的 usingComponents 只对 wxcomponents 原生组件生效，不会打包 .vue）
+	import profileSetup from '@/components/profile-setup/profile-setup.vue';
 	//获取应用实例
 	let app = null;
 	export default {
+		components: {
+			'profile-setup': profileSetup
+		},
 		data() {
 			return {
 				statusBarHeight: 40,
@@ -192,7 +207,9 @@
 				couponCount: 0,
 				// 身份标识（画板 3:28 红圈「学生」）：'' = 不显示；
 				// 阶段二通过 → 学生/教师（identityType），仅阶段一通过 → 已实名
-				identityBadgeText: ''
+				identityBadgeText: '',
+				// 「完善个人资料」弹窗开关：由 App.globalData.needProfileSetup 驱动（新注册账号弹一次）
+				profileSetupShow: false
 			};
 		},
 		computed: {
@@ -241,6 +258,7 @@
 					this.loadWineList();
 					this.loadIdentityBadge();
 					this.loadCouponCount();
+					this.consumeProfileSetupFlag();
 					return;
 				}
 				this.member = {
@@ -252,6 +270,29 @@
 			});
 		},
 		methods: {
+			// 「完善个人资料」弹窗触发：登录页在「本次为自动注册」时置 globalData.needProfileSetup，
+			// 本页 onShow 消费并立即复位（防切 tab 回来重复弹）。
+			// 延后 700ms 再弹，等 getLoginMemberInfo 返回，弹窗里才能带出默认昵称/头像。
+			consumeProfileSetupFlag() {
+				if (!app || !app.globalData.needProfileSetup) {
+					return;
+				}
+				app.globalData.needProfileSetup = false;
+				const timer = setTimeout(() => {
+					clearTimeout(timer);
+					this.profileSetupShow = true;
+				}, 700);
+			},
+
+			onProfileSetupClose() {
+				this.profileSetupShow = false;
+			},
+
+			// 保存成功：关闭弹窗并重新拉一次会员信息（头像/昵称立即上屏）
+			onProfileSetupSaved() {
+				this.profileSetupShow = false;
+				this.getMemberInfo();
+			},
 			// 会员信息（未登录/接口异常时保持空态，不阻断页面渲染）
 			getMemberInfo() {
 				https.request('/rest/member/getLoginMemberInfo', {}).then((result) => {

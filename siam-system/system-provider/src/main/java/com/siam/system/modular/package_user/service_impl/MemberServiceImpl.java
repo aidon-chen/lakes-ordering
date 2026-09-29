@@ -616,6 +616,10 @@ public class MemberServiceImpl implements MemberService {
 
         // 判断是否已经注册
         Member dbMember = memberMapper.selectByMobile(param.getMobile());
+        // 本次登录是否由「自动注册」产生（该手机号此前不存在）。
+        // 用途：顾客端据此决定登录后是否弹「完善个人资料」引导（2026-09-28）。
+        // ⚠️ 它只描述这一次登录，与 tb_member.is_new_people 那个持久「新人标记」不是一回事。
+        boolean isNewRegistered = false;
         if (dbMember != null) {
             //用户已经注册，直接进行登录操作
             //更新用户登录信息
@@ -627,6 +631,7 @@ public class MemberServiceImpl implements MemberService {
         }else{
             //用户未操作，进行自动注册操作
             dbMember = this.autoRegister(param, Member.REGISTER_WAY_OF_MOBILECODE);
+            isNewRegistered = true;
         }
 
         // 生成token
@@ -640,13 +645,15 @@ public class MemberServiceImpl implements MemberService {
 
         memberResult.setOpenId(openid);
         memberResult.setToken(token);
+        // 本次为自动注册（新账号）时回传 true —— MemberResult.isNewPeople 此前从未被赋值（恒 false 的死字段），
+        // 顾客端登录弹窗判定用它；老版本后端不返回该字段时前端按 false 处理（不弹），属安全降级。
+        memberResult.setIsNewPeople(isNewRegistered);
         return memberResult;
     }
 
     @Override
     public MemberResult wxLogin(MemberParam param) {
         MemberResult memberResult = new MemberResult();
-        log.debug("\n\n邀请者id : " + param.getInviterId());
 
         // 判断是否已经注册
         Member dbMember = memberMapper.selectByMobile(param.getMobile());

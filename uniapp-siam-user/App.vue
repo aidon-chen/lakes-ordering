@@ -109,6 +109,8 @@
 		globalData: {
 			// C-02 首页活动弹窗：待弹标记（App.onShow 置位 → 首页 onShow 消费后复位）
 			needActivityPopup: false,
+			// 「完善个人资料」弹窗：登录页在「本次为自动注册」时置位 → 「我的」页 onShow 消费后复位
+			needProfileSetup: false,
 			// 扫码抑制位：三处 uni.scanCode（首页/点单台/结算页）调起前置 true、complete 后 500ms 复位，
 			// 盖住「原生扫码界面压后台→回前台」触发的 App.onShow，防止误弹首页活动弹窗
 			scanInProgress: false,
