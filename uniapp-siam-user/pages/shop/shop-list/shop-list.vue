@@ -42,9 +42,9 @@
 				location: '',
 				currentShopId: null,
 				currentShopName: '',
-				// 店标固定用主题 logo mark（21:5x 用户拍板：不再取接口 shopLogoImg，
-				// 与首页品牌行 home-brand-mark 同源）
-				shopThemeLogo: '/static/assets/icons/home-brand-mark.png'
+				// 店标固定用主题 logo（21:5x 用户拍板：不再取接口 shopLogoImg；
+				// 22:2x 更正：主题 logo＝「湖里Lakes MUSIC & DRINK」品牌图 lakes-logo.jpg）
+				shopThemeLogo: '/static/assets/logo/lakes-logo.jpg'
 			};
 		},
 		onShow() {

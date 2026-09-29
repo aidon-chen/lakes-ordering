@@ -13,11 +13,11 @@
 		<!-- 顶部渐变带（画板 5:3 #EDF2DE→白）：头像昵称行 + 等级卡 -->
 		<view class="c03-hero">
 			<!-- 头部行（画板 5:17/5:26）：头像 56pt + 昵称 15pt；
-			     有真实头像显示头像，无头像时用默认头像图（湖里Lakes logo，2026-09-24 用户指定） -->
+			     有真实头像显示头像，无头像时用微信默认灰剪影（user-head.png，2026-09-28 用户指定） -->
 			<view class="c03-headrow">
 				<view class="c03-avatar">
 					<image v-if="member.headImg" class="c03-avatar-img" :src="member.headImg" mode="aspectFill"></image>
-					<image v-else class="c03-avatar-img" src="/static/assets/images/default-avatar.jpg" mode="aspectFill"></image>
+					<image v-else class="c03-avatar-img" src="/static/assets/images/user-head.png" mode="aspectFill"></image>
 				</view>
 				<view class="c03-nickname">{{ member.username || '未登录' }}</view>
 			</view>
@@ -40,7 +40,10 @@
 		     0/300/600/1000/2000，画板 0/20/100/300/1000 是参考图残留，拍板 2.2 以工程为准）。
 		     growth 为 0/缺失时整块不渲染，避免造数 -->
 		<view class="c03-axis" v-if="hasGrowth">
+			<!-- 进度填充条（2026-09-28 用户反馈「进度不够明显」）：灰轴上叠主题绿填充，
+			     宽度=V1 点 → 当前成长值在档位内的插值位置，见 computed.axisFillStyle -->
 			<view class="c03-axis-track"></view>
+			<view class="c03-axis-fill" :style="axisFillStyle"></view>
 			<view class="c03-axis-row">
 				<view class="c03-axis-col" v-for="(lv, index) in levels" :key="lv.level">
 					<view class="c03-axis-val">{{ lv.min }}</view>
@@ -162,6 +165,14 @@
 			// 五级刻度轴数据源（正本=member-level.js，验收#1 三页同源）
 			levels() {
 				return memberLevel.LEVELS;
+			},
+			// 刻度轴进度填充宽度（2026-09-28 用户反馈「进度不够明显」）：
+			// 轴线两端各缩进 10%，五个刻度点位于 10%/30%/50%/70%/90%；
+			// 填充从轴最左画到「当前档位 + 档位内进度」处（levelOf 已返回区间内 percent 0~100）
+			axisFillStyle() {
+				const idx = (this.level.level || 1) - 1;
+				const width = 10 + (idx + (this.level.percent || 0) / 100) * 20;
+				return 'width:' + Math.min(width, 90) + '%;';
 			},
 			// 等级卡配色（2026-09-25 等级差异化）：横渐变底（浅→略深）随等级换，
 			// 色值来自 member-level.js 的 card 字段，替换原固定浅绿渐变 #E8F0D9→#C7D9A1。
@@ -467,15 +478,25 @@
 		margin: 44rpx 62rpx 0 62rpx;
 	}
 
-	/* 轴线：2pt→4rpx，两端缩进半列宽让线穿过首尾刻度点中心 */
+	/* 轴线：加粗到 8rpx 让进度可读（2026-09-28 用户反馈），两端缩进半列宽让线穿过首尾刻度点中心 */
 	.c03-axis-track {
 		position: absolute;
 		left: 10%;
 		right: 10%;
-		top: 74rpx;
-		height: 4rpx;
-		border-radius: 2rpx;
-		background: #DFE3D5;
+		top: 72rpx;
+		height: 8rpx;
+		border-radius: 4rpx;
+		background: #E6EADD;
+	}
+
+	/* 进度填充条：与轴线同几何，主题绿渐变覆盖其上，宽度由 axisFillStyle 内联控制 */
+	.c03-axis-fill {
+		position: absolute;
+		left: 10%;
+		top: 72rpx;
+		height: 8rpx;
+		border-radius: 4rpx;
+		background: linear-gradient(90deg, #7DA138 0%, #5F7D22 100%);
 	}
 
 	.c03-axis-row {
@@ -496,19 +517,22 @@
 		color: #8A917F;
 	}
 
-	/* 刻度点：当前 10pt→20rpx 主题绿 / 其余 9pt→18rpx 浅灰（到达过的档位全亮） */
+	/* 刻度点：当前 10pt→20rpx 主题绿 / 其余 9pt→18rpx 浅灰（到达过的档位全亮）；
+	   白圈描边把点与轴线分开，已点亮点再放大一档，进度更醒目（2026-09-28 用户反馈） */
 	.c03-axis-dot {
 		width: 18rpx;
 		height: 18rpx;
 		border-radius: 50%;
 		background: #E6EADD;
 		margin-top: 16rpx;
+		box-shadow: 0 0 0 4rpx #ffffff;
 	}
 
 	.c03-axis-dot-on {
-		width: 20rpx;
-		height: 20rpx;
+		width: 26rpx;
+		height: 26rpx;
 		background: #5F7D22;
+		box-shadow: 0 0 0 4rpx #ffffff;
 	}
 
 	.c03-axis-name {
@@ -642,11 +666,13 @@
 		color: #999999;
 	}
 
-	/* ========== 积分 / 绩点数据行（画板 298:116） ========== */
+	/* ========== 积分 / 绩点数据行（画板 298:116） ==========
+	   2026-09-28 用户反馈「余额和积分太靠两边」：加左右 64rpx 内边距把两栏向内收 */
 	.c03-data-row {
 		display: flex;
 		align-items: flex-start;
 		justify-content: space-between;
+		padding: 0 64rpx;
 		margin-top: 20rpx;
 	}
 
@@ -708,6 +734,9 @@
 		line-height: 26rpx;
 		color: #8A7540;
 		margin-top: 4rpx;
+		/* 2026-09-28 用户反馈「券描述贴边」：加左右内边距；border-box 防 max-width:100% 溢出 */
+		padding: 0 16rpx;
+		box-sizing: border-box;
 		max-width: 100%;
 		overflow: hidden;
 		white-space: nowrap;

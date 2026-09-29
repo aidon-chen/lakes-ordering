@@ -190,7 +190,7 @@
 			headImgUrl() {
 				const img = this.data.headImg;
 				if (!img) {
-					return '/static/assets/images/default-avatar.jpg';
+					return '/static/assets/images/user-head.png';
 				}
 				return img.indexOf('http') === 0 ? img : GlobalConfig.ossUrl + img;
 			},

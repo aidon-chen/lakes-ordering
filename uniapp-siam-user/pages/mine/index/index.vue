@@ -11,8 +11,8 @@
 			<view class="c01-vip-top">
 				<view class="c01-vip-avatar">
 					<image v-if="member.headImg" class="c01-vip-avatar-img" :src="member.headImg" mode="aspectFill"></image>
-					<!-- 默认头像：湖里Lakes logo（2026-09-24 用户指定，替换原品牌红圆+首字母） -->
-					<image v-else class="c01-vip-avatar-img" src="/static/assets/images/default-avatar.jpg" mode="aspectFill"></image>
+					<!-- 默认头像：微信风格灰色人形剪影（2026-09-28 用户指定，弃用门店 logo） -->
+					<image v-else class="c01-vip-avatar-img" src="/static/assets/images/user-head.png" mode="aspectFill"></image>
 				</view>
 				<!-- C-02 个人资料入口：点昵称列进编辑页（原顶部用户行已按画板移入会员卡） -->
 				<view class="c01-vip-info" @tap.stop="goUserInfo">
@@ -45,7 +45,7 @@
 		<view class="c01-vip-card" v-else @tap="goUserInfo">
 			<view class="c01-vip-top">
 				<view class="c01-vip-avatar">
-					<image class="c01-vip-avatar-img" src="/static/assets/images/default-avatar.jpg" mode="aspectFill"></image>
+					<image class="c01-vip-avatar-img" src="/static/assets/images/user-head.png" mode="aspectFill"></image>
 				</view>
 				<view class="c01-vip-info">
 					<view class="c01-vip-nickname">请登录/注册</view>
@@ -506,7 +506,7 @@
 		align-items: center;
 	}
 
-	/* 头像徽标（画板 3:16）：60pt→124rpx 圆；默认头像=湖里Lakes logo（default-avatar.jpg），有真实头像显示头像 */
+	/* 头像徽标（画板 3:16）：60pt→124rpx 圆；默认头像=微信默认灰剪影（user-head.png），有真实头像显示头像 */
 	.c01-vip-avatar {
 		width: 124rpx;
 		height: 124rpx;
