@@ -56,11 +56,7 @@ const activityPopupList = () => import( './pages/marketing/activityPopupList.vue
 const homePosterList = () => import( './pages/marketing/homePosterList.vue')
 
 //门店管理
-const shopList = () => import( './pages/shopManage/shopList.vue')   // A-01 门店信息（含启停）
-const shopInfo = () => import( './pages/shopManage/shopInfo.vue')
-const shopInfoImportant = () => import( './pages/shopManage/shopInfoImportant.vue')
-const shopChangeRecord = () => import( './pages/shopManage/shopChangeRecord.vue')
-const courierList = () => import( './pages/shopManage/internal/courierList.vue')
+const shopList = () => import( './pages/shopManage/shopList.vue')   // 单店「本店信息」页（强链接字段合一；打印机绑定已迁至小票打印机列表页 2026-09-29）
 const ticketPrinterList = () => import( './pages/shopManage/internal/ticketPrinterList.vue')
 const labelPrinterList = () => import( './pages/shopManage/internal/labelPrinterList.vue')
 
@@ -72,7 +68,7 @@ const operateLogDetail = () => import( './pages/systemSetting/operateLogDetail.v
 const loginLogList = () => import( './pages/systemSetting/loginLogList.vue')
 
 //轮播图管理
-const advertisementList = () => import( './pages/shopDecoration/advertisementList.vue')
+//(原「门店装修」advertisementList 已删除：firstPoster 字段顾客端/收银端 0 消费，纯死板块)
 
 //台位管理（A-09）
 const tableList = () => import( './pages/dining/tableList.vue')
@@ -272,12 +268,10 @@ let routes = [
       component: Home,
       name: '门店管理',
       iconCls: 'el-icon-house',
+      leaf: true,//只有一个节点：本店信息唯一入口（每分店一账号只管自己店；基本信息/重要信息/变更记录/装修已合并或删除）
       children: [
-          { path: '/shopInfo', component: shopInfo, name: '门店基本信息' },
-          { path: '/shopInfoImportant', component: shopInfoImportant, name: '门店重要信息' },
-          { path: '/shopChangeRecord', component: shopChangeRecord, name: '门店信息变更记录' },          
-          { path: '/advertisementList', component: advertisementList, name: '门店装修' },
-          { path: '/courierList', component: courierList, name: '骑手信息', hidden: true },
+          { path: '/shopList', component: shopList, name: '本店信息' },
+          // 骑手信息(courierList)已删：外卖配送残留，单店堂食不必要
       ]
     },
     {
@@ -288,7 +282,6 @@ let routes = [
       children: [
           { path: '/settingList', component: settingList, name: '基础参数配置' },
           { path: '/dictList', component: dictList, name: '业务字典' },
-          { path: '/shopList', component: shopList, name: '门店信息' },
           { path: '/operateLogList', component: operateLogList, name: '操作日志' },
           { path: '/operateLogDetail', component: operateLogDetail, name: '操作日志详情', hidden: true },
           { path: '/loginLogList', component: loginLogList, name: '登录日志' },

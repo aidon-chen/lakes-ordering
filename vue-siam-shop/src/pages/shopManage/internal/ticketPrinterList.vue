@@ -48,10 +48,23 @@
 			</el-table-column>
 			<el-table-column prop="createTime" label="创建时间" :formatter="formatTime"></el-table-column>
 			<el-table-column prop="updateTime" label="修改时间" :formatter="formatTime"></el-table-column>
-			<el-table-column label="操作" fixed="right" width="150">
+			<el-table-column label="操作" fixed="right" width="200">
 				<template slot-scope="scope">
-					<el-button size="small" @click="handleEdit(scope.$index, scope.row)">编辑</el-button>
-					<el-button type="danger" size="small" @click="handleDel(scope.row.id)">删除</el-button>
+					<div>
+						<el-button size="mini" @click="handleEdit(scope.$index, scope.row)">编辑</el-button>
+						<el-button type="danger" size="mini" @click="handleDel(scope.row.id)">删除</el-button>
+					</div>
+					<!-- 打印机绑定（2026-09-29 自「本店信息」页迁入；写本店 tb_shop 两列，只换绑不解绑） -->
+					<div style="margin-top: 6px;">
+						<el-button size="mini" :type="isBound(scope.row.id, 'kitchenTotalOrderPrinterId') ? 'success' : 'plain'"
+							@click="bindPrinter('kitchenTotalOrderPrinterId', scope.row)">
+							{{ isBound(scope.row.id, 'kitchenTotalOrderPrinterId') ? '✓当前总单' : '设为总单' }}
+						</el-button>
+						<el-button size="mini" :type="isBound(scope.row.id, 'checkoutPrinterId') ? 'success' : 'plain'"
+							@click="bindPrinter('checkoutPrinterId', scope.row)">
+							{{ isBound(scope.row.id, 'checkoutPrinterId') ? '✓当前结账' : '设为结账单' }}
+						</el-button>
+					</div>
 				</template>
 				<!-- scope.$index, scope.row -->
 			</el-table-column>
@@ -116,6 +129,13 @@
 				total: 0,
 				listLoading: false,
 				sels: [],//列表选中列
+
+				// 本店打印机绑定状态（后厨总单/结账单各指向一台打印机 id；来自「本店资料」tb_shop 两列）
+				shopBind: {
+					shopId: null,
+					kitchenTotalOrderPrinterId: null,
+					checkoutPrinterId: null
+				},
 
 				editFormVisible: false,//编辑界面是否显示
 				editLoading: false,
@@ -189,6 +209,53 @@
 						});
 					}
 				)
+			},
+			// ===== 打印机绑定（2026-09-29 自「本店信息」页迁入）=====
+			// 取本店当前绑定状态：后厨总单/结账单各指向一台打印机（tb_shop 两列）
+			getShopBind() {
+				let vue = this;
+				vue.$http.post(vue, '/rest/merchant/shop/getLoginMerchantShopInfo', {},
+					(vue, data) => {
+						let shop = data.data || {};
+						vue.shopBind = {
+							shopId: shop.id,
+							kitchenTotalOrderPrinterId: shop.kitchenTotalOrderPrinterId || null,
+							checkoutPrinterId: shop.checkoutPrinterId || null
+						};
+					}, () => {} // 静默失败：仅影响绑定标记，不影响设备管理主功能
+				);
+			},
+			// 该打印机是否已绑定为指定用途
+			isBound(printerId, field) {
+				return this.shopBind[field] === printerId;
+			},
+			// 绑定/换绑：白名单只传 id + 目标字段（后端隔离守卫校验本店；只换绑不解绑）
+			bindPrinter(field, row) {
+				if (this.isBound(row.id, field)) return; // 已是当前绑定
+				let usageText = field === 'kitchenTotalOrderPrinterId' ? '后厨总单' : '结账单';
+				let vue = this;
+				vue.$confirm('确认将「' + row.name + '」设为' + usageText + '打印机吗?', '提示', {
+					type: 'warning'
+				}).then(() => {
+					let param = { id: vue.shopBind.shopId };
+					param[field] = row.id;
+					vue.$http.post(vue, '/rest/merchant/shop/update', param,
+						(vue, data) => {
+							vue.$message({
+								showClose: true,
+								message: '已设为' + usageText + '打印机',
+								type: 'success'
+							});
+							vue.getShopBind(); // 重新拉取绑定状态刷新标记
+						}, function(error, data) {
+							vue.$message({
+								showClose: true,
+								message: data.message,
+								type: 'error'
+							});
+						}
+					)
+				}).catch(() => {});
 			},
 			handleDel (id) { // 删除
 				this.$confirm('确认删除该记录吗?', '提示', {
@@ -311,8 +378,9 @@
 		},
 		mounted() {
 			this.getList();
+			this.getShopBind(); // 拉取本店绑定状态（设为总单/结账单标记用）
             //开启订单自动打印定时器
-            this.$orderPrint.init();			
+            this.$orderPrint.init();
 		}
 	}
 

@@ -120,6 +120,9 @@ public class AdminShopController {
         updateShop.setIsOperating(shop.getIsOperating());
         updateShop.setStartTime(shop.getStartTime());
         updateShop.setEndTime(shop.getEndTime());
+        // 打印机绑定（原「门店基本信息」页迁移至管理端门店信息弹层）
+        updateShop.setKitchenTotalOrderPrinterId(shop.getKitchenTotalOrderPrinterId());
+        updateShop.setCheckoutPrinterId(shop.getCheckoutPrinterId());
         updateShop.setUpdateTime(new Date());
         shopService.updateById(updateShop);
 
