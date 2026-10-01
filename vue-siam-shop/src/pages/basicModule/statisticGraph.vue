@@ -4,7 +4,8 @@
     <div class="total-layout">
       <el-row :gutter="20">
         <el-col :span="6">
-          <div class="total-frame" @click="gotoPage('/todayOrderList')">
+          <!-- 2026-09-30：原指向 /todayOrderList（订单查询已删除），改指到店订单总线 -->
+          <div class="total-frame" @click="gotoPage('/forHereOrderList')">
             <img src="../../assets/home_order.png" class="total-icon">
             <div class="total-title">今日订单数</div>
             <div class="total-value">{{todayList.dayCountPaid || 0}}</div>
@@ -18,7 +19,7 @@
           </div>
         </el-col>
         <el-col :span="6">
-          <div class="total-frame" @click="gotoPage('/todayOrderList')">
+          <div class="total-frame" @click="gotoPage('/forHereOrderList')">
             <img src="../../assets/home_order.png" class="total-icon">
             <div class="total-title">进行中订单</div>
             <div class="total-value">{{todayList.unCompletedNum || 0}}</div>

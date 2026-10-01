@@ -446,53 +446,6 @@ public class MerchantOrderController {
         return basicResult;
     }
 
-    @ApiOperation(value = "今日订单列表")
-    @ApiImplicitParams({
-            @ApiImplicitParam(name = "id", value = "订单表主键id", required = false, paramType = "query", dataType = "int"),
-            @ApiImplicitParam(name = "memberId", value = "用户id", required = false, paramType = "query", dataType = "int"),
-            @ApiImplicitParam(name = "orderNo", value = "订单编号，供客户查询", required = false, paramType = "query", dataType = "string"),
-            @ApiImplicitParam(name = "goodsTotalQuantity", value = "商品总数量", required = false, paramType = "query", dataType = "int"),
-            @ApiImplicitParam(name = "goodsTotalPrice", value = "商品总金额", required = false, paramType = "query", dataType = "BigDecimal"),
-            @ApiImplicitParam(name = "packingCharges", value = "包装费", required = false, paramType = "query", dataType = "BigDecimal"),
-            @ApiImplicitParam(name = "deliveryFee", value = "配送费", required = false, paramType = "query", dataType = "BigDecimal"),
-            @ApiImplicitParam(name = "actualPrice", value = "实付款", required = false, paramType = "query", dataType = "BigDecimal"),
-            @ApiImplicitParam(name = "shoppingWay", value = "购物方式 1=自取 2=配送", required = false, paramType = "query", dataType = "int"),
-            @ApiImplicitParam(name = "deliveryAddressId", value = "收货地址id", required = false, paramType = "query", dataType = "int"),
-            @ApiImplicitParam(name = "contactRealname", value = "联系人姓名", required = false, paramType = "query", dataType = "string"),
-            @ApiImplicitParam(name = "contactPhone", value = "联系电话", required = false, paramType = "query", dataType = "string"),
-            @ApiImplicitParam(name = "contactProvince", value = "省份", required = false, paramType = "query", dataType = "string"),
-            @ApiImplicitParam(name = "contactCity", value = "城市", required = false, paramType = "query", dataType = "string"),
-            @ApiImplicitParam(name = "contactArea", value = "区/县", required = false, paramType = "query", dataType = "string"),
-            @ApiImplicitParam(name = "contactStreet", value = "详细地址(具体到街道门牌号)", required = false, paramType = "query", dataType = "string"),
-            @ApiImplicitParam(name = "contactSex", value = "联系人性别 0=无 1=先生 2=女士", required = false, paramType = "query", dataType = "string"),
-            @ApiImplicitParam(name = "remark", value = "备注", required = false, paramType = "query", dataType = "string"),
-            @ApiImplicitParam(name = "description", value = "订单描述", required = false, paramType = "query", dataType = "string"),
-            @ApiImplicitParam(name = "status", value = "订单状态 -1=售后处理状态 1=未付款 2=待处理 3=待自取(已处理) 4=待配送(已处理) 5=已配送 6=已完成 7=售后处理中 8=已退款 9=售后处理完成 10=已取消", required = false, paramType = "query", dataType = "int"),
-            @ApiImplicitParam(name = "tradeId", value = "用户交易id", required = false, paramType = "query", dataType = "int"),
-            @ApiImplicitParam(name = "orderLogisticsId", value = "物流id", required = false, paramType = "query", dataType = "int"),
-            @ApiImplicitParam(name = "isInvoice", value = "是否开票", required = false, paramType = "query", dataType = "Boolean"),
-            @ApiImplicitParam(name = "invoiceId", value = "发票id", required = false, paramType = "query", dataType = "int"),
-            @ApiImplicitParam(name = "isDeleted", value = "是否删除 0=正常 1=已删除", required = false, paramType = "query", dataType = "int"),
-            @ApiImplicitParam(name = "shopId", value = "接单门店id", required = false, paramType = "query", dataType = "int"),
-            @ApiImplicitParam(name = "shopName", value = "接单门店名称", required = false, paramType = "query", dataType = "string"),
-            @ApiImplicitParam(name = "startCreateTime", value = "下单开始时间", required = false, paramType = "query", dataType = "Date"),
-            @ApiImplicitParam(name = "endCreateTime", value = "下单结束时间", required = false, paramType = "query", dataType = "Date"),
-            @ApiImplicitParam(name = "pageNo", value = "页码(值为-1不分页)", required = true, paramType = "query", dataType = "int", defaultValue = "1"),
-            @ApiImplicitParam(name = "pageSize", value = "页数", required = true, paramType = "query", dataType = "int", defaultValue = "20"),
-    })
-    @PostMapping(value = "/todayOrderList")
-    public BasicResult todayOrderList(@RequestBody @Validated(value = {}) OrderParam param, HttpServletRequest request){
-        BasicData basicResult = new BasicData();
-
-        //获取当前登录用户绑定的门店编号
-        Merchant loginMerchant = merchantSessionManager.getSession(TokenUtil.getToken());
-
-        param.setShopId(loginMerchant.getShopId());
-        Page page = orderService.getListByTodayOrderWithAsc(param);
-
-        return BasicResult.success(page);
-    }
-
     @ApiOperation(value = "查询所有订单标签页的待处理数量")
     @PostMapping(value = "/selectAllTabWaitHandleNum")
     public BasicResult selectAllTabWaitHandleNum(@RequestBody @Validated(value = {}) OrderParam param){

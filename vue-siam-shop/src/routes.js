@@ -45,7 +45,7 @@ const orderDetail = () => import( './pages/orderManage/orderDetail.vue')
 //const unpaidOrderList = () => import( './pages/MallManage/unpaidOrderList.vue')
 const forHereOrderList = () => import( './pages/orderManage/forHereOrderList.vue')
 const takeOutOrderList = () => import( './pages/orderManage/takeOutOrderList.vue')
-const todayOrderList = () => import( './pages/orderManage/todayOrderList.vue')
+// 2026-09-30 删除：原「订单查询」(/todayOrderList) 页面与路由已整条下线（功能与「自取订单→全部订单」完全冗余）
 const appraiseList = () => import( './pages/orderManage/appraiseList.vue')
 
 //促销管理
@@ -165,7 +165,6 @@ let routes = [
       name: '订单管理',
       iconCls: 'el-icon-s-order',
       children: [
-          { path: '/todayOrderList', component: todayOrderList, name: '订单查询' },
           { path: '/forHereOrderList', component: forHereOrderList, name: '自取订单' },
           // 需求外（单店堂食+自提场景）：隐藏菜单，保留页面与路由
           { path: '/takeOutOrderList', component: takeOutOrderList, name: '外卖订单', hidden: true },          
