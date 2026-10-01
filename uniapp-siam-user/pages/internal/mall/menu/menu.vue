@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view class="mall-menu-page">
 		<!-- 左分类栏：92rpx 宽（画板 B-02）｜「全部」为前端虚拟项，其余为后端分类 -->
 		<scroll-view scroll-y class="cate-bar">

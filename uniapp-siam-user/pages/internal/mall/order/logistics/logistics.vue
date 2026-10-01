@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view class="log">
 		<view class="log_top">
 			<view class="log_top_title">

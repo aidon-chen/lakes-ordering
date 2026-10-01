@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view class="plt">
 		<!-- C-02 首页活动弹窗 · 超链接测试落地页（独立测试界面）
 		     用途：商家端「营销中心 → 首页活动弹窗」把超链接(imageLinkUrl)配成本页路径，

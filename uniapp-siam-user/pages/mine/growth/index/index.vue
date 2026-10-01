@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view class="c08">
 		<!-- 顶部：导航栏与资料头同属一个主题色块（画板 21:660 蓝块 → 工程绿 .theme-bg） -->
 		<view class="c08-head theme-bg">

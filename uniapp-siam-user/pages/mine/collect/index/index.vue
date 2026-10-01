@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view>
 		<view style="height: 100%">
 			<view class="position-sticky">

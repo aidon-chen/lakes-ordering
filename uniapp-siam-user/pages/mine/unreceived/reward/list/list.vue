@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view>
 		<view class="lists-class" :data-id="item.id" v-for="(item, index) in list" :key="index">
 			<view class="list-top-class">

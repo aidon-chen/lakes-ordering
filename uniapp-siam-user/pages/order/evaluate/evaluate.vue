@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view>
 		<view class="top-class">
 			<image :src="shopInfo.shop.shopLogoImg" class="shopLogoImg-class" mode="aspectFill"></image>

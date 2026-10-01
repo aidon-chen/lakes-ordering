@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view>
 		<view id="container"></view>
 		<scroll-view @scrolltoupper="onPullDownRefresh" upper-threshold="-100" :style="'height:' + winHeight + 'px'"

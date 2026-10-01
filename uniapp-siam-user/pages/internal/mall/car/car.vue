@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view>
 		<scroll-view :scroll-y="true" :style="'height:' + winHeight + 'px;'">
 			<checkbox-group class="cart-group" @change="checkboxChange">

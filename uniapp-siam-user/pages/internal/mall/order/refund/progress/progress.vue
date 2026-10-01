@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
     <view>
         <view class="refund-process-top">
             <view class="refund-process-title">退款流程</view>

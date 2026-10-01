@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view>
 		<!-- 需求 2026-09-28：页面定位改为纯「选择门店」，自提/配送切换条已移除 -->
 		<swiper :current="selfOutActiveIndex" class="swiper-box" duration="300"

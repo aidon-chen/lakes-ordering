@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view>
 		<!-- 2026-09-25：「分享商品」悬浮入口已删（分享/邀请体系废弃，不在设计需求）。
 		     原为 <view class="wodejl-view">分享商品&gt;&gt;</view>（源码裸写 >> 被编译转义成 &gt;&gt; 字面显示），

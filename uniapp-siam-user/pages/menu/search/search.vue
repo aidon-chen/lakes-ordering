@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view>
 		<view class="search-input-views position-sticky theme-bg" @tap="searchBusinessTap">
 			<view class="search-input-view">

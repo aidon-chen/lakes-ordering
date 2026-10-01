@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
     <view>
         <view class="page-content">
             <view class="content-view">

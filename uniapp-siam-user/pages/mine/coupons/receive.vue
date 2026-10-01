@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view class="rcc">
 		<!-- 领券中心（画板 C-18 455:2）：券池列表 + 领取三态。
 		     数据源：券池=POST /rest/member/coupons/list（issueType=2 自行领取）；

@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view>
 		<view class="items-class">
 			<text class="text-class">当前账号</text>

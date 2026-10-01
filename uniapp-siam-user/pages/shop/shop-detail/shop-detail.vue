@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view class="shop-detail-page" v-if="shop">
 		<!-- 头部：门店信息 -->
 		<view class="header-card">

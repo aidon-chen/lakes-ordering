@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view class="safe-area">
 		<view class="top-detail" v-if="tipReward">
 			<view class="current-tips" @tap.stop.prevent="customerServiceWechat">

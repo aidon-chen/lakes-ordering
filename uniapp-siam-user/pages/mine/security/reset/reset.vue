@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view>
 		<view class="top-class">
 			<view class="account-phone">请为账号 {{ userInfo.mobile }}</view>

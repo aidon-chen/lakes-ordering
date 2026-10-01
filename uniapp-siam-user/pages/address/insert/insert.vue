@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view>
 		<form @submit="formSubmit" @reset="formReset">
 			<view class="address-info-list">

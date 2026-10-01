@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view class="c01">
 		<!-- Hero 渐变绿背景（画板 3:2）：状态栏占位（本页 navigationStyle: custom）+ Lakes 字标 -->
 		<view class="c01-hero">

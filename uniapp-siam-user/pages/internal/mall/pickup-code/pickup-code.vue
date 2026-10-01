@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view class="pickup-page">
 		<!-- 自提码卡（画板 B-09） -->
 		<view class="card code-card">

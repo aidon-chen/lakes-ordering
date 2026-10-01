@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view>
 		<view v-if="!searchInput">
 			<view class="address-title">收货地址</view>

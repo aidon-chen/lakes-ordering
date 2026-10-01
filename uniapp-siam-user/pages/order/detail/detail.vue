@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view class="page">
 		<!-- 状态头（C-11 163:106 蓝底） -->
 		<view class="status-header">

@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view class="page" :style="{ '--status-bar-height': statusBarHeight + 'px' }">
 
 		<!-- C-02 首页活动弹窗 -->

@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view>
 		<view class="section" v-if="userLocation">
 			<view class="picker flex_center" @tap="bindOpenRegionDialog">

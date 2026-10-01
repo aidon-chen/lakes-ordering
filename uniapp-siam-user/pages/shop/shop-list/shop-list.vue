@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view class="shop-list-page">
 		<!-- 门店列表 -->
 		<view class="shop-list">

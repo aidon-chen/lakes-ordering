@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view>
 		<!-- C-10 批次6（口径变更）：不做配送 → 原「收货地址卡」改为「自提门店卡」（画板 B-05） -->
 		<view class="pickup-shop-card margin-border-radius">

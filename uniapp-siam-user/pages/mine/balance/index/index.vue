@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view>
 		<view class="balance-views theme-bg">
 			<view class="balance-text">当前余额（元）</view>

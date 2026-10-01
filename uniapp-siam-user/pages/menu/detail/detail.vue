@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view>
 		<scroll-view :scroll-y="true" :style="'height:' + (winHeight-10) + 'px'">
 			<swiper :indicator-dots="indicatorDots" :autoplay="autoplay" class="carousel-swiper" :interval="interval"

@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view class="c17b">
 		<!-- 步骤条（画板 419:83）：① 已完成、② 当前 -->
 		<view class="c17b-stepbar">

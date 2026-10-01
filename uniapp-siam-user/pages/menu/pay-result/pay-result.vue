@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view class="page">
 		<view class="top-space"></view>
 		<!-- 结果区 -->

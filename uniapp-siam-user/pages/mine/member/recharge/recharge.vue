@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view>
 		<view class="swiper-content">
 			<view class="swiper-current">

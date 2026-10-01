@@ -1,21 +1,11 @@
 import GlobalConfig from './global-config';
+import { showLoading as globalShowLoading, hideLoading as globalHideLoading } from './loading.js';
 
-// loading 租约计数。
-// 微信要求 showLoading / hideLoading 成对出现，次数不匹配就会在控制台刷
-// 「请注意 showLoading 与 hideLoading 必须配对使用」。
-// 旧实现每次 show 都挂一个「3s 后无条件 hideLoading」的定时器，和业务代码里的
-// hideLoading 互相踩踏 —— A 的定时器把 B 的 loading 关掉，B 那句 hide 就打空。
-// 改为计数：show +1、hide -1，只有归零才真正调平台 API；3s 兜底也走计数。
-let loadingCount = 0;
-const hideLoadingCounted = function() {
-	if (loadingCount <= 0) {
-		return;
-	}
-	loadingCount--;
-	if (loadingCount === 0) {
-		uni.hideLoading();
-	}
-};
+// loading 已改为「品牌小卡片」形态（见 components/loading-toast/loading-toast.vue），
+// 不再调用原生 uni.showLoading —— 全站约 100 处 toastService.showLoading() 调用点零改动、自动升级。
+// 租约计数与 3s 兜底下沉到 utils/loading.js：
+// 兜底必须保留，存量存在未配对的 hideLoading（如 order/refund/apply/apply.vue:356 为注释态），
+// 没有兜底会让 loading 永久卡住。
 
 export default {
 	showToast: function(title = '', duration) {
@@ -60,24 +50,14 @@ export default {
 	/**
 	 * 显示加载
 	 */
-	showLoading: function(title = '正在加载...', mask = true) {
-		if (loadingCount === 0) {
-			uni.showLoading({
-				title: title,
-				mask: mask
-			});
-		}
-		loadingCount++;
-		//3s 兜底：调用方忘了 hideLoading 也能自己收起来（走计数，不会多减）
-		setTimeout(function() {
-			hideLoadingCounted();
-		}, 3000);
+	showLoading: function(title = '正在加载……', mask = true) {
+		globalShowLoading(title, mask);
 	},
 	/**
 	 * 隐藏加载
 	 */
 	hideLoading: function() {
-		hideLoadingCounted();
+		globalHideLoading();
 	},
 	/**
 	 * 显示模态窗口

@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view class="nl">
 		<view class="nl-card" v-for="(item, index) in list" :key="item.id" @tap="goDetail(item)">
 			<view class="nl-title-row">

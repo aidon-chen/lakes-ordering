@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view>
 		<view class="top-carousel-swiper" v-if="carouselUrls.length > 0">
 			<swiper :indicator-dots="indicatorDots" class="carousel-swiper" :autoplay="autoplay" :interval="interval"

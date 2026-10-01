@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view class="c17">
 		<!-- 状态卡（画板 419:5）：绿底 + 盾牌 + 阶段进度 -->
 		<view class="c17-status-card">

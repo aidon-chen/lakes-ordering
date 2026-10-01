@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view class="c03">
 		<!-- 未登录空态：原实现是「toast + 800ms 后 navigateBack」，用户只看到页面
 		     闪一下被弹回 → 误判为「跳转失败」（2026-09-22 实测复现）。

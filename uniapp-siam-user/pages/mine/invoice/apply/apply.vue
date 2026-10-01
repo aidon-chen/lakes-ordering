@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view class="ia">
 		<view class="ia-body">
 		<!-- 订单信息卡：点击「选择订单」弹出选单弹层；入口带 orderId 时仅作预选 -->

@@ -496,6 +496,11 @@
 	},
 	"subPackages": [],
 	"easycom": {
-		"autoscan": false
+		"autoscan": false,
+		// 全局「品牌小 loading」：小程序端 App.vue 的 template 不渲染（app.wxml 不生效），
+		// 故组件必须逐页挂载；配这条自定义规则后，页面可直接写 <loading-toast /> 免 import 注册。
+		"custom": {
+			"^loading-toast$": "@/components/loading-toast/loading-toast.vue"
+		}
 	}
 }

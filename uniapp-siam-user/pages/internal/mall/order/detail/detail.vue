@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view>
 		<view class="status-to-greet">
 			<view class="unpaid-class" v-if="order.status == 1">

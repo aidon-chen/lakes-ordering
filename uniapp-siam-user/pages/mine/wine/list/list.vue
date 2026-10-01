@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view class="wl">
 		<!-- 有效期提示条 -->
 		<view class="wl-notice-wrap">

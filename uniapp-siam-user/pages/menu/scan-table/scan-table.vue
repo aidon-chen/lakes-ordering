@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view class="page">
 		<!-- 成功区 -->
 		<view class="success-area">

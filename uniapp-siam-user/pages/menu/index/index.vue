@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view class="content-class">
 		<view id="page-top-view">
 			<view style="padding-bottom: 20rpx;background: #f6f6f6;">

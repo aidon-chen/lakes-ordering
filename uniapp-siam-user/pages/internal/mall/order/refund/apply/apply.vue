@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view>
 		<view class="top-detail">
 			<view class="top-shop-name">

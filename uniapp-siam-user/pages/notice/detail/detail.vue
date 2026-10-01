@@ -1,4 +1,5 @@
 <template>
+	<loading-toast />
 	<view class="nd">
 		<block v-if="notice.id">
 			<view class="nd-title">{{ notice.title }}</view>
