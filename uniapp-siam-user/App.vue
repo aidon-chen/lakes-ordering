@@ -266,29 +266,27 @@
 				});
 			},
 
-			weChatLogin(phoneNumber, openId, inviterId) {
-				console.log('app.js -> inviterId = ' + inviterId);
+			weChatLogin(phoneNumber, openId) {
 				console.log(this.userInfo);
 				var userInfo = this.userInfo;
 				if (!userInfo) {
 					uni.getUserInfo({
 						success: (res) => {
-							this.memberWeChatLogin(phoneNumber, openId, inviterId, res.userInfo);
+							this.memberWeChatLogin(phoneNumber, openId, res.userInfo);
 						}
 					});
 				} else {
-					this.memberWeChatLogin(phoneNumber, openId, inviterId, userInfo);
+					this.memberWeChatLogin(phoneNumber, openId, userInfo);
 				}
 			},
 
-			memberWeChatLogin(phoneNumber, openId, inviterId, userInfo) {
+			memberWeChatLogin(phoneNumber, openId, userInfo) {
 				https.request('/rest/member/weChat/login', {
 					mobile: phoneNumber,
 					headImg: userInfo.avatarUrl,
 					username: userInfo.nickName,
 					sex: userInfo.gender,
-					openId: openId,
-					inviterId: inviterId ? inviterId : ''
+					openId: openId
 				}).then((result) => {
 					if (result.success) {
 						//接口返回结构为 {success, code, message, data:{token, openId, isNewPeople}}，
@@ -301,20 +299,14 @@
 						this.isNewPeople = loginData.isNewPeople;
 						this.getUserInfo();
 						let timeout = setTimeout(() => {
-							//如果是邀请链接直接跳转到首页，如果是进入用户后退一页
-							if (inviterId) {
+							// 登录后后退一页；已无上一页时回落首页
+							var pages = getCurrentPages();
+							if (pages && pages.length > 0) {
+								uni.navigateBack(1);
+							} else {
 								uni.switchTab({
 									url: '/pages/index/index'
 								});
-							} else {
-								var pages = getCurrentPages();
-								if (pages && pages.length > 0) {
-									uni.navigateBack(1);
-								} else {
-									uni.switchTab({
-										url: '/pages/index/index'
-									});
-								}
 							}
 							clearTimeout(timeout);
 						}, 300);
@@ -404,18 +396,14 @@
 				});
 			},
 
-			checkIsAuth(authSetting, params) {
+			// 邀请/分享体系已下线：跳转登录页不再拼接邀请人参数（原第二入参已无调用方）
+			checkIsAuth(authSetting) {
 				toastService.showModal(
 					null,
 					'当前未登录，确定去登录吗?',
 					function confirm() {
 						// #ifdef H5
 						let url = '/pages/internal/login/code/code';
-						if (params) {
-							if (params.inviterId) {
-								url = url + (params.inviterId ? '?inviterId=' + params.inviterId : '');
-							}
-						}
 						uni.navigateTo({
 							url: url
 						});
@@ -426,26 +414,16 @@
 								console.log(res);
 								console.log(res.authSetting[authSetting]);
 								if (res.authSetting[authSetting]) {
-									let url = '/pages/internal/login/choose/choose';
-									if (params) {
-										if (params.inviterId) {
-											url = url + (params.inviterId ? '?inviterId=' + params.inviterId : '');
-										}
-									}
-									uni.navigateTo({
-										url: url
-									});
-								} else {
-									let url = '/pages/internal/login/authorization/authorization';
-									if (params) {
-										if (params.inviterId) {
-											url = url + (params.inviterId ? '?inviterId=' + params.inviterId : '');
-										}
-									}
-									uni.redirectTo({
-										url: url
-									});
-								}
+								let url = '/pages/internal/login/choose/choose';
+								uni.navigateTo({
+									url: url
+								});
+							} else {
+								let url = '/pages/internal/login/authorization/authorization';
+								uni.redirectTo({
+									url: url
+								});
+							}
 							}
 						});
 						// #endif
