@@ -4146,27 +4146,6 @@ CREATE TABLE `tb_points_mall_coupons_member_relation` (
 -- ----------------------------
 
 -- ----------------------------
--- Table structure for tb_points_mall_full_reduction_rule
--- ----------------------------
-DROP TABLE IF EXISTS `tb_points_mall_full_reduction_rule`;
-CREATE TABLE `tb_points_mall_full_reduction_rule` (
-  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键id',
-  `shop_id` int(11) DEFAULT NULL COMMENT '店铺id',
-  `name` varchar(100) DEFAULT NULL COMMENT '规则名称',
-  `status` int(11) DEFAULT NULL COMMENT '活动状态，1=开启，2=关闭',
-  `limited_price` decimal(10,2) DEFAULT '0.00' COMMENT '满足价格（元，满足该价格才能使用）',
-  `reduced_price` decimal(10,2) DEFAULT '0.00' COMMENT '减价额度(元)',
-  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
-  `update_time` datetime DEFAULT NULL COMMENT '修改时间',
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
-
--- ----------------------------
--- Records of tb_points_mall_full_reduction_rule
--- ----------------------------
-INSERT INTO `tb_points_mall_full_reduction_rule` VALUES ('2', null, '满199减99', '1', '5000.00', '4999.00', '2021-04-20 23:44:45', null);
-
--- ----------------------------
 -- Table structure for tb_points_mall_goods
 -- ----------------------------
 DROP TABLE IF EXISTS `tb_points_mall_goods`;

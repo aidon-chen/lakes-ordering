@@ -150,9 +150,6 @@ public class PointsMallOrderServiceImpl extends ServiceImpl<PointsMallOrderMappe
     private PointsMallCouponsGoodsRelationService couponsGoodsRelationService;
 
     @Autowired
-    private PointsMallFullReductionRuleService fullReductionRuleService;
-
-    @Autowired
     private ApplicationContext applicationContext;
 
     @Autowired
@@ -297,11 +294,8 @@ public class PointsMallOrderServiceImpl extends ServiceImpl<PointsMallOrderMappe
                 ? Quantity.INT_1
                 : PointsMallOrder.PAYMENT_MODE_OF_PAY_AT_STORE;
         insertOrder.setPaymentMode(paymentMode);
-        // A 批（2026-09-29）：自动满减下线，订单不再落 fullReductionRuleId/Description（列保留兼容历史单）。
-        // 注意：insert 内「规则套用校验」段（param.getFullReductionRuleId() != null 分支）暂保留——
-        // 老版小程序仍会上传规则 ID，先删会令其触发「订单实付款计算错误」；待新前端全量后随 B 批清场一并移除。
-        // insertOrder.setFullReductionRuleId(param.getFullReductionRuleId());
-        // insertOrder.setFullReductionRuleDescription(param.getFullReductionRuleDescription());
+        // 商城满减规则已下线（A 批 2026-09-29 停写；B 批 2026-10-01 删实体，ADR-0002）。
+        // 订单不落 fullReductionRuleId/Description，历史列仅退款口径仍读（列保留）。
         insertOrder.setCouponsId(param.getCouponsId());
         insertOrder.setCouponsMemberRelationId(param.getCouponsMemberRelationId());
         insertOrder.setCouponsDescription(param.getCouponsDescription());
@@ -517,22 +511,7 @@ public class PointsMallOrderServiceImpl extends ServiceImpl<PointsMallOrderMappe
             log.debug("\n\n》》》 使用优惠券时优惠的金额：" + subtractPrice.toString());
         }
 
-        //3、判断满减规则是否满足使用条件
-        //TODO-后端不判断订单应使用哪个满减规则，只对前端传递的满减规则进行是否满足使用条件判断
-        if (param.getFullReductionRuleId() != null) {
-            PointsMallFullReductionRule dbFullReductionRule = fullReductionRuleService.selectByPrimaryKey(param.getFullReductionRuleId());
-            if(finalPrice.compareTo(dbFullReductionRule.getLimitedPrice()) >= 0){
-                finalPrice = finalPrice.subtract(dbFullReductionRule.getReducedPrice());
-                param.setFullReductionRuleId(dbFullReductionRule.getId());
-                param.setFullReductionRuleDescription(dbFullReductionRule.getName());
-                param.setLimitedPrice(dbFullReductionRule.getLimitedPrice());
-                param.setReducedPrice(dbFullReductionRule.getReducedPrice());
-                log.debug("\n\n》》》 使用满减规则优惠金额：" + dbFullReductionRule.getReducedPrice());
-                log.debug("\n\n》》》 使用满减规则后的最终价格：" + finalPrice);
-            }else{
-                throw new StoneCustomerException("满减规则不满足使用条件，请刷新页面重试");
-            }
-        }
+        //商城满减规则已下线（2026-10-01 B 批，ADR-0002）：不再校验/套用规则，商城优惠仅来自优惠券。
 
         //判断前端的最终价格和后端的最终价格是否一致
         //如果最终价格计算出来是负数，则要手动赋值为0

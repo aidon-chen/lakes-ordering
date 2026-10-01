@@ -35,13 +35,13 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_SQL = os.path.join(HERE, "11-酒水商城C10-增量.sql")
 
 # 本增量脚本会清空并在其中重灌数据的表（--backup 用）
+# 注：tb_points_mall_full_reduction_rule 已于 2026-10-01 B2 清场（ADR-0002），故移出本清单
 SEED_TABLES = [
     "tb_points_mall_menu",
     "tb_points_mall_goods",
     "tb_points_mall_menu_goods_relation",
     "tb_points_mall_goods_specification",
     "tb_points_mall_goods_specification_option",
-    "tb_points_mall_full_reduction_rule",
 ]
 
 VERIFY_SQL = """
@@ -54,19 +54,19 @@ UNION ALL SELECT 'tb_points_mall_order_refund 新增列 refund_no',
        (SELECT COUNT(*) FROM information_schema.COLUMNS
          WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tb_points_mall_order_refund'
            AND COLUMN_NAME = 'refund_no'), 1
-UNION ALL SELECT '唯一索引 uk_pickup_code / uk_refund_no',
+UNION ALL SELECT '唯一索引 uk_pickup_date_code / uk_refund_no',
        (SELECT COUNT(DISTINCT CONCAT(TABLE_NAME,'.',INDEX_NAME)) FROM information_schema.STATISTICS
          WHERE TABLE_SCHEMA = DATABASE()
-           AND ((TABLE_NAME = 'tb_points_mall_order' AND INDEX_NAME = 'uk_pickup_code')
+           AND ((TABLE_NAME = 'tb_points_mall_order' AND INDEX_NAME = 'uk_pickup_date_code')
              OR (TABLE_NAME = 'tb_points_mall_order_refund' AND INDEX_NAME = 'uk_refund_no'))), 2
+-- 2026-10-01 同步：34 号脚本（自提码唯一键改当日复合）已把 uk_pickup_code 更名为 uk_pickup_date_code，本检查同步改名
 UNION ALL SELECT '分类数 tb_points_mall_menu',
        (SELECT COUNT(*) FROM tb_points_mall_menu), 12
 UNION ALL SELECT '商品数 tb_points_mall_goods',
        (SELECT COUNT(*) FROM tb_points_mall_goods), 12
 UNION ALL SELECT '售罄商品数 (status=4)',
        (SELECT COUNT(*) FROM tb_points_mall_goods WHERE status = 4), 1
-UNION ALL SELECT '满减规则名=满99减10',
-       (SELECT COUNT(*) FROM tb_points_mall_full_reduction_rule WHERE name = '满99减10'), 1
+-- 2026-10-01 B2：原「满减规则名=满99减10」断言随规则表清场移除（ADR-0002，表已 DROP）
 """
 
 

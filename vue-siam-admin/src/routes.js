@@ -73,7 +73,7 @@ const pointsMall_refundOrderList = () => import('./pages/internal/pointsMallMana
 const pointsMall_orderDetail = () => import('./pages/internal/pointsMallManage/orderManage/orderDetail.vue')
 const pointsMall_takeOutOrderList = () => import('./pages/internal/pointsMallManage/orderManage/takeOutOrderList.vue')
 //促销管理
-const pointsMall_fullReductionRuleList = () => import('./pages/internal/pointsMallManage/promotionManage/fullReductionRuleList.vue')
+//满减规则页已删（2026-10-01 B 批，ADR-0002）：商城满减统一走券体系
 const pointsMall_couponsList = () => import('./pages/internal/pointsMallManage/promotionManage/couponsList.vue')
 //数据中心
 const pointsMall_statisticGraph = () => import('./pages/internal/pointsMallManage/basicModule/statisticGraph.vue')
@@ -506,13 +506,7 @@ let routes = [
         iconCls: 'el-icon-s-order',
         children: [
           // { path: '/pointsMall_unpaidOrderList', component: pointsMall_unpaidOrderList, name: '未付款' },
-          {
-            path: '/pointsMall_fullReductionRuleList', component: pointsMall_fullReductionRuleList, name: '满减',
-            leaf: true,//只有一个节点
-            children: [
-              { path: '/pointsMall_fullReductionRuleList', component: pointsMall_fullReductionRuleList, name: '满减' },
-            ]
-          },
+          //满减规则页已删（2026-10-01 B 批，ADR-0002）：商城满减统一走券体系
           {
             path: '/pointsMall_couponsList', component: pointsMall_couponsList, name: '优惠券',
             leaf: true,//只有一个节点

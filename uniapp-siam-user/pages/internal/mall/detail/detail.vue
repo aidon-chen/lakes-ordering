@@ -129,9 +129,6 @@
 			</van-action-sheet>
 		</view>
 		<view class="safe-area shopping-detail-view">
-			<view class="top_tips">
-				<view v-if="fullPriceReductionIsHidden">满减：{{ fullReductionRuleName }}</view>
-			</view>
 			<view class="buy-shopping-cart-view">
 				<view class="cz-button">
 					<view class="immediate-purchase theme-bg" @tap="openSpecifications" data-type="pay"
@@ -181,9 +178,7 @@
 				priceAfter: '',
 				fullPriceReduction: '',
 				fullPriceReductionIsHidden: '',
-				fullReductionRuleName: '',
 				winHeight: '',
-				fullReductionRuleList: '',
 				data: {
 					name: '',
 					id: '',
@@ -276,9 +271,8 @@
 				}
 				console.log(specListString);
 				let totalPrice = price * this.commodityNum;
-				// 自动满减已下线（2026-09-29 A 批）：商城优惠统一走满减券；字段保留默认值，模板 v-if 恒不触发
+				// 自动满减已下线（2026-09-29 A 批）：商城优惠统一走满减券；fullReductionRuleName/List 已随 B 批删除（ADR-0002）
 				let fullPriceReduction = 0;
-				let fullReductionRuleName = '';
 				let fullPriceReductionIsHidden = false;
 				this.setData({
 					specList: specList,
@@ -286,8 +280,7 @@
 					priceAfter: price,
 					totalPrice: utilHelper.toFixed(totalPrice, 2),
 					fullPriceReduction: utilHelper.toFixed(fullPriceReduction, 2),
-					fullPriceReductionIsHidden: fullPriceReductionIsHidden,
-					fullReductionRuleName: fullReductionRuleName
+					fullPriceReductionIsHidden: fullPriceReductionIsHidden
 				});
 			},
 

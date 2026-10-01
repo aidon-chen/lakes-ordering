@@ -127,7 +127,6 @@
 				winHeight: '',
 				packingCharges: 0,
 				fullPriceReduction: '',
-				fullReductionRuleName: '',
 				fullPriceReductionIsHidden: false,
 				likeList: []
 			};

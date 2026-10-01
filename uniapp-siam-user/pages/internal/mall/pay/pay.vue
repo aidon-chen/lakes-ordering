@@ -55,17 +55,6 @@
 					<view class="commodity-price">￥{{ item.price }}</view>
 				</view>
 			</view>
-			<view class="commodity-name-price-detail" v-if="data.fullPriceReductionIsHidden">
-				<view class="commodity-name-types">
-					<view class="commodity-name">满减</view>
-				</view>
-				<view class="commodity-totalnum-price">
-					<view></view>
-					<view class="commodity-price full-reduction-view theme-color-border">
-						{{ data.fullReductionRuleName }}
-					</view>
-				</view>
-			</view>
 			<view class="view-line"></view>
 			<view class="total-money-view">
 				<text class="money-icon commodity-price">总计：</text>
@@ -303,7 +292,6 @@
 					couponsIsHidden: false,
 					orderDetailList: [],
 					fullPriceReductionIsHidden: '',
-					fullReductionRuleName: '',
 					actualPrice: ''
 				},
 				tipReward: '',
@@ -761,7 +749,6 @@
 				afterDiscount.orderDetailList = this.data.orderDetailList;
 				afterDiscount.fullPriceReductionAfter = this.data.fullPriceReductionAfter;
 				afterDiscount.limitedPrice = this.data.limitedPrice;
-				afterDiscount.fullReductionRuleName = this.data.fullReductionRuleName;
 				// 自动满减已下线（2026-09-29 A 批）：不再向选券页透传 fullReductionRuleId
 				// afterDiscount.fullReductionRuleId = this.data.fullReductionRuleId;
 				afterDiscount.fullPriceReductionIsHidden = this.data.fullPriceReductionIsHidden;
