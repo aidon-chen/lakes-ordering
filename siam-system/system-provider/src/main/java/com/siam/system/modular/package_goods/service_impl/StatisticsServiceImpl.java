@@ -492,7 +492,7 @@ public class StatisticsServiceImpl implements StatisticsService {
             trendDateFormat = "%Y-%m-%d %H:00";
         }
 
-        //1a、当期窗口（4 卡片 + 趋势/分布/Top10 统一使用）：日=今日、周=本周、月=本月；
+        //1a、当期窗口（4 卡片 + 趋势/分布/Top10 统一使用）：日=昨日、周=上一周、月=上月（均取上一个完整周期）；
         //   手动选区间则统一用所选区间（cardStart/cardEnd）。曲线严格按所选时段绘制。
         Date cardStart;
         Date cardEnd;
@@ -505,13 +505,13 @@ public class StatisticsServiceImpl implements StatisticsService {
                 cardStart = DateUtilsExtend.getBeginDayOfLastWeek();
                 cardEnd = DateUtilsExtend.getEndDayOfLastWeek();
             } else if ("MONTH".equals(timeType)) {
-                // 本月：1 日 00:00 ~ 月末 23:59:59（完整自然月）
-                cardStart = DateUtilsExtend.getBeginDayOfMonth();
-                cardEnd = DateUtilsExtend.getEndDayOfMonth();
+                // 上月：上月 1 日 00:00 ~ 上月末 23:59:59（完整自然月；用户口径「月=上一个」）
+                cardStart = DateUtilsExtend.getBeginDayOfLastMonth();
+                cardEnd = DateUtilsExtend.getEndDayOfLastMonth();
             } else {
-                // 今日：00:00 ~ 23:59:59
-                cardStart = DateUtilsExtend.getDayBegin();
-                cardEnd = DateUtilsExtend.getDayEnd();
+                // 昨日：00:00 ~ 23:59:59（用户口径「日=上一个」）
+                cardStart = DateUtilsExtend.getBeginDayOfYesterday();
+                cardEnd = DateUtilsExtend.getEndDayOfYesterDay();
             }
         }
 
