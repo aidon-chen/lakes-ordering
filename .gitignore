@@ -60,3 +60,6 @@ sql/mysql/cloudrun/backup/
 
 # 本地联调上传的图片（application-local.yml 的 aliyun.oss.localStorageDir，写入本机磁盘，不入库）
 /upload/
+
+# Python 运行缓存（apply-cloud-sql.py 等运行产生）
+__pycache__/

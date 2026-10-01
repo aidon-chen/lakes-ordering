@@ -1,0 +1,44 @@
+-- ============================================================================
+-- 36-删除商家推荐商品表.sql
+-- ============================================================================
+-- 批次：2026-09-29「商家推荐功能整体下线」（批次文档未发布-20260929-barmvp044-barweb052-mp1.2.1，§2.7-#4）
+-- 配套代码（已随 bar-mvp-044 上线）：
+--   system-provider/system-api 删 MerchantRecommendGoods 相关 8 个文件
+--     （merchant/member 两个 Controller + Service/Impl + Mapper + Mapper XML
+--      + system-api 实体/Example）
+--   → 线上端点 /rest/merchant/merchantRecommendGoods/** 与 /rest/merchantRecommendGoods/** 已 404
+--   → 接口文档五册已刷新（package_goods 端点 300 → 298）
+-- 本地库：siam_db 已于 09-29 20:0x DROP，备份见
+--   order-project/local-run/backup/20260929-drop-tb_merchant_recommend_goods.sql（含 12 行种子）
+--
+-- 前置预检（执行前必须先查，见下「④ 复核」）：
+--   SHOW TABLES LIKE 'tb_merchant_recommend_goods';
+--   SELECT COUNT(*) FROM tb_merchant_recommend_goods;   -- 记下行数，便于回滚核对
+-- ============================================================================
+
+-- ▼▼▼ 生产执行区 ▼▼▼
+DROP TABLE IF EXISTS tb_merchant_recommend_goods;
+
+-- 说明：
+-- · 该表功能＝商家后台配置「推荐商品」（ prolong ）。
+--   顾客端/收银端全仓 0 消费、<template> 内无对应标签（死 CSS 已同期删除），
+--   属已确认断链死功能，用户拍板整线下线。
+-- · 表为独立稀疏外键表，无其他表引用它，DROP 不影响任何在线业务。
+-- · 历史数据仅作审计留痕，已随本地备份导出。
+
+-- ▼▼▼ 回滚区（如需回退） ▼▼▼
+-- 1) 结构 + 数据完整恢复（推荐：直接回放本地备份，含 12 行种子）:
+--    order-project/local-run/backup/20260929-drop-tb_merchant_recommend_goods.sql
+-- 2) 仅恢复空表结构（数据不恢复）:
+--    CREATE TABLE `tb_merchant_recommend_goods` (
+--      `id` int NOT NULL AUTO_INCREMENT COMMENT '主键id',
+--      `shop_id` int DEFAULT NULL COMMENT '店铺id',
+--      `goods_id` int DEFAULT NULL COMMENT '商品id',
+--      `sort_number` int DEFAULT NULL COMMENT '排序号',
+--      `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+--      `update_time` datetime DEFAULT NULL COMMENT '修改时间',
+--      PRIMARY KEY (`id`)
+--    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COMMENT='商家推荐商品表';
+-- 3) 代码回滚：git revert 后端删除提交（8 文件）后重新构建发版。
+--    ⚠ 注意顺序：先回滚代码或至少同步回滚，否则线上代码找不到表会报错。
+-- ============================================================================
