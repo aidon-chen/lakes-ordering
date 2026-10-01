@@ -27,36 +27,6 @@
 			</el-col>
 			<el-col :span="4" class="userinfo">
 				<el-button type="primary" round @click="toCashier" style="margin-right:20px;">收银台点餐</el-button>
-				<el-dropdown trigger="hover">
-					<span class="el-dropdown-link userinfo-inner" style="font-weight:bolder;">
-						开关设置
-					</span>
-					<el-dropdown-menu slot="dropdown">
-						<el-dropdown-item>
-							<span style="font-size: 15px;">营业状态：</span>
-							<el-switch v-model="isOperating" class="demo" active-color="#1890ff" active-text="营业"
-								inactive-color="rgba(0,0,0,.25)" inactive-text="打烊" @click.native="changeIsOperating" />
-						</el-dropdown-item>
-						<el-dropdown-item>
-							<span style="font-size: 15px;">订单语音提醒：</span>
-							<el-switch v-model="isOpenOrderAudio" class="demo" active-color="#1890ff" active-text="开启"
-								inactive-color="rgba(0,0,0,.25)" inactive-text="关闭"
-								@click.native="changeIsOpenOrderAudio" />
-						</el-dropdown-item>
-						<el-dropdown-item>
-							<span style="font-size: 15px;">本地打印：</span>
-							<el-switch v-model="isOpenLocalPrint" class="demo" active-color="#1890ff" active-text="开启"
-								inactive-color="rgba(0,0,0,.25)" inactive-text="关闭"
-								@click.native="changeIsOpenLocalPrint" />
-						</el-dropdown-item>
-						<el-dropdown-item>
-							<span style="font-size: 15px;">云打印：</span>
-							<el-switch v-model="isOpenCloudPrint" class="demo" active-color="#1890ff" active-text="开启"
-								inactive-color="rgba(0,0,0,.25)" inactive-text="关闭"
-								@click.native="changeIsOpenCloudPrint" />
-						</el-dropdown-item>
-					</el-dropdown-menu>
-				</el-dropdown>
 			</el-col>
 		</el-col>
 		<el-col :span="24" class="main">
@@ -189,10 +159,6 @@ export default {
 			}
 		};
 		return {
-			isOperating: false,
-			isOpenOrderAudio: false,
-			isOpenLocalPrint: false,
-			isOpenCloudPrint: false,
 			sysName: '湖里Lakes-商家中心',
 			collapsed: false,
 			sysUserName: '',
@@ -232,114 +198,6 @@ export default {
 	// 	}
 	// },
 	methods: {
-		changeIsOperating() {
-			let vue = this
-			let param = {};
-
-			var user = sessionStorage.getItem('user');
-			user = JSON.parse(user);
-			param.id = user.shopId;
-			param.isOperating = vue.isOperating;
-
-			let url = '/rest/merchant/shop/update';
-			vue.$http.post(vue, url, param,
-				(vue, data) => {
-					vue.$message({
-						showClose: true,
-						message: data.message,
-						type: 'success'
-					});
-					this.refreshUserInfo();
-				}, (error, data) => {
-					vue.$message({
-						showClose: true,
-						message: data.message,
-						type: 'error'
-					});
-				}
-			)
-		},
-		changeIsOpenOrderAudio() {
-			let vue = this
-			let param = {};
-
-			var user = sessionStorage.getItem('user');
-			user = JSON.parse(user);
-			param.id = user.shopId;
-			param.isOpenOrderAudio = vue.isOpenOrderAudio;
-
-			let url = '/rest/merchant/shop/update';
-			vue.$http.post(vue, url, param,
-				(vue, data) => {
-					vue.$message({
-						showClose: true,
-						message: data.message,
-						type: 'success'
-					});
-					this.refreshUserInfo();
-				}, (error, data) => {
-					vue.$message({
-						showClose: true,
-						message: data.message,
-						type: 'error'
-					});
-				}
-			)
-		},
-		changeIsOpenLocalPrint() {
-			let vue = this
-			let param = {};
-
-			var user = sessionStorage.getItem('user');
-			user = JSON.parse(user);
-			param.id = user.shopId;
-			param.isOpenLocalPrint = vue.isOpenLocalPrint;
-
-			let url = '/rest/merchant/shop/update';
-			vue.$http.post(vue, url, param,
-				(vue, data) => {
-					vue.$message({
-						showClose: true,
-						message: data.message,
-						type: 'success'
-					});
-					this.refreshUserInfo();
-				}, (error, data) => {
-					vue.$message({
-						showClose: true,
-						message: data.message,
-						type: 'error'
-					});
-				}
-			)
-		},
-		changeIsOpenCloudPrint() {
-			let vue = this
-			let param = {};
-
-			var user = sessionStorage.getItem('user');
-			user = JSON.parse(user);
-			param.id = user.shopId;
-			param.isOpenCloudPrint = vue.isOpenCloudPrint;
-
-			let url = '/rest/merchant/shop/update';
-			vue.$http.post(vue, url, param,
-				(vue, data) => {
-					vue.$message({
-						showClose: true,
-						message: data.message,
-						type: 'success'
-					});
-					this.refreshUserInfo();
-				}, (error, data) => {
-					vue.$message({
-						showClose: true,
-						message: data.message,
-						type: 'error'
-					});
-				}
-			)
-		},
 		refreshUserInfo() {
 			let vue = this
 			var token = sessionStorage.getItem('token');
@@ -507,10 +365,6 @@ export default {
 				if (shop.shopLogoImg) {
 					this.sysUserAvatar = this.$http.publicUrl(shop.shopLogoImg);
 				}
-				this.isOperating = shop.isOperating;
-				this.isOpenOrderAudio = shop.isOpenOrderAudio;
-				this.isOpenLocalPrint = shop.isOpenLocalPrint;
-				this.isOpenCloudPrint = shop.isOpenCloudPrint;
 			}, (error, data) => {
 				vue.$message({
 					showClose: true,

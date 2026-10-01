@@ -59,6 +59,7 @@ const homePosterList = () => import( './pages/marketing/homePosterList.vue')
 const shopList = () => import( './pages/shopManage/shopList.vue')   // 单店「本店信息」页（强链接字段合一；打印机绑定已迁至小票打印机列表页 2026-09-29）
 const ticketPrinterList = () => import( './pages/shopManage/internal/ticketPrinterList.vue')
 const labelPrinterList = () => import( './pages/shopManage/internal/labelPrinterList.vue')
+const printSetting = () => import( './pages/shopManage/internal/printSetting.vue')
 
 //系统设置（A-01 门店信息 / A-02 基础参数与业务字典 / A-08 日志审计）
 const settingList = () => import( './pages/systemSetting/settingList.vue')
@@ -247,6 +248,7 @@ let routes = [
       children: [
           { path: '/ticketPrinterList', component: ticketPrinterList, name: '小票打印机列表' },
           { path: '/labelPrinterList', component: labelPrinterList, name: '标签打印机列表' },
+          { path: '/printSetting', component: printSetting, name: '打印设置' },
       ]
     },
     {
