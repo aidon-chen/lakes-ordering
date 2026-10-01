@@ -32,13 +32,13 @@ public interface PointsMallMenuMapper extends BaseMapper<PointsMallMenu> {
     int updateByPrimaryKey(PointsMallMenu record);
 
     @ResultMap("BaseResultMap")
-    @Select("<script>select m.* from tb_points_mall_menu m" +
+    @Select("<script>select m.*, (select count(*) from tb_points_mall_menu_goods_relation r where r.menu_id = m.id) as goodsCount from tb_points_mall_menu m" +
             "<where> 1=1 " +
             "<if test=\"menu.id != null\"> AND m.id = #{menu.id} </if>" +
             "<if test=\"menu.name != null and menu.name !=''\"> AND m.name like '%${menu.name}%' </if>" +
             "<if test=\"menu.sortNumber != null\"> AND m.sort_number = #{menu.sortNumber} </if>" +
             "<if test=\"menu.description != null and menu.description != ''\"> AND m.description like '%${menu.description}%' </if>" +
-            "</where> order by m.id desc" +
+            "</where> order by COALESCE(m.sort_number, 9999) asc, m.id asc" +
             "</script>")
     Page<Map<String, Object>> getListByPage(@Param("page") Page page, @Param("menu") PointsMallMenu menu);
 
@@ -47,12 +47,12 @@ public interface PointsMallMenuMapper extends BaseMapper<PointsMallMenu> {
             "from tb_points_mall_menu m " +
             "left join tb_points_mall_menu_goods_relation mgr on mgr.menu_id = m.id " +
             "left join tb_points_mall_goods g on g.id = mgr.goods_id " +
-            "<where> 1=1 " +
+            "<where> m.is_disabled = 0 " +
             "<if test=\"menu.id != null\"> AND m.id = #{menu.id} </if>" +
             "<if test=\"menu.name != null and menu.name !=''\"> AND m.name like '%${menu.name}%' </if>" +
             "<if test=\"menu.sortNumber != null\"> AND m.sort_number = #{menu.sortNumber} </if>" +
             "<if test=\"menu.description != null and menu.description != ''\"> AND m.description like '%${menu.description}%' </if>" +
-            "</where> order by m.id desc" +
+            "</where> order by COALESCE(m.sort_number, 9999) asc, m.id asc" +
             "</script>")
     List<Map<String, Object>> getListByPageJoinPointsMallGoods(@Param("menu") PointsMallMenu menu);
 }

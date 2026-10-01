@@ -84,7 +84,8 @@ public class AdminPointsMallMenuController {
             if(result > 0){
                 basicResult.setSuccess(false);
                 basicResult.setCode(BasicResultCode.ERR);
-                basicResult.setMessage("该类别下有关联奶茶信息，不允许删除");
+                // 2026-09-30 A5：文案修正（原「奶茶」为 demo 残留）并带上具体数量
+                basicResult.setMessage("该类别下还有 " + result + " 个商品，不允许删除；请先移除商品或将其禁用");
                 return basicResult;
             }
 

@@ -1,17 +1,18 @@
 <template>
 	<section>
-		<!--工具条-->
+		<!--工具条：搜索 + 新增-->
 		<el-col :span="24" class="toolbar" style="padding-bottom: 0px;">
 			<el-form :inline="true" :model="searchMsg">
 				<el-form-item label="分类名称" prop="name">
 					<el-input v-model="searchMsg.name" clearable placeholder="请输入分类名称"></el-input>
 				</el-form-item>
-        		<!-- <el-form-item label="分类状态" prop="isDisabled">
-					<el-select v-model="searchMsg.isDisabled" clearable>
+				<!-- A3(09-30)：恢复状态筛选（原整段被注释；配合 tb_points_mall_menu.is_disabled 列） -->
+				<el-form-item label="分类状态" prop="isDisabled">
+					<el-select v-model="searchMsg.isDisabled" clearable placeholder="全部">
 						<el-option label="正常" :value="0"></el-option>
 						<el-option label="禁用" :value="1"></el-option>
 					</el-select>
-				</el-form-item> -->
+				</el-form-item>
 				<el-form-item>
 					<el-button type="primary" @click="getList(1)">查询</el-button>
 				</el-form-item>
@@ -20,37 +21,38 @@
 				</el-form-item>
 			</el-form>
 		</el-col>
-		<!--列表-->
+		<!--列表（A2 09-30：分类图标列已下线；新增 排序号(行内编辑)/状态/商品数 三列）-->
 		<el-table :data="list" highlight-current-row v-loading="listLoading" style="width: 100%;" :cell-style="cellStyle" :header-cell-style="headerCellStyle">
-			<!-- <el-table-column type="index" label="序号" width="50">
-				<template scope="scope">
-					<span>{{(searchMsg.pageNo - 1) * searchMsg.pageSize + scope.$index + 1}}</span>
-				</template>		
-			</el-table-column> -->
 			<el-table-column prop="name" label="分类名称"></el-table-column>
-      		<el-table-column label="分类图标" prop="icon">
+			<!-- A1：排序号行内编辑，失焦/步进即保存（复用 menu/update，只传 id+sortNumber） -->
+			<el-table-column prop="sortNumber" label="排序号" width="130">
 				<template slot-scope="scope">
-					<img :src="$http.publicUrl(scope.row.icon)" width="50" height="50">
+					<el-input-number v-model="scope.row.sortNumber" :min="0" :max="9999" :step="1" size="mini" controls-position="right" @change="handleSortChange(scope.row)"></el-input-number>
 				</template>
-			</el-table-column>			
-			<!-- <el-table-column prop="isDisabled" label="状态" width="100" :formatter="formatType"></el-table-column> -->
+			</el-table-column>
+			<!-- A3：状态列（0=正常 1=禁用）；禁用后顾客端商城分类页不再显示 -->
+			<el-table-column prop="isDisabled" label="状态" width="90" :formatter="formatType"></el-table-column>
+			<!-- A4：商品数（后端子查询出参，也是「删不掉」的原因提示） -->
+			<el-table-column prop="goodsCount" label="商品数" width="80"></el-table-column>
 			<el-table-column prop="description" label="描述"></el-table-column>
-			<el-table-column prop="createTime" label="创建时间" :formatter="formatTime"></el-table-column>
-			<el-table-column prop="updateTime" label="修改时间" :formatter="formatTime"></el-table-column>
-			<el-table-column label="操作" fixed="right" width="150">
+			<el-table-column prop="createTime" label="创建时间" width="150" :formatter="formatTime"></el-table-column>
+			<el-table-column prop="updateTime" label="修改时间" width="150" :formatter="formatTime"></el-table-column>
+			<el-table-column label="操作" fixed="right" width="170">
 				<template slot-scope="scope">
+					<el-button type="text" size="small" @click="handleToggleDisabled(scope.row)">{{ scope.row.isDisabled ? '启用' : '禁用' }}</el-button>
 					<el-button size="small" @click="gotoAdd('edit', scope.row)">编辑</el-button>
-					<el-button type="danger" size="small" @click="handleDel(scope.row.id)">删除</el-button>
+					<!-- A7：删除降级为文字按钮，避免红色 danger 抢占整行视觉焦点 -->
+					<el-button type="text" size="small" style="color:#F56C6C;" @click="handleDel(scope.row.id)">删除</el-button>
 				</template>
-				<!-- scope.$index, scope.row -->
 			</el-table-column>
 		</el-table>
 
-		<!--工具条-->
-		<el-col :span="24" class="toolbar">
+		<!--工具条：分页（A7：总数不满一页时隐藏分页条）-->
+		<el-col :span="24" class="toolbar" v-if="total > searchMsg.pageSize">
 			<el-pagination
 				@size-change="handleSizeChange"
 				@current-change="handleCurrentChange"
+				:current-page="searchMsg.pageNo"
 				:page-sizes="[10, 20, 50, 100]"
 				:page-size="searchMsg.pageSize"
 				layout="total, sizes, prev, pager, next, jumper"
@@ -58,38 +60,6 @@
 				style="float:right;">
 			</el-pagination>
 		</el-col>
-
-		<!--编辑界面-->
-		<el-dialog title="编辑" :visible.sync="editFormVisible" @close="closeDialog" :close-on-click-modal="false">
-			<el-form :model="editForm" label-width="150px" style="width: 80%;" :rules="editFormRules" ref="editForm">
-				<!-- <el-form-item label="状态" prop="isDisabled">
-					<el-select v-model="editForm.isDisabled" placeholder="请选择">
-						<el-option label="正常" :value="0"></el-option>
-						<el-option label="禁用" :value="1"></el-option>
-					</el-select>
-				</el-form-item> -->
-				<el-form-item label="分类名称" prop="name">
-					<el-input v-model="editForm.name"></el-input>
-				</el-form-item>
-				<el-form-item label="分类图标（宽400px * 高400px）" prop="iconFile" class="iconFileItem">
-					<el-upload
-						class="avatar-uploader" accept=".image, .png, .jpg"
-						action="" multiple name="iconUpload"
-						:on-remove="handleRemoveMainImage"
-						:before-upload="beforeAvatarUpload" :http-request="upload"
-						list-type="picture-card">
-						<i class="el-icon-plus avatar-uploader-icon"></i>
-					</el-upload>
-				</el-form-item>				
-				<el-form-item label="描述" prop="description">
-					<el-input type="textarea" :rows="5" v-model="editForm.description"></el-input>
-				</el-form-item>
-			</el-form>
-			<div slot="footer" class="dialog-footer">
-				<el-button @click.native="editFormVisible = false">取消</el-button>
-				<el-button type="primary" @click.native="editSubmit" :loading="editLoading">提交</el-button>
-			</div>
-		</el-dialog>
 	</section>
 </template>
 
@@ -99,80 +69,25 @@
 			return {
 				searchMsg: {
 					pageNo: 1,
-					pageSize: 20
+					pageSize: 20,
+					name: '',
+					isDisabled: ''   // ''=全部；提交前剔除，避免空串传给后端 Integer
 				},
-				
 				list: [],
 				total: 0,
-				listLoading: false,
-				sels: [],//列表选中列
-
-				editFormVisible: false,//编辑界面是否显示
-				editLoading: false,
-				editFormRules: {
-					isDisabled: [{ required: true, message: '请选择分类状态', trigger: 'change' }],
-					name: [{ required: true, message: '请输入分类名称', trigger: 'blur' }],
-					description: [{ required: false, message: '请输入分类描述', trigger: 'blur' }],
-					iconFile: [{ type: 'array', required: true, message: '请上传主图', trigger: 'change' }],
-				},
-				//编辑界面数据
-				editForm: {
-					isDisabled: false,
-					name: '',
-					description: '',
-					iconFile: [], // 主图
-				}
+				listLoading: false
 			}
 		},
 		methods: {
-			handleRemoveMainImage(file, filelist) {
-				let arr = this.editForm.iconFile
-				this.editForm.iconFile = arr.filter(function(item) {
-					return item.uid !== file.uid
-				});
-			},		
-			upload(option){ // 图片上传
-				let vue = this;
-				let value = option.file;
-				let formData = new FormData();
-				formData.append('file', value);    
-
-				vue.$http.postupload(vue, '/rest/admin/uploadSingleImage', formData,
-					function (vue, data) {
-					option.onSuccess();
-					let obj = {
-						url: data.data,
-						uid: option.file.uid
-						}
-					if (option.filename === 'subImagesUpload') {
-						vue.editForm.subImagesFile.push(obj)
-					} else if(option.filename === 'detailImagesUpload') {
-						vue.editForm.detailImagesFile.push(obj)
-					} else {
-						vue.editForm.iconFile.push(obj)
-					}
-					},
-					function (error) {
-						option.onError();
-				})
-			},				
-			cellStyle({row, column, rowIndex, columnIndex}){
-				return "text-align:center";
-			},
-			headerCellStyle({row, rowIndex}){
-				return "text-align:center";
-			},			
-			closeDialog() {
-				this.$refs['editForm'].resetFields();
-			},
-			formatTime(row, column) {
+			cellStyle(){ return "text-align:center" },
+			headerCellStyle(){ return "text-align:center" },
+			formatTime(row, column) { // 时间列：NULL/0 显示 "-"（D-2：不补历史数据）
 				let date = new Date(row[column.property]);
 				let str = this.$utils.formatDate(date, 'yyyy-MM-dd hh:mm:ss');
-				// 处理数据库中时间为NULL场景
 				if(row[column.property]==undefined || str=="1970-01-01 08:00:00"){
 					str = "-";
 				}
-        		return str;
+				return str;
 			},
 			formatType (row, column) { // 0=正常/启用  1=禁用
 				return row.isDisabled ? '禁用' : '正常';
@@ -180,17 +95,21 @@
 			handleSizeChange(val) {
 				this.searchMsg.pageSize = val;
 				this.getList();
-			},			
+			},
 			handleCurrentChange(val) {
 				this.searchMsg.pageNo = val;
 				this.getList();
 			},
-			getList(pageNoParam) { // 获取列表
+			getList(pageNoParam) { // 获取列表（后端已按 sort_number 升序、COALESCE 兜底 NULL）
 				if(pageNoParam){
-				this.searchMsg.pageNo = pageNoParam;
-				} // 获取商品分类列表
+					this.searchMsg.pageNo = pageNoParam;
+				}
 				let vue = this
-				let param = Object.assign(vue.searchMsg);
+				// 空串条件不下发：后端 isDisabled 为 Integer，空串虽会被 Jackson 转 null，这里显式剔除更稳
+				let param = Object.assign({}, vue.searchMsg);
+				if (param.isDisabled === '' || param.isDisabled === null || param.isDisabled === undefined) {
+					delete param.isDisabled
+				}
 				vue.listLoading = true;
 				vue.$http.post(vue, '/rest/admin/pointsMall/menu/list', param,
 					(vue, data) => {
@@ -198,7 +117,6 @@
 						vue.total = data.data.total
 						vue.listLoading = false;
 					},(error, data)=> {
-						// alert(data);
 						vue.listLoading = false;
 						vue.$message({
 							showClose: true,
@@ -208,136 +126,64 @@
 					}
 				)
 			},
-			handleDel (id) { // 删除
+			handleSortChange(row) { // A1：行内改排序号，只提交 id + sortNumber
+				let vue = this
+				let n = (row.sortNumber === null || row.sortNumber === undefined || row.sortNumber === '') ? 0 : Number(row.sortNumber)
+				if (isNaN(n)) {
+					vue.$message({ showClose: true, message: '排序号需为数字', type: 'error' })
+					vue.getList()
+					return
+				}
+				vue.$http.put(vue, '/rest/admin/pointsMall/menu/update', { id: row.id, sortNumber: n },
+					(vue) => {
+						vue.$message({ showClose: true, message: '排序已更新', type: 'success' })
+						vue.getList()   // 重取列表 → 立即按新排序号重排
+					}, (error, data) => {
+						vue.$message({ showClose: true, message: data.message, type: 'error' })
+						vue.getList()
+					})
+			},
+			handleToggleDisabled(row) { // A3：禁用/启用切换（带确认，防误触）
+				let vue = this
+				let target = row.isDisabled ? 0 : 1
+				let action = target === 1 ? '禁用' : '启用'
+				vue.$confirm(`确认${action}分类「${row.name}」吗？`, '提示', { type: 'warning' }).then(() => {
+					vue.$http.put(vue, '/rest/admin/pointsMall/menu/update', { id: row.id, isDisabled: target },
+						(vue) => {
+							vue.$message({ showClose: true, message: `${action}成功`, type: 'success' })
+							vue.getList()
+						}, (error, data) => {
+							vue.$message({ showClose: true, message: data.message, type: 'error' })
+						})
+				}).catch(() => {})
+			},
+			handleDel (id) { // 删除（后端拦截：分类下有商品则拒绝并提示数量）
 				this.$confirm('确认删除该记录吗?', '提示', {
 					type: 'warning'
 				}).then(() => {
-					// this.listLoading = true;
-				let vue = this;
-				
-				vue.$http.delete(vue, '/rest/admin/pointsMall/menu/delete', {"ids" : [id]},
-					function(vue, data) {
-						vue.$message({
-							showClose: true,
-							message: data.message,
-							type: 'success'
-						});
-            			vue.getList()
-					}, function(error, data) {
-						vue.$message({
-							showClose: true,
-							message: data.message,
-							type: 'error'
-						});
-					}
-				)
+					let vue = this;
+					vue.$http.delete(vue, '/rest/admin/pointsMall/menu/delete', {"ids" : [id]},
+						function(vue, data) {
+							vue.$message({ showClose: true, message: data.message, type: 'success' });
+							vue.getList()
+						}, function(error, data) {
+							vue.$message({ showClose: true, message: data.message, type: 'error' });
+						}
+					)
 				}).catch(() => {});
 			},
-			handleEdit: function (index, row) { // 显示编辑界面
-				this.editFormVisible = true;
-				if(row){
-					this.editForm = {
-						id: row.id,
-						isDisabled: row.isDisabled,
-						name: row.name,
-						description: row.description
-					}
-				}else{
-					this.editForm = {
-						isDisabled: 0,
-						name: '',
-						description: ''
-					}
-        		}
-			},
-			gotoAdd(type, row) {
+			gotoAdd(type, row) { // 新增/编辑均走独立页面（原页内弹层为不可达死代码，已于 A6 清理）
 				if(type === 'add') {
-				this.$router.push({path: 'pointsMall_addMenu'})
+					this.$router.push({path: 'pointsMall_addMenu'})
 				} else {
-				this.$router.push({path:'pointsMall_editMenu',query:{id: row.id}})
+					this.$router.push({path:'pointsMall_editMenu',query:{id: row.id}})
 				}
-			},			
-			editSubmit: function () { // 编辑
-				this.$refs.editForm.validate((valid) => {
-					if (valid) {		  						
-						this.editLoading = true;
-						let vue = this
-
-						if(!vue.editForm.iconFile.length) {
-							vue.$message({
-							showClose: true,
-							message: '请上传商品主图',
-							type: 'error'
-							});
-							return false
-						}else if(vue.editForm.iconFile.length > 1) {
-							vue.$message({
-							showClose: true,
-							message: '只能上传一张商品主图',
-							type: 'error'
-							});
-							return false
-						}
-
-						let param = Object.assign({}, this.editForm);
-
-						param.icon = vue.getIdByArr(param.iconFile)
-						delete param.iconFile
-
-						let url = '';
-						if(param.id){
-							url = '/rest/admin/pointsMall/menu/update';
-							vue.$http.put(vue, url, param,
-								(vue, data) => {
-									this.editLoading = false;
-									vue.$message({
-										showClose: true,
-										message: data.message,
-										type: 'success'
-									});
-									
-									vue.getList()
-									vue.editFormVisible = false;
-								}, (error, data) => {
-									vue.editFormVisible = false;
-									vue.$message({
-										showClose: true,
-										message: data.message,
-										type: 'error'
-									});
-								}
-							)							
-						}else{
-							url = '/rest/admin/pointsMall/menu/insert';
-							vue.$http.post(vue, url, param,
-								(vue, data) => {
-									this.editLoading = false;
-									vue.$message({
-										showClose: true,
-										message: data.message,
-										type: 'success'
-									});
-									
-									vue.getList()
-									vue.editFormVisible = false;
-								}, (error, data) => {
-									vue.editFormVisible = false;
-									vue.$message({
-										showClose: true,
-										message: data.message,
-										type: 'error'
-									});
-								}
-							)							
-						}
-					}
-				});
 			}
 		},
 		mounted() {
 			this.getList();
-            //开启订单自动打印定时器
-            this.$orderPrint.init();			
+			//开启订单自动打印定时器
+			this.$orderPrint.init();
 		}
 	}
 

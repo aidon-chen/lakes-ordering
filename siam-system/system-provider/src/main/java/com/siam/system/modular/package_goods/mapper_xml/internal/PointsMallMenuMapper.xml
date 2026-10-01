@@ -7,6 +7,8 @@
     <result column="name" property="name" jdbcType="VARCHAR" />
     <result column="description" property="description" jdbcType="VARCHAR" />
     <result column="sort_number" property="sortNumber" jdbcType="INTEGER" />
+    <result column="is_disabled" property="isDisabled" jdbcType="TINYINT" />
+    <result column="goodsCount" property="goodsCount" jdbcType="INTEGER" />
     <result column="icon" property="icon" jdbcType="VARCHAR" />
     <result column="create_time" property="createTime" jdbcType="TIMESTAMP" />
     <result column="update_time" property="updateTime" jdbcType="TIMESTAMP" />
@@ -80,7 +82,7 @@
     </where>
   </sql>
   <sql id="Base_Column_List" >
-    id, name, description, sort_number, icon, create_time, update_time
+    id, name, description, sort_number, is_disabled, icon, create_time, update_time
   </sql>
   <select id="selectByExample" resultMap="BaseResultMap" parameterType="com.siam.system.modular.package_goods.model.example.internal.PointsMallMenuExample" >
     select
@@ -129,6 +131,9 @@
       <if test="sortNumber != null" >
         sort_number,
       </if>
+      <if test="isDisabled != null" >
+        is_disabled,
+      </if>
       <if test="icon != null" >
         icon,
       </if>
@@ -152,6 +157,9 @@
       </if>
       <if test="sortNumber != null" >
         #{sortNumber,jdbcType=INTEGER},
+      </if>
+      <if test="isDisabled != null" >
+        #{isDisabled,jdbcType=TINYINT},
       </if>
       <if test="icon != null" >
         #{icon,jdbcType=VARCHAR},
@@ -185,6 +193,9 @@
       </if>
       <if test="record.sortNumber != null" >
         sort_number = #{record.sortNumber,jdbcType=INTEGER},
+      </if>
+      <if test="record.isDisabled != null" >
+        is_disabled = #{record.isDisabled,jdbcType=TINYINT},
       </if>
       <if test="record.icon != null" >
         icon = #{record.icon,jdbcType=VARCHAR},
@@ -225,6 +236,9 @@
       </if>
       <if test="sortNumber != null" >
         sort_number = #{sortNumber,jdbcType=INTEGER},
+      </if>
+      <if test="isDisabled != null" >
+        is_disabled = #{isDisabled,jdbcType=TINYINT},
       </if>
       <if test="icon != null" >
         icon = #{icon,jdbcType=VARCHAR},

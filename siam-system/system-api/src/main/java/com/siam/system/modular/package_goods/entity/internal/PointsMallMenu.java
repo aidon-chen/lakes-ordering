@@ -30,6 +30,13 @@ public class PointsMallMenu {
 
     private Date updateTime;
 
+    //是否禁用 0=正常 1=禁用（2026-09-30 A3：对应 tb_points_mall_menu.is_disabled）
+    private Integer isDisabled;
+
+    //分类下商品数（2026-09-30 A4：列表子查询出参，非表列）
+    @TableField(exist = false)
+    private Integer goodsCount;
+
     //页码
     @TableField(exist = false) private Integer pageNo = 1;
 
@@ -100,5 +107,21 @@ public class PointsMallMenu {
 
     public void setUpdateTime(Date updateTime) {
         this.updateTime = updateTime;
+    }
+
+    public Integer getIsDisabled() {
+        return isDisabled;
+    }
+
+    public void setIsDisabled(Integer isDisabled) {
+        this.isDisabled = isDisabled;
+    }
+
+    public Integer getGoodsCount() {
+        return goodsCount;
+    }
+
+    public void setGoodsCount(Integer goodsCount) {
+        this.goodsCount = goodsCount;
     }
 }
