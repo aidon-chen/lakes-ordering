@@ -108,6 +108,8 @@ const emit = defineEmits<{ (e: 'close'): void; (e: 'done', diff: number): void }
 
 interface Row extends ChangeItem {
   goodsName: string | null
+  mainImage?: string | null
+  specList?: string | null
   price: number
 }
 
@@ -142,6 +144,8 @@ function init() {
     detailId: d.id,
     goodsId: d.goodsId,
     goodsName: d.goodsName,
+    mainImage: d.mainImage ?? '',
+    specList: d.specList ?? null,
     price: Number(d.price) || 0,
     number: Number(d.number) || 0
   }))
@@ -156,6 +160,8 @@ function addGoods() {
     detailId: null,
     goodsId: g.id,
     goodsName: g.name,
+    mainImage: g.mainImage ?? '',
+    specList: g.specList ?? null,
     price: Number(g.salePrice || g.price) || 0,
     number: 1
   })
@@ -177,6 +183,8 @@ async function save() {
         detailId: r.detailId ?? null,
         goodsId: r.goodsId ?? null,
         goodsName: r.goodsName,
+        mainImage: r.mainImage ?? '',
+        specList: r.specList ?? null,
         price: r.price,
         number: Number(r.number) || 0
       }))

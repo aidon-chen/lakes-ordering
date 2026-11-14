@@ -187,6 +187,42 @@ public class AdminPointsMallGoodsController {
         return basicResult;
     }
 
+    // 商家端「商城商品」需要能调节展示销量，
+    // 故此处不再要求超管身份（@AdminPermission 只放过 username==admin，admin-lakes 会被拒）。
+    // 安全性由 /rest/admin/** 的全局登录拦截保证：未登录仍返回 code 2；偏移量仍有非负/上限校验。
+    @ApiOperation(value = "调节商品销量偏移量(展示销量=累计销量+偏移，真实销量不可篡改)")
+    @PostMapping(value = "/updateSalesOffset")
+    public BasicResult updateSalesOffset(@RequestBody @Validated(value = {}) PointsMallGoods param){
+        BasicResult basicResult = new BasicResult();
+
+        if(param.getId() == null){
+            throw new StoneCustomerException("商品id不能为空");
+        }
+        if(pointsMallGoodsService.getById(param.getId()) == null){
+            throw new StoneCustomerException("商品不存在");
+        }
+        // 偏移量校验：空按 0 处理；非负且设上限，防刷榜
+        Integer offset = param.getSalesOffset();
+        if(offset == null){
+            offset = 0;
+        }
+        if(offset < 0 || offset > GuessYouLikeService.SALES_OFFSET_MAX){
+            throw new StoneCustomerException("销量偏移量须在 0 ~ " + GuessYouLikeService.SALES_OFFSET_MAX + " 之间");
+        }
+
+        // 仅更新偏移量字段(updateById 为选择性更新，不触碰真实销量等其他字段)
+        PointsMallGoods update = new PointsMallGoods();
+        update.setId(param.getId());
+        update.setSalesOffset(offset);
+        update.setUpdateTime(new Date());
+        pointsMallGoodsService.updateById(update);
+
+        basicResult.setSuccess(true);
+        basicResult.setCode(BasicResultCode.SUCCESS);
+        basicResult.setMessage("调节成功");
+        return basicResult;
+    }
+
     @AdminPermission
     @ApiOperation(value = "删除商品")
     @PostMapping(value = "/delete")

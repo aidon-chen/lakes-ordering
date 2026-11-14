@@ -157,7 +157,7 @@
     vip_status, vip_type, vip_start_time, vip_end_time, type, vip_no, is_new_people,
     is_remind_new_people, last_use_time, last_use_address, register_way, wx_public_platform_open_id,
     total_balance, total_consume_balance, total_points, total_consume_points, growth,
-    create_time, update_time, last_login_time
+    unreceived_points, create_time, update_time, last_login_time
   </sql>
   <select id="selectByExample" resultMap="BaseResultMap" parameterType="com.siam.system.modular.package_user.model.example.MemberExample" >
     select

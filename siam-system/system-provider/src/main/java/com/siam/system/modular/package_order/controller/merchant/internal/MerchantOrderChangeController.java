@@ -1,6 +1,8 @@
 package com.siam.system.modular.package_order.controller.merchant.internal;
 
 import com.siam.package_common.entity.BasicResult;
+import com.siam.system.modular.package_log.annoation.Log;
+import com.siam.system.modular.package_log.aop.LogContext;
 import com.siam.system.modular.package_order.service.internal.OrderChangeService;
 import com.siam.system.modular.package_user.auth.cache.MerchantSessionManager;
 import com.siam.system.modular.package_user.entity.Merchant;
@@ -50,12 +52,16 @@ public class MerchantOrderChangeController {
      * （detailId 为空即新增；新增项需带 goodsName/price 快照）
      */
     @ApiOperation(value = "改单")
+    //A-08 操作日志：改单重算金额，快照取服务层返回的 beforeAmount/afterAmount/diffAmount
+    @Log(module = Log.MODULE_ORDER, moduleName = "订单操作", action = "订单改单", businessType = Log.TYPE_UPDATE)
     @PostMapping(value = "/modify")
     public BasicResult modify(@RequestBody Map<String, Object> body) {
         Integer orderId = intOrNull(body.get("orderId"));
         List<Map<String, Object>> items = mapList(body.get("items"));
         Merchant m = loginMerchant();
-        return BasicResult.success(orderChangeService.modify(m.getShopId(), m.getId(), orderId, items));
+        Map<String, Object> result = orderChangeService.modify(m.getShopId(), m.getId(), orderId, items);
+        LogContext.setAfter(result);
+        return BasicResult.success(result);
     }
 
     /**
@@ -63,6 +69,8 @@ public class MerchantOrderChangeController {
      * 请求体：{ orderId, refundWay(1全额/2部分), reasonCode, reasonText?, items:[{detailId, number}] }
      */
     @ApiOperation(value = "退单（含退款执行）")
+    //A-08 操作日志：退款属资金敏感操作，快照取服务层返回的 refundAmount/refundSuccess/refundStatusText
+    @Log(module = Log.MODULE_ORDER, moduleName = "订单操作", action = "订单退款", businessType = Log.TYPE_UPDATE)
     @PostMapping(value = "/refund")
     public BasicResult refund(@RequestBody Map<String, Object> body) {
         Integer orderId = intOrNull(body.get("orderId"));
@@ -71,8 +79,10 @@ public class MerchantOrderChangeController {
         String reasonText = body.get("reasonText") == null ? null : String.valueOf(body.get("reasonText"));
         List<Map<String, Object>> items = mapList(body.get("items"));
         Merchant m = loginMerchant();
-        return BasicResult.success(orderChangeService.refund(
-                m.getShopId(), m.getId(), orderId, refundWay, reasonCode, reasonText, items));
+        Map<String, Object> result = orderChangeService.refund(
+                m.getShopId(), m.getId(), orderId, refundWay, reasonCode, reasonText, items);
+        LogContext.setAfter(result);
+        return BasicResult.success(result);
     }
 
     /** 改单/退单记录；请求体可选：{ changeType?, orderNo? } */

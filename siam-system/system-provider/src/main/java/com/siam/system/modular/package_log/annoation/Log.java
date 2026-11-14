@@ -31,6 +31,14 @@ public @interface Log {
     String MODULE_TABLE = "TABLE";
     /** 存酒 */
     String MODULE_WINE_STORAGE = "WINE_STORAGE";
+    /** 资金与会员（充值/提现/商家资料/改密码） */
+    String MODULE_MEMBER = "MEMBER";
+    /** 商品档案（新增/删除/导入/规格/分类/原料） */
+    String MODULE_GOODS = "GOODS";
+    /** 营销（券/满减/广告） */
+    String MODULE_MARKETING = "MARKETING";
+    /** 门店设置（门店信息/设置项/打印/评价回复/商城核销） */
+    String MODULE_SHOP = "SHOP";
 
     /* ##################################### END 模块code常量 #################################### */
 

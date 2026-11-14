@@ -137,11 +137,23 @@ public class OrderChangeServiceImpl implements OrderChangeService {
                 if (number <= 0) {
                     continue;
                 }
+                // tb_order_detail 的 goods_id / goods_name / main_image 三列都是 NOT NULL 且无默认值，
+                // 而 MyBatis 的 insertSelective 对 null 字段会整个跳过该列 ⇒ 数据库直接报
+                // 「Field 'xxx' doesn't have a default value」（前端漏传即 500，事务全回滚）。
+                // 前端已补传，这里再做一次显式守卫，把「DB 约束错误」提前变成「可读的业务提示」。
+                Integer addGoodsId = intOrNull(it.get("goodsId"));
+                if (addGoodsId == null) {
+                    throw new StoneCustomerException("新增明细缺少商品 id，请重新选择商品");
+                }
+                String addGoodsName = str(it.get("goodsName"));
+                if (addGoodsName == null || addGoodsName.trim().isEmpty()) {
+                    throw new StoneCustomerException("新增明细缺少商品名称，请重新选择商品");
+                }
                 OrderDetail add = new OrderDetail();
                 add.setOrderId(orderId);
-                add.setGoodsId(intOrNull(it.get("goodsId")));
-                add.setGoodsName(str(it.get("goodsName")));
-                add.setMainImage(str(it.get("mainImage")));
+                add.setGoodsId(addGoodsId);
+                add.setGoodsName(addGoodsName);
+                add.setMainImage(blankToEmpty(str(it.get("mainImage"))));
                 add.setSpecList(str(it.get("specList")));
                 add.setPrice(dec(it.get("price")));
                 add.setNumber(number);
@@ -441,5 +453,10 @@ public class OrderChangeServiceImpl implements OrderChangeService {
 
     private static String str(Object v) {
         return v == null ? null : String.valueOf(v);
+    }
+
+    /** null / 空串 / 纯空白统一归一为空串（用于 NOT NULL 且无默认值的列的兜底） */
+    private static String blankToEmpty(String v) {
+        return v == null ? "" : v;
     }
 }

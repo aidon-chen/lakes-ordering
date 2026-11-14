@@ -8,6 +8,8 @@ import com.siam.package_common.entity.BasicResult;
 import com.siam.package_common.constant.BasicResultCode;
 import com.siam.package_common.constant.Quantity;
 import com.siam.package_common.exception.StoneCustomerException;
+import com.siam.system.modular.package_log.annoation.Log;
+import com.siam.system.modular.package_log.aop.LogContext;
 import com.siam.system.modular.package_user.auth.cache.MerchantSessionManager;
 import com.siam.system.modular.package_user.entity.Merchant;
 import com.siam.system.util.TokenUtil;
@@ -30,6 +32,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping(value = "/rest/merchant/shop")
@@ -117,6 +121,8 @@ public class MerchantShopController {
      * @author 暹罗
      */
     @MerchantPermission
+    //A-08 操作日志：门店普通信息修改，快照记变更前后的门店档案
+    @Log(module = Log.MODULE_SHOP, moduleName = "门店设置", action = "修改门店信息", businessType = Log.TYPE_UPDATE)
     @PostMapping(value = "/update")
     public BasicResult update(@RequestBody @Validated(value = {}) Shop shop, HttpServletRequest request){
         BasicResult basicResult = new BasicResult();
@@ -135,8 +141,14 @@ public class MerchantShopController {
 
         //TODO-有些信息不能直接修改，需要管理员审核
 
+        //A-08 操作日志：变更前值（旧门店档案）
+        LogContext.setBefore(dbShop);
+
         shop.setUpdateTime(new Date());
         shopService.updateById(shop);
+
+        //A-08 操作日志：变更后值（重查库取实际落库值）
+        LogContext.setAfter(shopService.getById(shop.getId()));
 
         basicResult.setSuccess(true);
         basicResult.setCode(BasicResultCode.SUCCESS);
@@ -150,6 +162,8 @@ public class MerchantShopController {
      * @return
      * @author 暹罗
      */
+    //A-08 操作日志：门店重要信息（名称/地址/证照等）变更申请，走审核流；快照记 变更前档案 + 变更内容清单
+    @Log(module = Log.MODULE_SHOP, moduleName = "门店设置", action = "门店重要信息变更申请", businessType = Log.TYPE_UPDATE)
     @PostMapping(value = "/applyChangeImportantData")
     public BasicResult applyChangeImportantData(@RequestBody @Validated(value = {}) ShopChangeRecord shopChangeRecord, HttpServletRequest request){
         BasicResult basicResult = new BasicResult();
@@ -195,6 +209,13 @@ public class MerchantShopController {
 
         //TODO-比对有哪些字段进行了修改
 
+        //A-08 操作日志：变更前=旧门店档案，变更后=服务端拼好的变更内容清单（applyChangeContent）
+        Map<String, Object> changeLog = new HashMap<>();
+        changeLog.put("shopId", shopChangeRecord.getShopId());
+        changeLog.put("applyChangeContent", applyChangeContent);
+        changeLog.put("applyRecordId", shopChangeRecord.getId());
+        LogContext.setBefore(dbShop);
+        LogContext.setAfter(changeLog);
 
         basicResult.setSuccess(true);
         basicResult.setCode(BasicResultCode.SUCCESS);

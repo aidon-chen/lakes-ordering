@@ -9,14 +9,17 @@
 
 		<!-- 会员卡（画板 3:15）：白卡叠入 hero；头像徽标 + 昵称/等级徽章 + 权益入口 + 分隔线 + 升级提示 -->
 		<view class="c01-vip-card" v-if="member.id" @tap="goMemberCenter">
-			<view class="c01-vip-top">
+			<!-- C-02 个人资料入口：头像 / 昵称 / 等级徽章**整行**都可点进个人资料。
+			     此前只有 .c01-vip-info 可点，头像区无 handler → 冒泡到整卡 goMemberCenter（会员中心），
+			     点头像与点昵称落点不一致；handler 上提到 .c01-vip-top 后整行行为统一。
+			     .stop 挡住冒泡到整卡，避免又跳一次会员中心。 -->
+			<view class="c01-vip-top" @tap.stop="goUserInfo">
 				<view class="c01-vip-avatar">
 					<image v-if="member.headImg" class="c01-vip-avatar-img" :src="member.headImg" mode="aspectFill"></image>
 					<!-- 默认头像：微信风格灰色人形剪影（2026-09-28 用户指定，弃用门店 logo） -->
 					<image v-else class="c01-vip-avatar-img" src="/static/assets/images/user-head.png" mode="aspectFill"></image>
 				</view>
-				<!-- C-02 个人资料入口：点昵称列进编辑页（原顶部用户行已按画板移入会员卡） -->
-				<view class="c01-vip-info" @tap.stop="goUserInfo">
+				<view class="c01-vip-info">
 					<view class="c01-vip-nickname">{{ member.username || '未设置昵称' }}</view>
 					<!-- 徽章行（画板 3:28 红圈「学生」）：等级徽章 + 身份标识并排；
 					     身份标识仅在认证中心有已通过结果时显示（loadIdentityBadge） -->

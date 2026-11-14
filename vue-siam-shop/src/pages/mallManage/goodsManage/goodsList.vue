@@ -75,11 +75,18 @@
           <span v-if="scope.row.isHot" style="color:#999;">（排序 {{scope.row.sortNumber || 0}}）</span>
         </template>
       </el-table-column>
-      <el-table-column prop="saleqty" label="已售出数量">
-        
+      <!-- 销量管理（2026-10-02）：真实销量=total_sales 系统统计不可篡改；展示销量=真实+偏移，用于「推荐好物」倒序排行 -->
+      <el-table-column label="真实销量" width="100">
         <template scope="scope">
-          <span>{{scope.row.saleqty}}份</span>
-        </template> </el-table-column> 
+          <span>{{ scope.row.totalSales || 0 }}份</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="展示销量" width="150">
+        <template scope="scope">
+          <span style="font-weight:bold;">{{ displaySales(scope.row) }}份</span>
+          <span v-if="scope.row.salesOffset > 0" style="color:#e6a23c;font-size:12px;">（含偏移{{ scope.row.salesOffset }}）</span>
+        </template>
+      </el-table-column>
       <!-- <el-table-column prop="stock" label="可制作杯数">
 				<template scope="scope">
           <span v-if="scope.row.status == 2" style="color:green;font-weight:bold;">{{scope.row.stock}}杯</span>
@@ -93,6 +100,7 @@
 					<!-- <el-button size="small" v-show="scope.row.goodsstatus == 1" @click="updateStatus(scope.row, 2)">下架</el-button> -->
 					<!-- <el-button size="small" v-show="scope.row.goodsstatus == 0 || scope.row.goodsstatus == 2" @click="updateStatus(scope.row, 1)">上架</el-button> -->
 					<el-button size="small" @click="gotoAdd('edit', scope.row)">修改商品</el-button>
+					<el-button type="warning" size="small" @click="openSalesOffset(scope.row)">调节销量</el-button>
 					<el-button type="danger" size="small" @click="handleDel(scope.row.id)">删除商品</el-button>
 				</template>
 			</el-table-column>
@@ -146,6 +154,29 @@
         </div> -->
       </div>
 		</el-dialog>
+		<!--调节销量弹窗（2026-10-02）：展示销量=真实销量+偏移量；真实销量系统统计不可篡改，排行按展示销量倒序-->
+		<el-dialog title="调节销量" :visible.sync="salesOffsetVisible" :close-on-click-modal="false" width="440px">
+			<el-form label-width="90px" size="small">
+				<el-form-item label="商品">
+					<span>{{ salesOffsetRow.name }}</span>
+				</el-form-item>
+				<el-form-item label="真实销量">
+					<span style="font-weight:bold;">{{ salesOffsetRow.totalSales || 0 }} 份</span>
+					<span style="color:#999;margin-left:8px;font-size:12px;">（累计销量，系统统计，不可修改）</span>
+				</el-form-item>
+				<el-form-item label="销量偏移">
+					<el-input-number v-model="salesOffsetValue" :min="0" :max="1000000" :step="1" style="width:180px;"></el-input-number>
+					<div style="color:#999;font-size:12px;">在真实销量基础上叠加的展示增量（0 ~ 1000000），前端排行按展示销量倒序</div>
+				</el-form-item>
+				<el-form-item label="展示销量">
+					<span style="color:#67c23a;font-weight:bold;font-size:16px;">{{ (salesOffsetRow.totalSales || 0) + salesOffsetValue }} 份</span>
+				</el-form-item>
+			</el-form>
+			<div slot="footer" class="dialog-footer">
+				<el-button size="small" @click="salesOffsetVisible = false">取消</el-button>
+				<el-button type="primary" size="small" @click="saveSalesOffset">保存</el-button>
+			</div>
+		</el-dialog>
 	</section>
 </template>
 
@@ -172,8 +203,12 @@
 				editForm: [],
         searchData:[],
         goodsId: '',
-				goodsTable: '',
-				multipleSelection: [],        
+        goodsTable: '',
+        multipleSelection: [],
+        //调节销量弹窗（2026-10-02）
+        salesOffsetVisible: false,
+        salesOffsetRow: {},
+        salesOffsetValue: 0,
 			}
 		},
 		methods: {
@@ -365,10 +400,40 @@
 			handleSizeChange(val) {
 				this.searchMsg.pageSize = val;
 				this.getList();
-			},      
+			},
 			handleCurrentChange(val) {
 				this.searchMsg.pageNo = val;
 				this.getList();
+      },
+      //展示销量 = 真实销量 + 偏移量（与后端排行口径一致）
+      displaySales(row) {
+        return (row.totalSales || 0) + (row.salesOffset || 0);
+      },
+      openSalesOffset(row) {
+        this.salesOffsetRow = row;
+        this.salesOffsetValue = row.salesOffset || 0;
+        this.salesOffsetVisible = true;
+      },
+      saveSalesOffset() {
+        let vue = this;
+        let param = { id: vue.salesOffsetRow.id, salesOffset: vue.salesOffsetValue };
+        vue.$http.post(vue, '/rest/admin/pointsMall/goods/updateSalesOffset', param,
+          function(vue, data) {
+            vue.$message({
+              showClose: true,
+              message: '调节成功',
+              type: 'success'
+            });
+            vue.salesOffsetVisible = false;
+            vue.getList();
+          }, function(error, data) {
+            vue.$message({
+              showClose: true,
+              message: data.message,
+              type: 'error'
+            });
+          }
+        );
       },
       updateStatus(row, status=1) {
         let NoticeTitle = ''

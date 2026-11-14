@@ -1,6 +1,8 @@
 package com.siam.system.modular.package_goods.controller.merchant;
 
 import com.siam.package_common.entity.BasicResult;
+import com.siam.system.modular.package_log.annoation.Log;
+import com.siam.system.modular.package_log.aop.LogContext;
 import com.siam.package_common.constant.BasicResultCode;
 import com.siam.package_common.constant.BusinessType;
 import com.siam.package_common.exception.StoneCustomerException;
@@ -48,8 +50,11 @@ public class MerchantCouponsMemberRelationController {
     @ApiImplicitParams({
             @ApiImplicitParam(name = "couponsId", value = "优惠卷id", required = false, paramType = "query", dataType = "int")
     })
+    //A-08 操作日志：按条件批量发券（资产发放），快照记发券参数
+    @Log(module = Log.MODULE_MARKETING, moduleName = "营销", action = "批量发券", businessType = Log.TYPE_INSERT)
     @PostMapping(value = "/giveCoupons")
     public BasicResult giveCoupons(@RequestBody @Validated(value = {}) CouponsMemberRelation param) {
+        LogContext.setAfter(param);
         BasicResult basicResult = new BasicResult();
 
         if (param.getCouponsId().equals(BusinessType.NEW_PEOPLE_COUPONS_ID) || param.getCouponsId().equals(BusinessType.INVITE_NEW_PEOPLE_COUPONS_ID)) {
@@ -109,6 +114,8 @@ public class MerchantCouponsMemberRelationController {
             @ApiImplicitParam(name = "couponsId", value = "优惠卷id", required = false, paramType = "query", dataType = "int"),
             @ApiImplicitParam(name = "memberId", value = "用户id", required = false, paramType = "query", dataType = "int")
     })
+    //A-08 操作日志：向单个会员发券
+    @Log(module = Log.MODULE_MARKETING, moduleName = "营销", action = "单发优惠券", businessType = Log.TYPE_INSERT)
     @PostMapping(value = "/giveSingleCoupons")
     public BasicResult giveSingleCoupons(@RequestBody @Validated(value = {}) CouponsMemberRelation param) {
         BasicResult basicResult = new BasicResult();

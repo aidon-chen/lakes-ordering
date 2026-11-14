@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.siam.package_common.annoation.MerchantPermission;
 import com.siam.package_common.entity.BasicData;
 import com.siam.package_common.entity.BasicResult;
+import com.siam.system.modular.package_log.annoation.Log;
+import com.siam.system.modular.package_log.aop.LogContext;
 import com.siam.package_common.constant.BasicResultCode;
 import com.siam.system.modular.package_goods.entity.GoodsAccessories;
 import com.siam.system.modular.package_goods.service.GoodsAccessoriesService;
@@ -72,6 +74,8 @@ public class MerchantGoodsSpecificationOptionController {
             @ApiImplicitParam(name = "stock", value = "库存 1代表有货，0代表无货", required = true, paramType = "query", dataType = "int"),
             @ApiImplicitParam(name = "specificationName", value = "规格名称", required = true, paramType = "query", dataType = "string"),
     })
+    //A-08 操作日志：新增商品规格选项
+    @Log(module = Log.MODULE_GOODS, moduleName = "商品管理", action = "新增商品规格选项", businessType = Log.TYPE_INSERT)
     @PostMapping(value = "/insert")
     public BasicResult insert(@RequestBody @Validated(value = {}) GoodsSpecificationOptionDto goodsSpecificationOptionDto){
         BasicData basicResult = new BasicData();
@@ -140,6 +144,8 @@ public class MerchantGoodsSpecificationOptionController {
             @ApiImplicitParam(name = "stock", value = "库存 1代表有货，0代表无货", required = true, paramType = "query", dataType = "int"),
             @ApiImplicitParam(name = "sortNumber", value = "排序号", required = true, paramType = "query", dataType = "int"),
     })
+    //A-08 操作日志：修改商品规格选项
+    @Log(module = Log.MODULE_GOODS, moduleName = "商品管理", action = "修改商品规格选项", businessType = Log.TYPE_UPDATE)
     @PostMapping(value = "/update")
     public BasicResult update(@RequestBody @Validated(value = {}) GoodsSpecificationOptionDto goodsSpecificationOptionDto){
         BasicResult basicResult = new BasicResult();
@@ -208,6 +214,8 @@ public class MerchantGoodsSpecificationOptionController {
     @ApiImplicitParams({
             @ApiImplicitParam(name = "ids", value = "商品规格选项表主键id(批量删除时id以逗号分隔)", required = true, paramType = "query", dataType = "string"),
     })
+    //A-08 操作日志：删除商品规格选项
+    @Log(module = Log.MODULE_GOODS, moduleName = "商品管理", action = "删除商品规格选项", businessType = Log.TYPE_DELETE)
     @PostMapping(value = "/delete")
     public BasicResult delete(@RequestBody @Validated(value = {}) GoodsSpecificationOption param){
         BasicResult basicResult = new BasicResult();
@@ -243,6 +251,8 @@ public class MerchantGoodsSpecificationOptionController {
     @ApiImplicitParams({
             @ApiImplicitParam(name = "goodsId", value = "商品id", required = true, paramType = "query", dataType = "int")
     })
+    //A-08 操作日志：引用公共规格
+    @Log(module = Log.MODULE_GOODS, moduleName = "商品管理", action = "引用公共规格", businessType = Log.TYPE_INSERT)
     @PostMapping(value = "/insertPublicSpecification")
     public BasicResult insertPublicSpecification(int goodsId){
         BasicResult basicResult = new BasicResult();

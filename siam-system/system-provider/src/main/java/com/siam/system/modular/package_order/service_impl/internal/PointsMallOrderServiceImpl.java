@@ -516,6 +516,11 @@ public class PointsMallOrderServiceImpl extends ServiceImpl<PointsMallOrderMappe
         //判断前端的最终价格和后端的最终价格是否一致
         //如果最终价格计算出来是负数，则要手动赋值为0
         finalPrice = (finalPrice.compareTo(BigDecimal.ZERO)==-1) ? BigDecimal.ZERO : finalPrice.setScale(Quantity.INT_2, BigDecimal.ROUND_HALF_UP);
+        // 2026-10-01 加固：actualPrice 缺失（前端空串 → Jackson 反序列化为 null）时给业务提示，
+        // 不再在下方日志 .toString() 处抛 NPE 变成「系统异常」（当日商城下单失败事故的定位干扰点）。
+        if(param.getActualPrice() == null){
+            throw new StoneCustomerException("订单实付款参数缺失，请返回重新结算");
+        }
         log.debug("\n\n》》》 前端计算的实付款：" + param.getActualPrice().toString());
         log.debug("\n\n》》》 后端计算的实付款：" + finalPrice);
         if(param.getActualPrice().compareTo(finalPrice) != 0){

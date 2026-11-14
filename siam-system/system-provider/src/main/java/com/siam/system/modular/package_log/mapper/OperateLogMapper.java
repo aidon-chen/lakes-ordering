@@ -23,6 +23,7 @@ public interface OperateLogMapper extends BaseMapper<OperateLog> {
             "<if test=\"log.result != null\"> AND o.result = #{log.result} </if>" +
             "<if test=\"log.ip != null and log.ip !=''\"> AND o.ip = #{log.ip} </if>" +
             "<if test=\"log.requestUrl != null and log.requestUrl !=''\"> AND o.request_url like concat('%', #{log.requestUrl}, '%') </if>" +
+            "<if test=\"log.action != null and log.action !=''\"> AND o.action like concat('%', #{log.action}, '%') </if>" +
             "<if test=\"log.startCreateTime != null\"> AND DATE_FORMAT(o.create_time, '%Y/%m/%d') &gt;= #{log.startCreateTime} </if>" +
             "<if test=\"log.endCreateTime != null\"> AND DATE_FORMAT(o.create_time, '%Y/%m/%d') &lt;= #{log.endCreateTime} </if>" +
             "</where> order by o.id desc" +
@@ -40,6 +41,7 @@ public interface OperateLogMapper extends BaseMapper<OperateLog> {
             "<if test=\"log.result != null\"> AND o.result = #{log.result} </if>" +
             "<if test=\"log.ip != null and log.ip !=''\"> AND o.ip = #{log.ip} </if>" +
             "<if test=\"log.requestUrl != null and log.requestUrl !=''\"> AND o.request_url like concat('%', #{log.requestUrl}, '%') </if>" +
+            "<if test=\"log.action != null and log.action !=''\"> AND o.action like concat('%', #{log.action}, '%') </if>" +
             "<if test=\"log.startCreateTime != null\"> AND DATE_FORMAT(o.create_time, '%Y/%m/%d') &gt;= #{log.startCreateTime} </if>" +
             "<if test=\"log.endCreateTime != null\"> AND DATE_FORMAT(o.create_time, '%Y/%m/%d') &lt;= #{log.endCreateTime} </if>" +
             "</where> order by o.id desc" +

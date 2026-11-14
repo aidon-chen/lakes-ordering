@@ -313,3 +313,28 @@ UPDATE `tb_points_mall_full_reduction_rule`
    SET `name`='满99减10', `status`=1, `limited_price`=99.00, `reduced_price`=10.00,
        `update_time`=NOW()
  WHERE `id`=2;
+
+-- ============================================================================
+-- 12) 商城「猜你喜欢 / 推荐好物」管理增量（2026-10-02）
+--
+--   推荐好物：改按展示销量倒序 = total_sales + IFNULL(sales_offset,0)；
+--     is_hot 保留为「参与推荐」开关（商家端「首页推荐」开关继续可用）。
+--   猜你喜欢：商家手动挑选关联表（物理删除关联行，不影响商品本体）；
+--     shop_id 可空 = 平台级挑选（本部署商城商品 shop_id 全为 NULL，顾客端查询为平台级）。
+-- ============================================================================
+-- 12.1 tb_points_mall_goods 加销量偏移列（幂等）
+SET @c = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tb_points_mall_goods' AND COLUMN_NAME = 'sales_offset');
+SET @ddl = IF(@c = 0, 'ALTER TABLE `tb_points_mall_goods` ADD `sales_offset` int(11) DEFAULT NULL COMMENT ''销量偏移量(展示销量=累计销量+偏移)'' AFTER `total_sales`', 'SELECT 1');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- 12.2 猜你喜欢关联表（IF NOT EXISTS 幂等）
+CREATE TABLE IF NOT EXISTS `tb_guess_you_like` (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键id',
+  `shop_id` int(11) DEFAULT NULL COMMENT '店铺id(NULL=平台级挑选)',
+  `goods_id` int(11) NOT NULL COMMENT '商城商品id(tb_points_mall_goods.id)',
+  `sort_number` int(11) NOT NULL DEFAULT 0 COMMENT '排序号(升序展示)',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime DEFAULT NULL COMMENT '修改时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_goods_id` (`goods_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='猜你喜欢-商家手动挑选关联表';

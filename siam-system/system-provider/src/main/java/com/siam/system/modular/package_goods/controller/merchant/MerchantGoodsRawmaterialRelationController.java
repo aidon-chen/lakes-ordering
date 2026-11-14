@@ -3,6 +3,8 @@ package com.siam.system.modular.package_goods.controller.merchant;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.siam.package_common.entity.BasicData;
 import com.siam.package_common.entity.BasicResult;
+import com.siam.system.modular.package_log.annoation.Log;
+import com.siam.system.modular.package_log.aop.LogContext;
 import com.siam.package_common.constant.BasicResultCode;
 import com.siam.package_common.util.GsonUtils;
 import com.siam.package_common.util.StringUtils;
@@ -64,6 +66,8 @@ public class MerchantGoodsRawmaterialRelationController {
             @ApiImplicitParam(name = "goodsListStr", value = "商品id", required = true, paramType = "query", dataType = "List"),
             @ApiImplicitParam(name = "relationListStr", value = "原料", required = true, paramType = "query", dataType = "List"),
     })
+    //A-08 操作日志：商品原料配比绑定
+    @Log(module = Log.MODULE_GOODS, moduleName = "商品管理", action = "商品原料配比绑定", businessType = Log.TYPE_INSERT)
     @PostMapping(value = "/insert")
     public BasicResult insert(@RequestBody @Validated(value = {}) GoodsRawmaterialRelation param){
         BasicResult basicResult = new BasicResult();

@@ -1798,7 +1798,12 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         //生成积分账单 -- 未到账积分
         if (givePoints.compareTo(BigDecimal.ZERO) > 0) {
             //获取用户当前积分数 -- 未到账积分
-            BigDecimal unreceivedPointsNum = dbMember.getUnreceivedPoints().add(givePoints);
+            // 2026-10-02 防御兜底：unreceived_points 曾因 MemberMapper.xml Base_Column_List 漏列
+            // 导致 selectByPrimaryKey 映射恒 null → 此行 NPE → 模拟支付整单回滚（首单即炸）。
+            // 列清单已补，此处再兜零值防其他读法漏列。
+            BigDecimal dbUnreceivedPoints = dbMember.getUnreceivedPoints() == null
+                    ? BigDecimal.ZERO : dbMember.getUnreceivedPoints();
+            BigDecimal unreceivedPointsNum = dbUnreceivedPoints.add(givePoints);
             //修改用户的积分数
             Member member = new Member();
             member.setId(dbOrder.getMemberId());

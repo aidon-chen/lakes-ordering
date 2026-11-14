@@ -1,6 +1,8 @@
 package com.siam.system.modular.package_goods.controller.merchant;
 
 import com.siam.package_common.entity.BasicResult;
+import com.siam.system.modular.package_log.annoation.Log;
+import com.siam.system.modular.package_log.aop.LogContext;
 import com.siam.system.modular.package_goods.entity.internal.ShopSetting;
 import com.siam.system.modular.package_goods.service.internal.ShopSettingService;
 import com.siam.system.modular.package_user.auth.cache.MerchantSessionManager;
@@ -54,10 +56,14 @@ public class MerchantShopSettingController {
 
     /** 批量保存设置（upsert）；只写传入的键，未传的键保持不变 */
     @ApiOperation(value = "保存门店营业设置")
+    //A-08 操作日志：门店设置项变更，快照记保存后的全量键值
+    @Log(module = Log.MODULE_SHOP, moduleName = "门店设置", action = "修改门店设置", businessType = Log.TYPE_UPDATE)
     @PostMapping(value = "/save")
     public BasicResult save(@RequestBody Map<String, String> settings) {
         shopSettingService.saveSettings(loginMerchant().getShopId(), settings);
-        return BasicResult.success(shopSettingService.getSettings(loginMerchant().getShopId()));
+        Map<String, String> afterSettings = shopSettingService.getSettings(loginMerchant().getShopId());
+        LogContext.setAfter(afterSettings);
+        return BasicResult.success(afterSettings);
     }
 
     /** 该模块支持的全部设置键（供前端渲染与校验，避免前后端键名漂移） */

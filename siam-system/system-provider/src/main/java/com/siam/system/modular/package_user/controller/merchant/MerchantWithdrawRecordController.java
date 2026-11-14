@@ -2,6 +2,8 @@ package com.siam.system.modular.package_user.controller.merchant;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.siam.package_common.entity.BasicResult;
+import com.siam.system.modular.package_log.annoation.Log;
+import com.siam.system.modular.package_log.aop.LogContext;
 import com.siam.system.modular.package_user.entity.MerchantWithdrawRecord;
 import com.siam.system.modular.package_user.model.param.MerchantWithdrawRecordParam;
 import com.siam.system.modular.package_user.service.MerchantBillingRecordService;
@@ -47,8 +49,11 @@ public class MerchantWithdrawRecordController {
     }
 
     @ApiOperation(value = "新增商家提现记录")
+    //A-08 操作日志：提现申请属资金敏感操作，快照记申请金额（手续费/到账额由服务端按费率计算后落库）
+    @Log(module = Log.MODULE_MEMBER, moduleName = "资金与会员", action = "提现申请", businessType = Log.TYPE_INSERT)
     @PostMapping(value = "/insert")
     public BasicResult insert(@RequestBody @Validated(value = {}) MerchantWithdrawRecordParam param) {
+        LogContext.setAfter(param);
         merchantWithdrawRecordService.insert(param);
         return BasicResult.success();
     }

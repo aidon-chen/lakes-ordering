@@ -4166,6 +4166,7 @@ CREATE TABLE `tb_points_mall_goods` (
   `sale_price` decimal(10,2) DEFAULT '0.00' COMMENT '折扣价',
   `monthly_sales` int(11) DEFAULT '0' COMMENT '月销量',
   `total_sales` int(11) DEFAULT '0' COMMENT '累计销量',
+  `sales_offset` int(11) DEFAULT NULL COMMENT '销量偏移量(展示销量=累计销量+偏移)',
   `total_comments` int(11) DEFAULT '0' COMMENT '累计评价',
   `preferential_name` varchar(20) DEFAULT NULL COMMENT '优惠名称',
   `packing_charges` decimal(10,2) DEFAULT '0.00' COMMENT '包装费',
@@ -4176,6 +4177,21 @@ CREATE TABLE `tb_points_mall_goods` (
   `update_time` datetime DEFAULT NULL COMMENT '修改时间',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=30 DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+
+-- ----------------------------
+-- Table structure for tb_guess_you_like（猜你喜欢-商家手动挑选关联表）
+-- ----------------------------
+DROP TABLE IF EXISTS `tb_guess_you_like`;
+CREATE TABLE `tb_guess_you_like` (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键id',
+  `shop_id` int(11) DEFAULT NULL COMMENT '店铺id(NULL=平台级挑选)',
+  `goods_id` int(11) NOT NULL COMMENT '商城商品id(tb_points_mall_goods.id)',
+  `sort_number` int(11) NOT NULL DEFAULT 0 COMMENT '排序号(升序展示)',
+  `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+  `update_time` datetime DEFAULT NULL COMMENT '修改时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_goods_id` (`goods_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='猜你喜欢-商家手动挑选关联表';
 
 -- ----------------------------
 -- Records of tb_points_mall_goods

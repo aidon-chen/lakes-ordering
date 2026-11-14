@@ -152,9 +152,12 @@ public class MerchantGoodsController {
             @ApiImplicitParam(name = "status", value = "状态 1=启用 0=禁用 -1=删除", required = false, paramType = "query", dataType = "int"),
             @ApiImplicitParam(name = "menuId", value = "菜单id", required = false, paramType = "query", dataType = "int"),
     })
+    //A-08 操作日志：新增商品，快照记落库后的商品档案
+    @Log(module = Log.MODULE_GOODS, moduleName = "商品管理", action = "新增商品", businessType = Log.TYPE_INSERT)
     @PostMapping(value = "/insert")
     public BasicResult insert(@RequestBody @Validated(value = {}) Goods goods, HttpServletRequest request){
         goodsService.insert(goods);
+        LogContext.setAfter(goodsService.getById(goods.getId()));
         return BasicResult.success();
     }
 
@@ -287,6 +290,8 @@ public class MerchantGoodsController {
     @ApiImplicitParams({
             @ApiImplicitParam(name = "id", value = "商品表主键id", required = true, paramType = "query", dataType = "int"),
     })
+    //A-08 操作日志：删除商品（删后数据不可回查），必须记录删除前完整商品档案
+    @Log(module = Log.MODULE_GOODS, moduleName = "商品管理", action = "删除商品", businessType = Log.TYPE_DELETE)
     @PostMapping(value = "/delete")
     public BasicResult delete(@RequestBody @Validated(value = {}) Goods param, HttpServletRequest request){
         BasicResult basicResult = new BasicResult();
@@ -303,6 +308,9 @@ public class MerchantGoodsController {
         } else if (loginMerchant.getShopId() != dbGoods.getShopId()){
             throw new StoneCustomerException("您没有权限操作该商品");
         }
+
+        //A-08 操作日志：变更前值（删除前完整档案）
+        LogContext.setBefore(dbGoods);
 
         //删除菜单分类商品关系
         menuGoodsRelationService.deleteByGoodsId(dbGoods.getId());
@@ -330,6 +338,8 @@ public class MerchantGoodsController {
     }
 
     @ApiOperation(value = "导入商品Excel报表")
+    //A-08 操作日志：批量导入商品，快照记文件名与导入条数
+    @Log(module = Log.MODULE_GOODS, moduleName = "商品管理", action = "导入商品", businessType = Log.TYPE_IMPORT)
     @PostMapping(value = "/import")
     public BasicResult importGoods(@RequestParam(value = "file", required = true) MultipartFile file){
         //获取当前登录用户绑定的门店编号
@@ -350,6 +360,11 @@ public class MerchantGoodsController {
             goodsList.forEach(goods -> {
                 goodsService.insert(goods);
             });
+            //A-08 操作日志：导入结果快照
+            Map<String, Object> importLog = new HashMap<>();
+            importLog.put("fileName", file.getOriginalFilename());
+            importLog.put("importCount", goodsList == null ? 0 : goodsList.size());
+            LogContext.setAfter(importLog);
         } catch (IOException e) {
             e.printStackTrace();
         }

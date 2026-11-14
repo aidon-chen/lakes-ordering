@@ -34,6 +34,9 @@ public class PointsMallGoods {
     @TableId(type = IdType.AUTO)
     private Integer id;
 
+    @ApiModelProperty(notes = "店铺id(NULL=平台级挑选)")
+    private Integer shopId;
+
     @ApiModelProperty(notes = "商品名称")
     private String name;
 
@@ -75,6 +78,9 @@ public class PointsMallGoods {
 
     @ApiModelProperty(notes = "累计销量")
     private Integer totalSales;
+
+    @ApiModelProperty(notes = "销量偏移量(展示销量=累计销量+偏移)")
+    private Integer salesOffset;
 
     @ApiModelProperty(notes = "累计评价")
     private Integer totalComments;

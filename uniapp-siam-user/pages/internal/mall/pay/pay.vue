@@ -295,8 +295,7 @@
 					fullPriceReductionIsHidden: '',
 					actualPrice: ''
 				},
-				tipReward: '',
-				payFocus: false,
+					payFocus: false,
 				pwdVal: '',
 				showPayPwdInput: false,
 				isPayJson: '',
@@ -336,6 +335,11 @@
 			this.payType = options.payType;
 			this.time = time;
 			this.initData = prePageData;
+			// ★ 2026-10-01 下单失败修复：模板与 weChatPayTap 全读 this.data.*，但此前只赋了 initData、
+			// this.data 从未装载 → 确认页空列表/¥0，下单发空 orderDetailList + actualPrice ""
+			//（Jackson 反序列化为 null）→ 后端 validatePrice 第519行 NPE →「下单失败」。
+			// 赋同一引用：getCouponsMemberRelation 对 prePageData 的优惠字段回写（couponsIsHidden 等）天然生效。
+			this.data = prePageData;
 
 			// this.getShopAddressList();
 			// setTimeout(out=>{
@@ -355,10 +359,6 @@
 			this.getPickupShop();
 			this.getLoginMemberInfo();
 			this.createOrderToken();
-			setTimeout((time) => {
-				this.selectCommissionReward();
-				clearTimeout(time);
-			}, 1500);
 			this.getTimestamp();
 		},
 		/**
@@ -761,17 +761,6 @@
 				});
 			},
 
-			selectCommissionReward() {
-				https.request('/rest/member/pointsMall/order/selectCommissionReward', {
-					actualPrice: !this.data.fullPriceReductionIsHidden && !this.data.couponsIsHidden ? this.data
-						.actualPrice : this.data.fullPriceReduction
-				}).then((result) => {
-					if (result.success) {
-						// C-10 批次6（口径变更）：返现/返利全面取消 → 后端已不返回文案，此处自然为空
-						this.tipReward = result.data || '';
-					}
-				});
-			},
 
 			/**
 			 * 获取焦点

@@ -3,6 +3,8 @@ package com.siam.system.modular.package_goods.controller.merchant;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.siam.package_common.entity.BasicData;
 import com.siam.package_common.entity.BasicResult;
+import com.siam.system.modular.package_log.annoation.Log;
+import com.siam.system.modular.package_log.aop.LogContext;
 import com.siam.package_common.constant.BasicResultCode;
 import com.siam.system.modular.package_goods.model.example.GoodsRawmaterialRelationExample;
 import com.siam.system.modular.package_goods.service.GoodsRawmaterialRelationService;
@@ -63,6 +65,8 @@ public class MerchantRawmaterialController {
             @ApiImplicitParam(name = "stockLowerLimit", value = "库存过低线/库存下限", required = true, paramType = "query", dataType = "BigDecimal"),
             @ApiImplicitParam(name = "stockUpperLimit", value = "库存超出线/库存上限", required = true, paramType = "query", dataType = "BigDecimal"),
     })
+    //A-08 操作日志：新增原料
+    @Log(module = Log.MODULE_GOODS, moduleName = "商品管理", action = "新增原料", businessType = Log.TYPE_INSERT)
     @PostMapping(value = "/insert")
     public BasicResult insert(@RequestBody @Validated(value = {}) Rawmaterial rawmaterial){
         BasicResult basicResult = new BasicResult();

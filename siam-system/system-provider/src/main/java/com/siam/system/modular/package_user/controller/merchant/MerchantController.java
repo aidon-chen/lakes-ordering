@@ -2,6 +2,7 @@ package com.siam.system.modular.package_user.controller.merchant;
 
 import com.siam.package_common.annoation.MerchantPermission;
 import com.siam.package_common.entity.BasicResult;
+import com.siam.system.modular.package_log.annoation.Log;
 import com.siam.system.modular.package_user.model.param.MerchantParam;
 import com.siam.system.modular.package_user.model.result.MerchantResult;
 import com.siam.system.modular.package_user.service.MerchantService;
@@ -80,6 +81,8 @@ public class MerchantController {
      *
      * @author 暹罗
      */
+    //A-08 操作日志：修改商家资料（敏感字段由切面自动脱敏）
+    @Log(module = Log.MODULE_MEMBER, moduleName = "资金与会员", action = "修改商家资料", businessType = Log.TYPE_UPDATE)
     @PostMapping(value = "/update")
     public BasicResult update(@RequestBody @Validated(value = {}) MerchantParam param) {
         merchantService.update(param);
@@ -92,6 +95,8 @@ public class MerchantController {
      * @author 暹罗
      */
     @MerchantPermission
+    //A-08 操作日志：只记「改了密码」这一行为，密码值由切面脱敏为 ***
+    @Log(module = Log.MODULE_MEMBER, moduleName = "资金与会员", action = "修改登录密码", businessType = Log.TYPE_UPDATE)
     @PostMapping(value = "/updatePassword")
     public BasicResult updatePassword(@RequestBody @Validated(value = {}) MerchantParam param) {
         merchantService.updatePassword(param);

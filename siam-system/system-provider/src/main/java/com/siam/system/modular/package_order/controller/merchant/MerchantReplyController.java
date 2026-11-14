@@ -6,6 +6,8 @@ import com.siam.system.modular.package_user.entity.Merchant;
 import com.siam.system.modular.package_order.service.ReplyService;
 import com.siam.package_common.entity.BasicData;
 import com.siam.package_common.entity.BasicResult;
+import com.siam.system.modular.package_log.annoation.Log;
+import com.siam.system.modular.package_log.aop.LogContext;
 import com.siam.package_common.constant.BasicResultCode;
 import com.siam.package_common.constant.Quantity;
 import com.siam.system.modular.package_order.entity.Reply;
@@ -36,6 +38,8 @@ public class MerchantReplyController {
      * @param reply
      * @return
      */
+    //A-08 操作日志：商家回复评价
+    @Log(module = Log.MODULE_SHOP, moduleName = "门店设置", action = "回复评价", businessType = Log.TYPE_INSERT)
     @PostMapping(value = "/insert")
     public BasicResult insert(@RequestBody @Validated(value = {}) Reply reply, HttpServletRequest request) {
         BasicResult basicResult = new BasicResult();
@@ -60,6 +64,8 @@ public class MerchantReplyController {
      * @param request
      * @return
      */
+    //A-08 操作日志：撤销评价回复
+    @Log(module = Log.MODULE_SHOP, moduleName = "门店设置", action = "撤销评价回复", businessType = Log.TYPE_DELETE)
     @DeleteMapping(value = "/delete")
     public BasicResult delete(@RequestBody @Validated(value = {}) Reply param) {
         BasicResult basicResult = new BasicResult();

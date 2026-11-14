@@ -14,6 +14,14 @@ export interface ChangeItem {
   detailId?: number | null
   goodsId?: number | null
   goodsName?: string | null
+  /**
+   * 商品主图。tb_order_detail.main_image 是 NOT NULL 且无默认值，
+   * 新增明细时必须带上（否则 MyBatis 动态 SQL 会跳过该列 → 插入报
+   * 「Field 'main_image' doesn't have a default value」）。
+   */
+  mainImage?: string | null
+  /** 商品规格 JSON，可空 */
+  specList?: string | null
   price?: number | null
   number: number
 }

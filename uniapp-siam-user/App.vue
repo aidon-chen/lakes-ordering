@@ -471,15 +471,21 @@
 								}
 								if (totalNum) {
 									// 购物车角标归属「商城」tab（tabBar 5 项：首页0/商城1/点餐2/订单中心3/我的4）
-									uni.setTabBarBadge({
-										index: 1,
-										text: String(totalNum)
-									});
+									// 2026-10-01：非 tabBar 页调用会抛 setTabBarBadge:fail not TabBar page（红字报错），
+									// 角标一旦设置会跨页保留，失败静默即可（回到 tab 页时会再设）。
+									try {
+										uni.setTabBarBadge({
+											index: 1,
+											text: String(totalNum)
+										});
+									} catch (e) {}
 									return;
 								}
-								uni.removeTabBarBadge({
-									index: 1
-								});
+								try {
+									uni.removeTabBarBadge({
+										index: 1
+									});
+								} catch (e) {}
 							}
 						});
 						return;
@@ -487,16 +493,19 @@
 				});
 			},
 			setTabBarBadge(num) {
-				if (num) {
-					uni.setTabBarBadge({
-						index: 1,
-						text: String(num)
+				// 2026-10-01：非 tabBar 页（购物车/商城菜单等）调用原样抛错并中断调用链，包一层静默
+				try {
+					if (num) {
+						uni.setTabBarBadge({
+							index: 1,
+							text: String(num)
+						});
+						return;
+					}
+					uni.removeTabBarBadge({
+						index: 1
 					});
-					return;
-				}
-				uni.removeTabBarBadge({
-					index: 1
-				});
+				} catch (e) {}
 			},
 			// 「点餐」tab（index 2）角标：与购物车数量同步；写 storage 供冷启动恢复（09-25 拍板）
 			setDiningTabBarBadge(num) {
@@ -504,16 +513,19 @@
 				try {
 					uni.setStorageSync('diningCartNum', num);
 				} catch (e) {}
-				if (num) {
-					uni.setTabBarBadge({
-						index: 2,
-						text: String(num)
+				// 2026-10-01：与 setTabBarBadge 同理，非 tabBar 页调用抛错，静默兜住
+				try {
+					if (num) {
+						uni.setTabBarBadge({
+							index: 2,
+							text: String(num)
+						});
+						return;
+					}
+					uni.removeTabBarBadge({
+						index: 2
 					});
-					return;
-				}
-				uni.removeTabBarBadge({
-					index: 2
-				});
+				} catch (e) {}
 			},
 			deliveryAndSelfTaking: {
 				modeList: [{

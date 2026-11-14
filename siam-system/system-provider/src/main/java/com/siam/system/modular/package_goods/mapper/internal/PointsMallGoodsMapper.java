@@ -149,6 +149,7 @@ public interface PointsMallGoodsMapper extends BaseMapper<PointsMallGoods> {
 
     @ResultMap("CustomResultMap")
     @Select("<script>select g.*, " +
+            "(ifnull(g.total_sales, 0) + ifnull(g.sales_offset, 0)) as displaySales, " +
             "(select ifnull(sum(od.number), 0) from tb_points_mall_order_detail as od left join tb_points_mall_order as o on od.order_id = o.id where od.goods_id = g.id and o.status = 6 and (o.create_time between #{startTime} and #{endTime})) as latelyMonthlySales " +
             "from tb_points_mall_goods g" +
             "<where> 1=1 and g.status in (2, 4) " +
@@ -170,8 +171,8 @@ public interface PointsMallGoodsMapper extends BaseMapper<PointsMallGoods> {
             "<if test=\"goods.isHot != null\"> AND g.is_hot = #{goods.isHot} </if>" +
             "<if test=\"goods.preferentialName != null and goods.preferentialName !=''\"> AND g.preferential_name like '%${goods.preferentialName}%' </if>" +
             "<if test=\"goods.packingCharges != null\"> AND g.packing_charges = #{goods.packingCharges} </if>" +
-            // 2026-09-25：推荐好物楼层排序改由 sort_number 驱动（复用沉睡列），空值排最后；同序号按 id 兜底，保证分页稳定
-            "</where> order by ifnull(g.sort_number, 999999) asc, g.id asc" +
+            // 2026-10-02：推荐好物改按展示销量倒序（total_sales + sales_offset），is_hot 仅作「参与推荐」开关；同销量按 id 兜底，保证分页稳定
+            "</where> order by (ifnull(g.total_sales, 0) + ifnull(g.sales_offset, 0)) desc, g.id desc" +
             "</script>")
     Page<Map<String, Object>> recommendGoodsList(@Param("page") Page page, @Param("goods") PointsMallGoods goods, @Param("startTime") Date startTime, @Param("endTime") Date endTime);
 

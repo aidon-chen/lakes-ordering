@@ -105,21 +105,22 @@
 				<van-icon name="arrow" />
 			</view>
 		</view>
-		<view class="pay-mode-view margin-border-radius">
+		<!-- 支付方式（2026-10-02 改横排三选一）：标题独占上行 + 三个等宽色块一行。
+			 pay-mode-column / pay-mode-row 覆盖基类 .pay-mode-view 的 space-between（column 方向语义已变） -->
+		<view class="pay-mode-view margin-border-radius pay-mode-column">
 			<view>支付方式</view>
-			<view class="choose-pay-mode">
-				<radio-group class="radio-group-address" @change="radioChangeAddress">
+			<view class="choose-pay-mode pay-mode-row">
+				<!-- radio-group-address 全程无样式规则，本次改名 pay-radio-group（零风险） -->
+				<radio-group class="pay-radio-group" @change="radioChangeAddress">
 					<block v-for="(item, index) in paymentModes" :key="index">
 						<label
-							:class="'radio-label-payment flex_center ' + (item.checked ? 'payment-checked' : 'payment-not-checked')"
+							:class="'pay-mode-item flex_center ' + (item.checked ? 'pay-mode-checked' : 'pay-mode-not-checked')"
 							v-if="item.show">
 							<radio :value="index" :checked="item.checked" class="pay_radio" />
 							<van-icon :name="item.icon" />
 							<text :decode="true">&nbsp;{{ item.text }}</text>
-							<text :decode="true" class="actionItem__desc" v-if="item.desc">&nbsp;{{ item.desc }}</text>
 						</label>
 					</block>
-
 				</radio-group>
 			</view>
 		</view>
@@ -230,8 +231,17 @@
 				currentTab: 0,
 				reducedDeliveryPrice: 0,
 				title: '请选择支付方式',
-				// 2026-09-25 恢复余额支付（主计划《会员充值与余额系统》决策点 3 拍板）：微信 + 余额两项
+				// 2026-10-02 支付方式由竖排两项改横排三项。
+				// 数组顺序＝视觉顺序；索引契约：0=到店支付 1=微信支付 2=余额支付。
+				// value 沿用既有枚举（1=微信 2=平台余额 4=到店，见 utils/system-status.js）
+				// 与后端 DiningTableServiceImpl#PAY_MODE_OFFLINE=4。默认仍选中微信支付（index 1）。
 				paymentModes: [{
+					checked: false,
+					value: 4,
+					text: '到店支付',
+					icon: 'shop-o',
+					show: true
+				}, {
 					checked: true,
 					value: 1,
 					text: '微信支付',
@@ -244,7 +254,12 @@
 					icon: 'gold-coin-o',
 					show: true
 				}],
-				paymentModeIndex: 0,
+				// 2026-09-25 起默认 0（微信）；2026-10-02 数组重排后显式指向「微信支付」= 1
+				paymentModeIndex: 1,
+				// 支付中断续付：本页已创建的待支付订单 {id, orderNo, actualPrice}
+				// 下单成功后记录；支付成功/订单被后端自动取消时清空。再次点支付直接续付同一笔，
+				// 避免购物车已被清空后重复 insert 报「购物车数据异常」
+				pendingPay: null,
 				showPayPwdInput: false,
 				//是否展示密码输入层
 				pwdVal: '',
@@ -434,7 +449,6 @@
 				this.selfOutActiveIndex = 0;
 				app.globalData.deliveryAndSelfTaking.selfOutActiveIndex = 0;
 				this.getShopInfo(orderDetail.initShopInfo);
-				_this.selectCommissionReward(orderDetail);
 				setTimeout(() => {
 
 					_this.getCouponsMemberRelation(orderDetail);
@@ -480,7 +494,7 @@
 			radioChangeAddress(e) {
 				console.log(e);
 				var that = this;
-				// 支付方式仅「微信支付」一项（设计稿 A-05 支付方式卡 5:481）→ 无余额/支付密码校验分支
+				// 支付方式三项（到店/微信/余额，2026-10-02 横排改造）→ 无前置余额/支付密码校验分支
 				var paymentModeIndex = Number(e.detail.value);
 				var paymentModes = that.paymentModes;
 				if (!paymentModes[paymentModeIndex]) {
@@ -495,7 +509,7 @@
 				that.paymentModeIndex = paymentModeIndex;
 			},
 
-			/** 支付方式仅「微信支付」（设计稿 A-05 支付方式卡 5:481）→ 不做余额校验，仅落选中态 */
+			/** 支付方式三项（到店/微信/余额，2026-10-02）→ 不做余额校验，仅落选中态 */
 			choosePayModeTap() {
 				let paymentModes = this.paymentModes;
 				let paymentModeIndex = Number(this.paymentModeIndex);
@@ -805,17 +819,6 @@
 					url: '../../mine/coupons/coupons?prevData=' + JSON.stringify(afterDiscount)
 				});
 			},
-			selectCommissionReward(data) {
-				console.log(this);
-				https.request('/rest/member/order/selectCommissionReward', {
-					actualPrice: !data.fullPriceReductionIsHidden && !data.couponsIsHidden ? data
-						.actualPrice : data.fullPriceReduction
-				}).then((result) => {
-					if (result.success) {
-						this.tipReward = result.data;
-					}
-				});
-			},
 			getWxNotifyTemplate() {
 				https.request('/rest/wxNotifyTemplate/orderModule/list').then((result) => {
 					if (result.success) {
@@ -836,11 +839,21 @@
 			getRequestSubscribeMessage() {
 				let self = this;
 				console.log('用户的是否需要请求授权服务通知====>' + app.globalData.loginUserInfo.isRequestWxNotify);
-				// 支付方式仅「微信支付」→ 不再前置校验会员卡支付密码（原平台余额分支已移除）
+				// 支付方式三项（2026-10-02）：到店支付不在线支付，无需订阅消息授权，
+				// 直接落到 weChatPayTap 内部由 toPay4Applet 按索引分流（0=到店 → 只下单不拉起支付）
 				// #ifdef APP-PLUS||H5
+				if (self.paymentModeIndex == 0) {
+					self.weChatPayTap();
+					return;
+				}
 				self.weChatPayTap();
 				// #endif
 				// #ifdef MP-WEIXIN||MP-ALIPAY
+				// 到店支付跳过订阅消息授权（原逻辑无论选什么都弹一次）
+				if (self.paymentModeIndex == 0) {
+					self.weChatPayTap();
+					return;
+				}
 				if (app.globalData.loginUserInfo.isRequestWxNotify) {
 					uni.requestSubscribeMessage({
 						tmplIds: wxNotifyTemplates,
@@ -871,6 +884,12 @@
 						let isOperating = this.shopInfo.shop.isOperating;
 						app.globalData.getIsBusiness(startTime, endTime, isOperating).then((result) => {
 							if (!result) {
+								return;
+							}
+							// ★ 支付中断续付：本页已创建过待支付订单（上次支付失败）→ 跳过下单直接续付同一笔
+							if (this.pendingPay) {
+								toastService.showLoading();
+								this.toPay4Applet(this.pendingPay.id, this.pendingPay.orderNo, this.pendingPay.actualPrice);
 								return;
 							}
 							var data = {};
@@ -952,6 +971,12 @@
 						https.request('/rest/member/order/insert', data).then((result) => {
 							toastService.hideLoading();
 							if (result.success) {
+								// ★ 记录本页待支付订单：支付中断后可续付，不再重复下单
+								_this.pendingPay = {
+									id: result.data.id,
+									orderNo: result.data.orderNo,
+									actualPrice: result.data.actualPrice
+								};
 								_this.toPay4Applet(result.data.id, result.data.orderNo,
 									result.data.actualPrice);
 							}
@@ -963,15 +988,45 @@
 				});
 			},
 
+			/**
+			 * 到店支付流程（2026-10-02 新增，见《支付方式横排三项-实施计划》§4）：
+			 * 只下单，不拉起在线支付（不走微信支付、不走余额+密码层）。
+			 * 订单停在「未付款」（status=1 / is_payment=0），由商家在收银端「确认收款」
+			 * 选「现金」收尾（后端现成通道：DiningTableServiceImpl#confirmPayment →
+			 * OrderMapper#payUnpaidByOrderNo → is_payment=1, payment_mode=4, status=2）。
+			 * 注意：券在下单 insert 时即置已用，到店支付不走 paymentNotify 的自动关单 MQ，
+			 * 因此券**不会自动退回**，属已知取舍（计划 §5.2）。
+			 */
+			payAtStoreFlow(id, actualPrice) {
+				toastService.hideLoading();
+				toastService.showSuccess('下单成功，请到店付款', true, 2000);
+				let timeout = setTimeout(() => {
+					this.goPayResult(id, actualPrice, '到店支付');
+					clearTimeout(timeout);
+				}, 1500);
+			},
+
 			toPay4Applet(id, orderNo, actualPrice) {
-				// 2026-09-25 恢复余额支付：按支付方式卡选中项分流
-				if (this.paymentModeIndex == 1) {
+				// 2026-10-02 支付方式三项，按索引契约分流：0=到店支付 1=微信支付 2=余额支付
+				if (this.paymentModeIndex == 0) {
+					this.payAtStoreFlow(id, actualPrice);
+					return;
+				}
+				// 2026-09-25 恢复余额支付（原为 ==1，数组 2026-10-02 重排后余额落在 index 2）
+				if (this.paymentModeIndex == 2) {
 					this.balancePayFlow(id, orderNo, actualPrice);
 					return;
 				}
 				toastService.showLoading('正在加载...', true);
+				// [2026-10-02 支付断路修复] getOpenId 读 storage('security.siam.openid')，该 key 全仓无写入方
+				// → uni.getStorage 必 fail → reject → 无 catch 时 weChatPay 永不执行、mockPay 永不发出
+				//（云库实证：8 笔测试单全部 is_payment=0 且 update_time==create_time，后端从未收到 mockPay）。
+				// mockPay 本就不依赖 openId（见 utils/pay.js 头注），catch 兜底继续走支付；
+				// 将来接真实微信支付时，再在 weChatPay 内按需补 wx.login 换 openId 的链路。
 				authService.getOpenId().then((openId) => {
 					this.weChatPay(id, orderNo, actualPrice, openId);
+				}).catch(() => {
+					this.weChatPay(id, orderNo, actualPrice, '');
 				});
 			},
 
@@ -988,7 +1043,7 @@
 			},
 
 			weChatPay(id, orderNo, actualPrice, openId) {
-				//支付方式仅「微信支付」（设计稿 A-05 支付方式卡 5:481）
+				//支付方式三项中的「微信支付」分支（2026-10-02 横排改造；到店/余额各自分流到 payAtStoreFlow / balancePayFlow）
 				const totalFee = this.orderDetail.fullPriceReductionIsHidden ? this.orderDetail
 					.fullPriceReduction : actualPrice;
 				//MVP 演示：无微信支付商户号 → 走模拟支付（后端与真实回调同一套订单流转）
@@ -1004,10 +1059,16 @@
 							this.goPayResult(id, actualPrice, '微信支付');
 							clearTimeout(timeout);
 						}, 1000);
-					}).catch((err) => {
-						toastService.hideLoading();
-						toastService.showError(err.message || '支付失败', true);
-					});
+				}).catch((err) => {
+					toastService.hideLoading();
+					console.error('[pay] 模拟支付失败:', err);
+					// 订单已被后端自动取消 → 清续付上下文，下次点击重新下单
+					var payErrMsg = (err && err.message) || '';
+					if (payErrMsg.indexOf('取消') !== -1 || payErrMsg.indexOf('请重新下单') !== -1) {
+						this.pendingPay = null;
+					}
+					toastService.showError(err.message || '支付失败', true);
+				});
 					return;
 				}
 				https.request('/rest/member/wxPay/toPay4Applet', {
@@ -1034,8 +1095,9 @@
 									clearTimeout(timeout);
 								}, 1000);
 							},
-							fail(res) {
-								toastService.showError('支付失败', true);
+						fail(res) {
+							console.error('[pay] requestPayment fail:', res);
+							toastService.showError('支付失败', true);
 								let timeout = setTimeout(() => {
 									uni.redirectTo({
 										url: '../../order/detail/detail?id=' + id
@@ -1141,6 +1203,7 @@
 							}
 						});
 					} else {
+						console.error('[pay] 余额支付失败:', result);
 						toastService.showError(msg, true);
 					}
 				});
@@ -1155,6 +1218,8 @@
 			 * 跳转支付结果页（设计稿 C-09）
 			 */
 			goPayResult(orderId, amount, channel) {
+				// 支付成功离页前清掉续付上下文（防御性；redirectTo 后页面实例销毁自然清）
+				this.pendingPay = null;
 				const d = getApp().globalData.deliveryAndSelfTaking || {};
 				const dine = d.dineInfo;
 				// 设计稿 A-05 仅「自提 / 点餐」两档：有桌位信息即堂食点餐，否则自提（外送已移除）
@@ -1623,10 +1688,42 @@
 		border-radius: 15rpx;
 	}
 
+	/* 支付方式·横排三选一（2026-10-02）：标题独占上行 + 三个等宽色块一行。
+	   375px 下三块同行只剩 ~98px/个，4 汉字标签 + 图标 ≈76px，折行会破版 → 标题独占一行。
+	   显式 justify-content:flex-start 覆盖基类 space-between（column 方向下语义已变）。 */
+	.pay-mode-view.pay-mode-column {
+		display: flex;
+		flex-direction: column;
+		align-items: stretch;
+		justify-content: flex-start;
+		background: white;
+		margin: 20rpx;
+		padding: 20rpx;
+		font-size: 30rpx;
+		border-radius: 15rpx;
+	}
+
 	.choose-pay-mode {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
+	}
+
+	.choose-pay-mode.pay-mode-row {
+		display: flex;
+		flex-direction: row;
+		width: 100%;
+	}
+
+	/* 容器负 margin 抵消首尾 label 的左右 6rpx 间距。
+	   不用 :first-child/:last-child 伪类 —— WXSS 官方选择器列表不含伪类（Skyline 不支持），
+	   负 margin 方案在 WebView / Skyline 双端都稳。 */
+	.pay-radio-group {
+		display: flex;
+		flex-direction: row;
+		align-items: stretch;
+		width: 100%;
+		margin: 0 -6rpx;
 	}
 
 	.coupon-mode {
@@ -1925,26 +2022,46 @@
 		margin-bottom: 20rpx;
 	}
 
-	.payment-checked {
+	/* 2026-10-02：payment-checked / payment-not-checked / radio-label-payment 三个类
+	   改名 pay-mode-*，页面级作用域换取「横排三等分」专用样式，避免与商城页
+	   pages/internal/mall/pay/pay.vue 的同名类串味（页面级 <style> 无 scoped）。 */
+	.pay-mode-item {
+		flex: 1 1 0;
+		min-width: 0;
+		box-sizing: border-box;
+		height: 64rpx;
+		line-height: 64rpx;
+		padding: 0 6rpx;
+		margin: 0 6rpx;
+		font-size: 24rpx;
+		border-radius: 16rpx;
+		white-space: nowrap;
+		overflow: hidden;
+	}
+
+	/* 窄屏（≤320px）兜底：收字号与内边距，保证 4 汉字 + 图标不溢出 */
+	@media (max-width: 320px) {
+		.pay-mode-item {
+			font-size: 22rpx;
+			padding: 0 2rpx;
+		}
+	}
+
+	.pay-mode-checked {
 		background: linear-gradient(to right, #f2e1b5, #ebd198);
 	}
 
-	.payment-not-checked {
+	.pay-mode-not-checked {
 		background: #f0f0f0;
 	}
 
-	.radio-label-payment {
-		padding: 8rpx 10rpx;
-		font-size: 26rpx;
-		border-radius: 18rpx;
-		margin: 5rpx 0;
-	}
-
+	/* 圆点保持隐藏：与页内横向分段控件 .self_button 同一视觉语言；
+	   三等分下再塞圆点会挤破标签（截图里选中态实际是靠黄底承载的）。 */
 	.pay_radio {
 		display: none;
 	}
 
-	.radio-label-payment.flex_center.payment-checked .iconyue {
+	.pay-mode-item.flex_center.pay-mode-checked .iconyue {
 		color: black;
 	}
 

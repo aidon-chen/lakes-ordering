@@ -169,7 +169,6 @@
 					couponsName: false,
 					price: ''
 				},
-				tipReward: '',
 				isPayJson: '',
 				balanceId: '',
 				balanceOrderNo: '',
@@ -270,17 +269,6 @@
 					if (result.success) {
 						this.shopInfo = result.data;
 						this.initShopInfo = result.data;
-					}
-				});
-			},
-			selectCommissionReward(data) {
-				console.log(this);
-				https.request('/rest/member/order/selectCommissionReward', {
-					actualPrice: !data.fullPriceReductionIsHidden && !data.couponsIsHidden ? data
-						.actualPrice : data.fullPriceReduction
-				}).then((result) => {
-					if (result.success) {
-						this.tipReward = result.data;
 					}
 				});
 			},

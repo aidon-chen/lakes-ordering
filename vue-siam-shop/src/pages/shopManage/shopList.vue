@@ -82,6 +82,33 @@
 				<el-input type="textarea" :rows="6" v-model="editForm.briefIntroduction"></el-input>
 			</el-form-item>
 
+			<!-- 客服信息（2026-10-02 从「系统设置→基础参数配置」迁入）
+			     顾客端两处真实消费：订单详情「联系客服」按钮直接拨号、退款申请页弹层展示微信号与二维码。
+			     ⚠ 数据源仍是平台级 tb_setting（不是门店表），读写走 /rest/admin/setting/* ；
+			        后端 updateByPrimaryKeySelective 只更新传入字段，与本店信息互不覆盖。 -->
+			<div class="section-title">客服信息</div>
+
+			<el-form-item label="客服电话" prop="customerServicePhone">
+				<el-input v-model="editForm.customerServicePhone" placeholder="顾客端「联系客服」按钮直接拨打"></el-input>
+			</el-form-item>
+
+			<el-form-item label="客服微信" prop="customerServiceWechat">
+				<el-input v-model="editForm.customerServiceWechat" placeholder="顾客端退款页弹层展示的微信号"></el-input>
+			</el-form-item>
+
+			<el-form-item label="客服微信二维码" prop="customerServiceWechatQrcodeFile">
+				<el-upload
+					class="avatar-uploader" accept=".image, .png, .jpg"
+					action="" name="customerServiceWechatQrcodeUpload"
+					:limit="1"
+					:file-list="editForm.customerServiceWechatQrcodeFile"
+					:on-remove="handleRemoveCustomerServiceQrcode"
+					:before-upload="beforeAvatarUpload" :http-request="upload"
+					list-type="picture-card">
+					<i class="el-icon-plus avatar-uploader-icon"></i>
+				</el-upload>
+			</el-form-item>
+
 			<!-- 打印机绑定已迁至「打印机管理→小票打印机列表」页（2026-09-29 用户拍板，绑定属打印机域配置） -->
 
 			<el-form-item>
@@ -104,6 +131,7 @@
 
 				pageLoading: false, // 进页取本店信息的 loading
 				saveLoading: false,
+				settingId: null, // 平台级配置 tb_setting 主键（客服信息存这里，不存门店表）
 
 				// 必填只拦强链接字段（顾客端/收银端直接消费），其余放宽
 				editFormRules: {
@@ -129,6 +157,10 @@
 					endTime: '',
 					announcement: '',
 					briefIntroduction: '',
+					// 客服信息（2026-10-02 从基础参数配置迁入；数据源 tb_setting，由 getSetting() 填充）
+					customerServicePhone: '',
+					customerServiceWechat: '',
+					customerServiceWechatQrcodeFile: [],
 				}
 			}
 		},
@@ -185,29 +217,97 @@
 				}
 				return isLt6M;
 			},
-			upload(option) { // 图片上传（merchant 口，与登录身份一致）
+			// 客服二维码：单图回显用的 file-list（后端存相对路径，展示前拼公共桶前缀）
+			singleFileList(path, name) {
+				if (!path) {
+					return []
+				}
+				return [{
+					url: this.$http.publicUrl(path),
+					upUrl: path,
+					oldUrl: path,
+					uid: name
+				}]
+			},
+			// 客服二维码：取存储用的相对路径（空列表返回 null＝提交时不更新该列）
+			getSingleUpUrl(fileList) {
+				if (fileList && fileList.length > 0) {
+					return fileList[0].upUrl;
+				}
+				return null;
+			},
+			handleRemoveCustomerServiceQrcode(file, filelist) {
+				this.editForm.customerServiceWechatQrcodeFile = [];
+			},
+			upload(option) { // 图片上传：门店图片走 merchant 口；客服二维码属平台配置，沿用 admin 口
 				let vue = this;
 				let value = option.file;
 				let formData = new FormData();
 				formData.append('file', value);
+				let uploadUrl = option.filename === 'customerServiceWechatQrcodeUpload'
+					? '/rest/admin/uploadSingleImage'
+					: '/rest/merchant/uploadSingleImage';
 				vue.$http.postupload(
-					vue, '/rest/merchant/uploadSingleImage', formData,
+					vue, uploadUrl, formData,
 					function (vue, data) {
 						option.onSuccess();
 						let obj = {
 							oldUrl: data.data,
 							url: vue.$http.publicUrl(data.data),
+							upUrl: data.data,
 							uid: option.file.uid,
 						}
 						if (option.filename === 'shopWithinImgUpload') {
 							vue.editForm.shopWithinImgFile.push(obj)
 						} else if (option.filename === 'shopLogoImgUpload') {
 							vue.editForm.shopLogoImgFile.push(obj)
+						} else if (option.filename === 'customerServiceWechatQrcodeUpload') {
+							// 单图：替换原图
+							vue.editForm.customerServiceWechatQrcodeFile = [obj]
 						}
 					},
 					function (error) {
 						option.onError();
 					})
+			},
+			// 客服信息读取（平台级 tb_setting，与门店表无关）
+			getSetting() {
+				let vue = this;
+				vue.$http.post(vue, '/rest/admin/setting/selectCurrent', {},
+					(vue, data) => {
+						let s = data.data || {};
+						vue.settingId = s.id || null;
+						vue.editForm.customerServicePhone = s.customerServicePhone || '';
+						vue.editForm.customerServiceWechat = s.customerServiceWechat || '';
+						vue.editForm.customerServiceWechatQrcodeFile = vue.singleFileList(s.customerServiceWechatQrcode, 'qrcode');
+					}, (error, data) => {
+						vue.$message({
+							showClose: true,
+							message: data.message,
+							type: 'error'
+						});
+					}
+				);
+			},
+			// 客服信息保存（只提交客服三列，selective 更新不影响 tb_setting 其他字段）
+			saveSetting() {
+				let vue = this;
+				let param = {
+					id: vue.settingId,
+					customerServicePhone: vue.editForm.customerServicePhone,
+					customerServiceWechat: vue.editForm.customerServiceWechat,
+					customerServiceWechatQrcode: vue.getSingleUpUrl(vue.editForm.customerServiceWechatQrcodeFile)
+				};
+				// ⚠ admin/setting/update 是 @PutMapping，必须 PUT
+				vue.$http.put(vue, '/rest/admin/setting/update', param,
+					(vue, data) => {}, (error, data) => {
+						vue.$message({
+							showClose: true,
+							message: '客服信息保存失败：' + data.message,
+							type: 'error'
+						});
+					}
+				);
 			},
 			// 进页取本店信息：后端按登录账号的 shopId 直查本店（无需传 id）
 			getDetail() {
@@ -232,8 +332,13 @@
 							endTime: shop.endTime,
 							announcement: shop.announcement,
 							briefIntroduction: shop.briefIntroduction,
+							// 客服信息不来自门店表：保留现值，随后由 getSetting() 从 tb_setting 覆盖
+							customerServicePhone: vue.editForm.customerServicePhone || '',
+							customerServiceWechat: vue.editForm.customerServiceWechat || '',
+							customerServiceWechatQrcodeFile: vue.editForm.customerServiceWechatQrcodeFile || [],
 						};
 						vue.pageLoading = false;
+						vue.getSetting(); // 客服信息（tb_setting）与本店信息分表，单独读取
 					}, (error, data) => {
 						vue.pageLoading = false;
 						vue.$message({
@@ -280,6 +385,8 @@
 								message: '本店信息已保存',
 								type: 'success'
 							});
+							// 门店信息落库后再保存客服信息（两表提交，互不影响）
+							vue.saveSetting();
 							vue.getDetail(); // 保存后回读，展示落库后的真实值
 						}, (error, data) => {
 							vue.saveLoading = false;
@@ -309,6 +416,15 @@
 		color: #606266;
 		font-size: 13px;
 		border-radius: 4px;
+	}
+	/* 表单内分区标题（客服信息块，2026-10-02 随字段迁入新增） */
+	.section-title {
+		margin: 18px 0 4px;
+		padding-left: 8px;
+		border-left: 3px solid #5f7d22;
+		font-size: 15px;
+		font-weight: 600;
+		color: #303133;
 	}
 	.avatar-uploader .el-upload {
 		border: 1px dashed #d9d9d9;

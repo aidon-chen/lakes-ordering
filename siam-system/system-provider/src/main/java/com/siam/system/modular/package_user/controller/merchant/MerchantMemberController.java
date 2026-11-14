@@ -6,6 +6,8 @@ import com.siam.package_common.entity.BasicResult;
 import com.siam.package_common.exception.StoneCustomerException;
 import com.siam.system.modular.package_goods.entity.internal.VipRechargeRecord;
 import com.siam.system.modular.package_goods.service.internal.VipRechargeRecordService;
+import com.siam.system.modular.package_log.annoation.Log;
+import com.siam.system.modular.package_log.aop.LogContext;
 import com.siam.system.modular.package_user.auth.cache.MerchantSessionManager;
 import com.siam.system.modular.package_user.entity.Member;
 import com.siam.system.modular.package_user.entity.MemberBillingRecord;
@@ -123,6 +125,8 @@ public class MerchantMemberController {
      *
      * <p>不做幂等保护：现金由人当面收讫、非回调场景；重复提交由前端按钮置灰兜底。
      */
+    //A-08 操作日志：现金充值属资金敏感操作，快照记 会员/金额/赠送/充值前后余额/经手人
+    @Log(module = Log.MODULE_MEMBER, moduleName = "资金与会员", action = "会员充值（现金）", businessType = Log.TYPE_INSERT)
     @PostMapping(value = "/recharge")
     public BasicResult recharge(@RequestBody MemberCashRechargeParam param) {
         Merchant loginMerchant = merchantSessionManager.getSession(TokenUtil.getToken());
@@ -149,6 +153,14 @@ public class MerchantMemberController {
             throw new StoneCustomerException("赠送余额不能为负数");
         }
         boolean hasGive = giveBalance.compareTo(BigDecimal.ZERO) > 0;
+
+        //A-08 操作日志：变更前值（充值前余额）
+        Map<String, Object> logBefore = new HashMap<>(4);
+        logBefore.put("memberId", dbMember.getId());
+        logBefore.put("nickname", dbMember.getNickname());
+        logBefore.put("balance", nvl(dbMember.getBalance()));
+        logBefore.put("totalBalance", nvl(dbMember.getTotalBalance()));
+        LogContext.setBefore(logBefore);
 
         String orderNo = genCashOrderNo();
         String operator = loginMerchant == null ? "未知" : String.valueOf(loginMerchant.getId());
@@ -195,6 +207,17 @@ public class MerchantMemberController {
             updateMember.setType(Quantity.INT_2);
         }
         memberService.updateByPrimaryKeySelective(updateMember);
+
+        //A-08 操作日志：变更后值（充值单据 + 充值后余额）
+        Map<String, Object> logAfter = new HashMap<>(8);
+        logAfter.put("memberId", dbMember.getId());
+        logAfter.put("orderNo", orderNo);
+        logAfter.put("amount", amount);
+        logAfter.put("giveBalance", giveBalance);
+        logAfter.put("balanceAfter", balanceAfter);
+        logAfter.put("totalBalanceAfter", nvl(dbMember.getTotalBalance()).add(amount).add(giveBalance));
+        logAfter.put("operatorMerchantId", loginMerchant == null ? null : loginMerchant.getId());
+        LogContext.setAfter(logAfter);
 
         // 4) 流水：本金
         insertBilling(dbMember.getId(), MemberBillingRecord.TYPE_VIP_RECHARGE_PRICE_SWITCH_TO_BALANCE,

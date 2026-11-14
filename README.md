@@ -1,3 +1,6 @@
+> [!NOTE]
+> **本项目为个人深度改造版。** 基于开源项目 [暹罗点餐 siam1026/siam-server](https://github.com/siam1026/siam-server)（Apache License 2.0）改造，面向「湖里Lakes」精酿餐吧场景重构：扫码点餐链路、收银端 cashier-web、会员中心与等级体系、优惠券/满减、到店自提码核销、订单中心、云托管（微信云托管容器化）部署等模块均为自主开发，保留上游 Apache-2.0 许可证与原始 LICENSE。
+
 <p align=center>
   <a href="http://www.siamit.cn">
     <img src="./doc/images/gitee/logo.png" alt="暹罗点餐" style="width:200px;height:200px">

@@ -8,6 +8,9 @@
 						<el-option v-for="item in moduleOptions" :key="item.value" :label="item.label" :value="item.value"></el-option>
 					</el-select>
 				</el-form-item>
+				<el-form-item label="操作动作">
+					<el-input v-model="searchMsg.action" clearable placeholder="如 退款 / 充值"></el-input>
+				</el-form-item>
 				<el-form-item label="操作类型">
 					<el-select v-model="searchMsg.businessType" clearable placeholder="全部类型">
 						<el-option v-for="item in businessTypeOptions" :key="item.value" :label="item.label" :value="item.value"></el-option>
@@ -122,14 +125,18 @@
 				list: [],
 				total: 0,
 				listLoading: false,
-				//六类操作模块枚举
+				//操作模块枚举（原有六类 + 缺口分析新增四类）
 				moduleOptions: [
 					{value: 'LOGIN', label: '登录'},
 					{value: 'GOODS_PRICE', label: '商品价格'},
 					{value: 'ORDER', label: '订单操作'},
 					{value: 'STOCK', label: '库存变更'},
 					{value: 'TABLE', label: '开台'},
-					{value: 'WINE_STORAGE', label: '存酒'}
+					{value: 'WINE_STORAGE', label: '存酒'},
+					{value: 'MEMBER', label: '资金与会员'},
+					{value: 'GOODS', label: '商品管理'},
+					{value: 'MARKETING', label: '营销'},
+					{value: 'SHOP', label: '门店设置'}
 				],
 				//操作类型枚举（口径对齐 RuoYi business_type）
 				businessTypeOptions: [

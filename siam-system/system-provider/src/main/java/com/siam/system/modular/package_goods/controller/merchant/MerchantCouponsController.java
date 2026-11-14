@@ -6,6 +6,8 @@ import com.siam.package_common.constant.BasicResultCode;
 import com.siam.package_common.constant.Quantity;
 import com.siam.package_common.entity.BasicData;
 import com.siam.package_common.entity.BasicResult;
+import com.siam.system.modular.package_log.annoation.Log;
+import com.siam.system.modular.package_log.aop.LogContext;
 import com.siam.system.modular.package_goods.entity.Coupons;
 import com.siam.system.modular.package_goods.entity.CouponsGoodsRelation;
 import com.siam.system.modular.package_goods.entity.CouponsShopRelation;
@@ -71,6 +73,8 @@ public class MerchantCouponsController {
             @ApiImplicitParam(name = "validDays", value = "自领取之日起有效天数", required = true, paramType = "query", dataType = "Integer"),
             @ApiImplicitParam(name = "isDelete", value = "是否已删除", required = true, paramType = "query", dataType = "Boolean"),
     })
+    //A-08 操作日志：新建优惠券，快照记券面参数
+    @Log(module = Log.MODULE_MARKETING, moduleName = "营销", action = "新建优惠券", businessType = Log.TYPE_INSERT)
     @PostMapping(value = "/insert")
     public BasicResult insert(@RequestBody @Validated(value = {}) Coupons coupons, HttpServletRequest request) {
         BasicResult basicResult = new BasicResult();
@@ -218,6 +222,8 @@ public class MerchantCouponsController {
             @ApiImplicitParam(name = "validDays", value = "自领取之日起有效天数", required = true, paramType = "query", dataType = "Integer"),
             @ApiImplicitParam(name = "isDelete", value = "是否已删除", required = true, paramType = "query", dataType = "Boolean"),
     })
+    //A-08 操作日志：优惠券延期
+    @Log(module = Log.MODULE_MARKETING, moduleName = "营销", action = "优惠券延期", businessType = Log.TYPE_UPDATE)
     @PostMapping(value = "/updateEndTime")
     public BasicResult updateEndTime(@RequestBody @Validated(value = {}) Coupons coupons){
         BasicResult basicResult = new BasicResult();

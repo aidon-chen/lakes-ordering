@@ -174,6 +174,8 @@ export interface OrderDetailRow {
   orderId: number
   goodsId: number | null
   goodsName: string | null
+  /** 商品主图（后端 Base_Column_List 含 main_image，实测有返回） */
+  mainImage: string | null
   /** 规格 JSON 字符串 */
   specList: string | null
   goodsSpecs: string | null

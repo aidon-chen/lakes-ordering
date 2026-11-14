@@ -11,6 +11,7 @@ import com.siam.package_common.util.BeanUtils;
 import com.siam.package_common.util.DateUtilsPlus;
 import com.siam.system.modular.package_goods.entity.internal.PointsMallGoods;
 import com.siam.system.modular.package_goods.model.dto.internal.PointsMallGoodsMenuDto;
+import com.siam.system.modular.package_goods.service.internal.GuessYouLikeService;
 import com.siam.system.modular.package_goods.service.internal.PointsMallGoodsService;
 import com.siam.system.modular.package_user.model.param.AdminParam;
 import io.swagger.annotations.Api;
@@ -35,6 +36,9 @@ import java.util.Map;
 public class PointsMallGoodsController {
     @Autowired
     private PointsMallGoodsService goodsService;
+
+    @Autowired
+    private GuessYouLikeService guessYouLikeService;
 
     @Autowired
     private RedisTemplate redisTemplate;
@@ -231,25 +235,30 @@ public class PointsMallGoodsController {
     public BasicResult guessLikePointsMallGoodsList(@RequestBody @Validated(value = {}) AdminParam param){
         BasicData basicResult = new BasicData();
 
-        //查询近一月销量最高的前三件商品，如4-11~5-11、4-12~5-12区间
-        //计算结束时间
-        Calendar endCalendar = Calendar.getInstance();
-        endCalendar.setTime(new Date());
-        endCalendar.set(Calendar.HOUR_OF_DAY, 23);
-        endCalendar.set(Calendar.MINUTE, 59);
-        endCalendar.set(Calendar.SECOND, 59);
-        endCalendar.set(Calendar.MILLISECOND, 999);
-        Date endTime = endCalendar.getTime();
-        //计算开始时间
-        Calendar startCalendar = Calendar.getInstance();
-        startCalendar.setTime(DateUtilsPlus.subtractDays(endTime, 30));
-        startCalendar.set(Calendar.HOUR_OF_DAY, 0);
-        startCalendar.set(Calendar.MINUTE, 0);
-        startCalendar.set(Calendar.SECOND, 0);
-        startCalendar.set(Calendar.MILLISECOND, 0);
-        Date startTime = startCalendar.getTime();
+        // 2026-10-02：猜你喜欢改由商家在后台手动挑选（tb_guess_you_like，sort_number 升序）
+        // 商家未配置时回退旧逻辑（近30天热销 Top6），保证 car.vue 等既有调用不受影响
+        List<Map<String, Object>> goodsList = guessYouLikeService.listForDisplay(Quantity.INT_6);
+        if (goodsList == null || goodsList.isEmpty()) {
+            //查询近一月销量最高的前三件商品，如4-11~5-11、4-12~5-12区间
+            //计算结束时间
+            Calendar endCalendar = Calendar.getInstance();
+            endCalendar.setTime(new Date());
+            endCalendar.set(Calendar.HOUR_OF_DAY, 23);
+            endCalendar.set(Calendar.MINUTE, 59);
+            endCalendar.set(Calendar.SECOND, 59);
+            endCalendar.set(Calendar.MILLISECOND, 999);
+            Date endTime = endCalendar.getTime();
+            //计算开始时间
+            Calendar startCalendar = Calendar.getInstance();
+            startCalendar.setTime(DateUtilsPlus.subtractDays(endTime, 30));
+            startCalendar.set(Calendar.HOUR_OF_DAY, 0);
+            startCalendar.set(Calendar.MINUTE, 0);
+            startCalendar.set(Calendar.SECOND, 0);
+            startCalendar.set(Calendar.MILLISECOND, 0);
+            Date startTime = startCalendar.getTime();
 
-        List<Map<String, Object>> goodsList = goodsService.getListByLatelyMonthlySalesTopNumber(startTime, endTime, Quantity.INT_6);
+            goodsList = goodsService.getListByLatelyMonthlySalesTopNumber(startTime, endTime, Quantity.INT_6);
+        }
 
         basicResult.setData(goodsList);
         basicResult.setSuccess(true);

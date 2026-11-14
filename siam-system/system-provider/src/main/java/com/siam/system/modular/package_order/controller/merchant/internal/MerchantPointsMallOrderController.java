@@ -1,6 +1,8 @@
 package com.siam.system.modular.package_order.controller.merchant.internal;
 
 import com.siam.package_common.entity.BasicResult;
+import com.siam.system.modular.package_log.annoation.Log;
+import com.siam.system.modular.package_log.aop.LogContext;
 import com.siam.system.modular.package_order.entity.internal.PointsMallOrder;
 import com.siam.system.modular.package_order.model.param.internal.PointsMallOrderParam;
 import com.siam.system.modular.package_order.service.internal.PointsMallOrderService;
@@ -45,8 +47,11 @@ public class MerchantPointsMallOrderController {
     }
 
     @ApiOperation(value = "自提核销（待自提 → 已完成）")
+    //A-08 操作日志：商城自提核销，快照记核销参数
+    @Log(module = Log.MODULE_SHOP, moduleName = "门店设置", action = "商城自提核销", businessType = Log.TYPE_UPDATE)
     @PostMapping(value = "/confirmPickup")
     public BasicResult confirmPickup(@RequestBody @Validated(value = {}) PointsMallOrderParam param) {
+        LogContext.setAfter(param);
         orderService.confirmPickupByMerchant(param);
         return BasicResult.success();
     }

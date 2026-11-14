@@ -5,6 +5,7 @@ import com.siam.package_common.annoation.MerchantPermission;
 import com.siam.package_common.constant.BasicResultCode;
 import com.siam.package_common.entity.BasicData;
 import com.siam.package_common.entity.BasicResult;
+import com.siam.system.modular.package_log.annoation.Log;
 import com.siam.system.modular.package_goods.entity.GoodsSpecification;
 import com.siam.system.modular.package_goods.model.example.GoodsSpecificationExample;
 import com.siam.system.modular.package_goods.service.GoodsSpecificationService;
@@ -55,6 +56,8 @@ public class MerchantGoodsSpecificationController {
             @ApiImplicitParam(name = "name", value = "规格名称", required = true, paramType = "query", dataType = "string"),
             @ApiImplicitParam(name = "sortNumber", value = "排序号", required = true, paramType = "query", dataType = "int"),
     })
+    //A-08 操作日志：修改商品规格
+    @Log(module = Log.MODULE_GOODS, moduleName = "商品管理", action = "修改商品规格", businessType = Log.TYPE_UPDATE)
     @PostMapping(value = "/update")
     public BasicResult update(@RequestBody @Validated(value = {}) GoodsSpecification goodsSpecification){
         BasicResult basicResult = new BasicResult();

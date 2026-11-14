@@ -8,6 +8,11 @@
 --      + system-api 实体/Example）
 --   → 线上端点 /rest/merchant/merchantRecommendGoods/** 与 /rest/merchantRecommendGoods/** 已 404
 --   → 接口文档五册已刷新（package_goods 端点 300 → 298）
+-- 【执行留痕 2026-10-02 18:47:17】✅ **云库 `siam_db`@25613 已执行**（用户拍板，铁律 0）
+--   · 执行器 `01-solution/local-run/backup/apply_36_drop.py`（预检只读→备份并独立 commit→DROP→复核 四阶段）
+--   · 备份表 **`tb_merchant_recommend_goods_bak_20261002-184717`**（CREATE LIKE＋INSERT SELECT，11 行，已落库）
+--   · 复核：原表存在数 0；全库 LIKE'%recommend_goods%' 仅剩备份表；含 recommend_goods 列 0（零断链）
+--   · 回退：`CREATE TABLE `tb_merchant_recommend_goods` LIKE `tb_merchant_recommend_goods_bak_20261002-184717`;` ＋ `INSERT INTO `tb_merchant_recommend_goods` SELECT * FROM `tb_merchant_recommend_goods_bak_20261002-184717`;`
 -- 本地库：siam_db 已于 09-29 20:0x DROP，备份见
 --   order-project/local-run/backup/20260929-drop-tb_merchant_recommend_goods.sql（含 12 行种子）
 --

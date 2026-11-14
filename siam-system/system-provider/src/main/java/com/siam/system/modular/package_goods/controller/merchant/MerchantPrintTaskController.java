@@ -1,6 +1,8 @@
 package com.siam.system.modular.package_goods.controller.merchant;
 
 import com.siam.package_common.entity.BasicResult;
+import com.siam.system.modular.package_log.annoation.Log;
+import com.siam.system.modular.package_log.aop.LogContext;
 import com.siam.system.modular.package_goods.service.internal.PrintService;
 import com.siam.system.modular.package_user.auth.cache.MerchantSessionManager;
 import com.siam.system.modular.package_user.entity.Merchant;
@@ -68,6 +70,8 @@ public class MerchantPrintTaskController {
 
     /** 立即重试 */
     @ApiOperation(value = "立即重试打印任务")
+    //A-08 操作日志：打印任务操作
+    @Log(module = Log.MODULE_SHOP, moduleName = "门店设置", action = "打印任务重试", businessType = Log.TYPE_UPDATE)
     @PostMapping(value = "/retry")
     public BasicResult retry(@RequestBody Map<String, Object> body) {
         Integer id = intOrNull(body.get("id"));
@@ -80,6 +84,8 @@ public class MerchantPrintTaskController {
 
     /** 忽略任务（人工放弃） */
     @ApiOperation(value = "忽略打印任务")
+    //A-08 操作日志：打印任务操作
+    @Log(module = Log.MODULE_SHOP, moduleName = "门店设置", action = "打印任务忽略", businessType = Log.TYPE_UPDATE)
     @PostMapping(value = "/ignore")
     public BasicResult ignore(@RequestBody Map<String, Object> body) {
         Integer id = intOrNull(body.get("id"));
@@ -92,6 +98,8 @@ public class MerchantPrintTaskController {
 
     /** 补打：以原任务为模板新建一条 is_reprint=true 的待打印任务 */
     @ApiOperation(value = "补打")
+    //A-08 操作日志：补打产生新任务
+    @Log(module = Log.MODULE_SHOP, moduleName = "门店设置", action = "补打小票", businessType = Log.TYPE_INSERT)
     @PostMapping(value = "/reprint")
     public BasicResult reprint(@RequestBody Map<String, Object> body) {
         Integer id = intOrNull(body.get("id"));

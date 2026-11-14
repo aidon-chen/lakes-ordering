@@ -6,6 +6,8 @@ import com.siam.package_common.annoation.MerchantPermission;
 import com.siam.package_common.constant.BasicResultCode;
 import com.siam.package_common.entity.BasicData;
 import com.siam.package_common.entity.BasicResult;
+import com.siam.system.modular.package_log.annoation.Log;
+import com.siam.system.modular.package_log.aop.LogContext;
 import com.siam.package_common.exception.StoneCustomerException;
 import com.siam.system.modular.package_goods.entity.FullReductionRule;
 import com.siam.system.modular.package_goods.service.FullReductionRuleService;
@@ -46,6 +48,8 @@ public class MerchantFullReductionRuleController {
             @ApiImplicitParam(name = "limitedPrice", value = "分类名称", required = false, paramType = "query", dataType = "BigDecimal"),
             @ApiImplicitParam(name = "reducedPrice", value = "品牌id", required = true, paramType = "query", dataType = "BigDecimal")
     })
+    //A-08 操作日志：新建满减规则
+    @Log(module = Log.MODULE_MARKETING, moduleName = "营销", action = "新建满减规则", businessType = Log.TYPE_INSERT)
     @PostMapping(value = "/insert")
     public BasicResult insert(@RequestBody @Validated(value = {}) FullReductionRule fullReductionRule, HttpServletRequest request){
         BasicResult basicResult = new BasicResult();

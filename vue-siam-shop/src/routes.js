@@ -83,6 +83,8 @@ const mallAddGoods = () => import( './pages/mallManage/goodsManage/addGoods.vue'
 const mallEditGoods = () => import( './pages/mallManage/goodsManage/editGoods.vue')
 const mallStockList = () => import( './pages/mallManage/goodsManage/stockList.vue')
 const mallOrderList = () => import( './pages/mallManage/orderManage/orderList.vue')
+//猜你喜欢管理（2026-10-02）：商家手动挑选/排序商城首页「猜你喜欢」商品
+const mallGuessYouLike = () => import( './pages/mallManage/goodsManage/guessYouLike.vue')
 // 满减规则页已删（2026-10-01 B 批，ADR-0002）：商城满减统一走券体系
 //商城轮播（2026-09-25）：tb_advertisement type=3，顾客端商城首页顶部轮播
 const mallCarouselList = () => import( './pages/mallManage/advertisementManage/mallCarouselList.vue')
@@ -209,6 +211,7 @@ let routes = [
       children: [
           { path: '/pointsMall_menuList', component: mallMenuList, name: '商城分类' },
           { path: '/pointsMall_goodsList', component: mallGoodsList, name: '商城商品' },
+          { path: '/pointsMall_guessYouLike', component: mallGuessYouLike, name: '猜你喜欢' },
           { path: '/pointsMall_stockList', component: mallStockList, name: '商城库存' },
           { path: '/pointsMall_orderList', component: mallOrderList, name: '商城订单' },
           // 满减规则页与路由已删（2026-10-01 B 批，ADR-0002）
@@ -282,7 +285,9 @@ let routes = [
       iconCls: 'el-icon-setting',
       children: [
           { path: '/settingList', component: settingList, name: '基础参数配置' },
-          { path: '/dictList', component: dictList, name: '业务字典' },
+          // 业务字典（A-02 预留位）：全端 0 消费，配置不进任何业务环节 → 10-01 先前端隐藏菜单，
+          // 免得运营以为「配了就生效」。页面文件与后端 8 个接口均保留未删，接线消费侧时删掉本行 hidden 即可放开。
+          { path: '/dictList', component: dictList, name: '业务字典', hidden: true },
           { path: '/operateLogList', component: operateLogList, name: '操作日志' },
           { path: '/operateLogDetail', component: operateLogDetail, name: '操作日志详情', hidden: true },
           { path: '/loginLogList', component: loginLogList, name: '登录日志' },

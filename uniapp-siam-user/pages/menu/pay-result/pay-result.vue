@@ -7,9 +7,11 @@
 			<view class="success-icon">
 				<view class="check-mark"></view>
 			</view>
-			<text class="result-title">支付成功</text>
+			<!-- 2026-10-02：到店支付（channel='到店支付'）未产生在线支付，
+			     文案由「支付成功」改「下单成功」，副行改为到店付款提示（不出真自提码，属 C-10） -->
+			<text class="result-title">{{ payChannelText === '到店支付' ? '下单成功' : '支付成功' }}</text>
 			<text class="result-amount">¥{{ amountText }} · {{ payChannelText }}</text>
-			<text class="result-shop">{{ shopText }}</text>
+			<text class="result-shop">{{ payChannelText === '到店支付' ? '请到店出示自提码付款' : shopText }}</text>
 		</view>
 		<view class="middle-space"></view>
 		<!-- 按钮行 -->

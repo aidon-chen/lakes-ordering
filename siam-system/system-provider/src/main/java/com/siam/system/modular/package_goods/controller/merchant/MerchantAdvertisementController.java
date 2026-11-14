@@ -3,6 +3,8 @@ package com.siam.system.modular.package_goods.controller.merchant;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.siam.package_common.entity.BasicData;
 import com.siam.package_common.entity.BasicResult;
+import com.siam.system.modular.package_log.annoation.Log;
+import com.siam.system.modular.package_log.aop.LogContext;
 import com.siam.package_common.constant.BasicResultCode;
 import com.siam.system.modular.package_goods.entity.Advertisement;
 import com.siam.system.modular.package_goods.model.param.AdvertisementParam;
@@ -56,6 +58,8 @@ public class MerchantAdvertisementController {
             @ApiImplicitParam(name = "sortNumber", value = "排序号", required = true, paramType = "query", dataType = "int"),
             @ApiImplicitParam(name = "imageLinkUrl", value = "点击轮播图跳转的链接", required = false, paramType = "query", dataType = "string"),
     })
+    //A-08 操作日志：新增广告位
+    @Log(module = Log.MODULE_MARKETING, moduleName = "营销", action = "新增广告", businessType = Log.TYPE_INSERT)
     @PostMapping(value = "/insert")
     public BasicResult insert(@RequestBody @Validated(value = {}) AdvertisementParam advertisement){
         BasicResult basicResult = new BasicResult();
